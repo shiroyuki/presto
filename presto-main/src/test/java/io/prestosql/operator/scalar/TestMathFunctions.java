@@ -694,6 +694,17 @@ public class TestMathFunctions
     }
 
     @Test
+    public void testInvalidRound()
+    {
+        // https://github.com/prestodb/presto/pull/10349/commits/66295898b8b3434cc1260cf595aad0ce8cc8d8e0
+        assertFunction("round(2147483647, INTEGER '-9')", INTEGER, 2000000000);
+//        assertFunction("round(9223372036854775807, -3)", BIGINT, 9223372036854776000L); // TODO overthrow???
+        assertFunction("round(9223372036854775807, -19)", BIGINT, -4000000000L); // (should overflow)
+        assertFunction("round(9223372036854775807, -20)", BIGINT, -4000000000L);
+        assertFunction("round(9223372036854775807, 2147483648)", BIGINT, -4000000000L);
+    }
+
+    @Test
     public void testRound()
     {
         assertFunction("round(TINYINT '3')", TINYINT, (byte) 3);
@@ -733,14 +744,39 @@ public class TestMathFunctions
 
         assertFunction("round(TINYINT '3', TINYINT '0')", TINYINT, (byte) 3);
         assertFunction("round(TINYINT '3', 0)", TINYINT, (byte) 3);
+        assertFunction("round(TINYINT '9', -1)", TINYINT, (byte) 10); // TOOD: Fail
+        assertFunction("round(TINYINT '-9', -1)", TINYINT, (byte) -10);
+        assertFunction("round(TINYINT '12', -1)", TINYINT, (byte) 10);
+        assertFunction("round(TINYINT '18', -1)", TINYINT, (byte) 20);
         assertFunction("round(SMALLINT '3', SMALLINT '0')", SMALLINT, (short) 3);
+        assertFunction("round(SMALLINT '99', SMALLINT '-1')", SMALLINT, (short) 100);
+        assertFunction("round(SMALLINT '-99', SMALLINT '-1')", SMALLINT, (short) -100);
         assertFunction("round(SMALLINT '3', 0)", SMALLINT, (short) 3);
+        assertFunction("round(SMALLINT '99', -1)", SMALLINT, (short) 100);
+        assertFunction("round(SMALLINT '-99', -1)", SMALLINT, (short) -100);
         assertFunction("round(3, 0)", INTEGER, 3);
         assertFunction("round(-3, 0)", INTEGER, -3);
+        assertFunction("round(99, -1)", INTEGER, 100);
+        assertFunction("round(-99, -1)", INTEGER, -100);
         assertFunction("round(-3, INTEGER '0')", INTEGER, -3);
+        assertFunction("round(99, INTEGER '-1')", INTEGER, 100);
+        assertFunction("round(12355, INTEGER '-2')", INTEGER, 12400);
+        assertFunction("round(12345, INTEGER '-2')", INTEGER, 12300);
+//        assertFunction("round(2147483647, INTEGER '-9')", INTEGER, 2000000000);
+        assertFunction("round(2147483647, INTEGER '-10')", INTEGER, 0);
+        assertFunction("round(2147483647, INTEGER '-100')", INTEGER, 0);
+        assertFunction("round(2147483647, INTEGER '-2147483648')", INTEGER, 0);
         assertFunction("round(BIGINT '3', 0)", BIGINT, 3L);
+        assertFunction("round(BIGINT '99', -1)", BIGINT, 100L);
+        assertFunction("round(BIGINT '-99', -1)", BIGINT, -100L);
         assertFunction("round( 3000000000, 0)", BIGINT, 3000000000L);
         assertFunction("round(-3000000000, 0)", BIGINT, -3000000000L);
+        assertFunction("round( 3999999999, -1)", BIGINT, 4000000000L);
+        assertFunction("round(-3999999999, -1)", BIGINT, -4000000000L);
+//        assertFunction("round(9223372036854775807, -3)", BIGINT, 9223372036854775807L);
+//        assertFunction("round(9223372036854775807, -19)", BIGINT, -4000000000L);
+//        assertFunction("round(9223372036854775807, -20)", BIGINT, -4000000000L);
+//        assertFunction("round(9223372036854775807, 2147483648)", BIGINT, -4000000000L);
         assertFunction("round(3.0E0, 0)", DOUBLE, 3.0);
         assertFunction("round(-3.0E0, 0)", DOUBLE, -3.0);
         assertFunction("round(3.499E0, 0)", DOUBLE, 3.0);

@@ -33,6 +33,7 @@ import io.prestosql.type.LiteralParameter;
 import org.apache.commons.math3.distribution.BetaDistribution;
 import org.apache.commons.math3.special.Erf;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -696,7 +697,7 @@ public final class MathFunctions
     public static long roundTinyint(@SqlType(StandardTypes.TINYINT) long num, @SqlType(StandardTypes.INTEGER) long decimals)
     {
         // TODO implement support for `decimals < 0`
-        return num;
+        return roundLong(num, decimals);
     }
 
     @Description("round to nearest integer")
@@ -705,7 +706,7 @@ public final class MathFunctions
     public static long roundSmallint(@SqlType(StandardTypes.SMALLINT) long num, @SqlType(StandardTypes.INTEGER) long decimals)
     {
         // TODO implement support for `decimals < 0`
-        return num;
+        return roundLong(num, decimals);
     }
 
     @Description("round to nearest integer")
@@ -714,7 +715,7 @@ public final class MathFunctions
     public static long roundInteger(@SqlType(StandardTypes.INTEGER) long num, @SqlType(StandardTypes.INTEGER) long decimals)
     {
         // TODO implement support for `decimals < 0`
-        return num;
+        return roundLong(num, decimals);
     }
 
     @Description("round to nearest integer")
@@ -723,7 +724,24 @@ public final class MathFunctions
     public static long round(@SqlType(StandardTypes.BIGINT) long num, @SqlType(StandardTypes.INTEGER) long decimals)
     {
         // TODO implement support for `decimals < 0`
-        return num;
+        return roundLong(num, decimals);
+    }
+
+    private static long roundLong(long num, long decimals)
+    {
+        if (decimals >= 0) {
+            return num;
+        }
+        double factor = Math.pow(10, decimals);
+        long value = Math.round(num * factor);
+        if (factor == 0.1) {
+            return (long) (value / 0.1);
+        }
+
+        for (double i = 0.1; i > factor; i*=0.1) {
+            value /= 0.1;
+        }
+        return value;
     }
 
     @Description("round to nearest integer")
