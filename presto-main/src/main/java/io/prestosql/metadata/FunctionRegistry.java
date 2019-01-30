@@ -109,6 +109,7 @@ import io.prestosql.operator.scalar.EmptyMapConstructor;
 import io.prestosql.operator.scalar.FailureFunction;
 import io.prestosql.operator.scalar.HmacFunctions;
 import io.prestosql.operator.scalar.HyperLogLogFunctions;
+import io.prestosql.operator.scalar.IpAddressFunctions;
 import io.prestosql.operator.scalar.JoniRegexpCasts;
 import io.prestosql.operator.scalar.JoniRegexpFunctions;
 import io.prestosql.operator.scalar.JoniRegexpReplaceLambdaFunction;
@@ -520,6 +521,7 @@ public class FunctionRegistry
                 .scalars(HyperLogLogOperators.class)
                 .scalars(QuantileDigestOperators.class)
                 .scalars(IpAddressOperators.class)
+                .scalars(IpAddressFunctions.class)
                 .scalar(IpAddressOperators.IpAddressDistinctFromOperator.class)
                 .scalars(UuidOperators.class)
                 .scalar(UuidOperators.UuidDistinctFromOperator.class)
