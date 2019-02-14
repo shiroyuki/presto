@@ -16,6 +16,7 @@ package io.prestosql.plugin.cassandra;
 import com.datastax.driver.core.utils.Bytes;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import io.prestosql.spi.block.SingleRowBlock;
 import io.prestosql.spi.connector.ColumnHandle;
 import io.prestosql.spi.connector.ColumnMetadata;
 import io.prestosql.spi.connector.Connector;
@@ -35,6 +36,7 @@ import io.prestosql.spi.connector.RecordCursor;
 import io.prestosql.spi.connector.SchemaNotFoundException;
 import io.prestosql.spi.connector.SchemaTableName;
 import io.prestosql.spi.connector.SchemaTablePrefix;
+import io.prestosql.spi.type.RowType;
 import io.prestosql.spi.type.Type;
 import io.prestosql.testing.TestingConnectorContext;
 import io.prestosql.testing.TestingConnectorSession;
@@ -51,6 +53,7 @@ import static com.google.common.collect.Iterables.getOnlyElement;
 import static io.airlift.concurrent.MoreFutures.getFutureValue;
 import static io.airlift.testing.Assertions.assertInstanceOf;
 import static io.prestosql.plugin.cassandra.CassandraTestingUtils.TABLE_ALL_TYPES;
+import static io.prestosql.plugin.cassandra.CassandraTestingUtils.TABLE_USER_DEFINED_TYPE;
 import static io.prestosql.plugin.cassandra.CassandraTestingUtils.createTestTables;
 import static io.prestosql.spi.connector.ConnectorSplitManager.SplitSchedulingStrategy.UNGROUPED_SCHEDULING;
 import static io.prestosql.spi.connector.NotPartitionedPartitionHandle.NOT_PARTITIONED;
@@ -62,6 +65,7 @@ import static io.prestosql.spi.type.RealType.REAL;
 import static io.prestosql.spi.type.TimeZoneKey.UTC_KEY;
 import static io.prestosql.spi.type.TimestampType.TIMESTAMP;
 import static io.prestosql.spi.type.VarbinaryType.VARBINARY;
+import static io.prestosql.spi.type.VarcharType.VARCHAR;
 import static io.prestosql.spi.type.Varchars.isVarcharType;
 import static java.lang.String.format;
 import static java.util.Locale.ENGLISH;
@@ -88,6 +92,7 @@ public class TestCassandraConnector
     protected String database;
     protected SchemaTableName table;
     protected SchemaTableName tableUnpartitioned;
+    protected SchemaTableName tableUdt;
     protected SchemaTableName invalidTable;
     private ConnectorMetadata metadata;
     private ConnectorSplitManager splitManager;
@@ -120,6 +125,7 @@ public class TestCassandraConnector
 
         database = keyspace;
         table = new SchemaTableName(database, TABLE_ALL_TYPES.toLowerCase(ENGLISH));
+        tableUdt = new SchemaTableName(database, TABLE_USER_DEFINED_TYPE.toLowerCase(ENGLISH));
         tableUnpartitioned = new SchemaTableName(database, "presto_test_unpartitioned");
         invalidTable = new SchemaTableName(database, "totally_invalid_table_name");
     }
@@ -209,6 +215,59 @@ public class TestCassandraConnector
         assertEquals(rowNumber, 9);
     }
 
+    @Test
+    public void testGetUserDefinedType()
+    {
+        ConnectorTableHandle tableHandle = getTableHandle(tableUdt);
+        ConnectorTableMetadata tableMetadata = metadata.getTableMetadata(SESSION, tableHandle);
+        List<ColumnHandle> columnHandles = ImmutableList.copyOf(metadata.getColumnHandles(SESSION, tableHandle).values());
+        Map<String, Integer> columnIndex = indexColumns(columnHandles);
+
+        ConnectorTransactionHandle transaction = CassandraTransactionHandle.INSTANCE;
+
+        List<ConnectorTableLayoutResult> layouts = metadata.getTableLayouts(SESSION, tableHandle, Constraint.alwaysTrue(), Optional.empty());
+        ConnectorTableLayoutHandle layout = getOnlyElement(layouts).getTableLayout().getHandle();
+        List<ConnectorSplit> splits = getAllSplits(splitManager.getSplits(transaction, SESSION, layout, UNGROUPED_SCHEDULING));
+
+        long rowNumber = 0;
+        for (ConnectorSplit split : splits) {
+            CassandraSplit cassandraSplit = (CassandraSplit) split;
+
+            long completedBytes = 0;
+            try (RecordCursor cursor = recordSetProvider.getRecordSet(transaction, SESSION, cassandraSplit, tableHandle, columnHandles).cursor()) {
+                while (cursor.advanceNextPosition()) {
+                    try {
+                        assertReadFields(cursor, tableMetadata.getColumns());
+                    }
+                    catch (RuntimeException e) {
+                        throw new RuntimeException("row " + rowNumber, e);
+                    }
+
+                    rowNumber++;
+
+                    String keyValue = cursor.getSlice(columnIndex.get("key")).toStringUtf8();
+                    String listValue = cursor.getSlice(columnIndex.get("typelist")).toStringUtf8();
+                    String mapValue = cursor.getSlice(columnIndex.get("typemap")).toStringUtf8();
+                    String setValue = cursor.getSlice(columnIndex.get("typeset")).toStringUtf8();
+                    SingleRowBlock udtValue = (SingleRowBlock) cursor.getObject(columnIndex.get("typefrozen"));
+
+                    assertEquals(keyValue, "key");
+                    assertEquals(listValue, "[{typetext:'list',typeinteger:1,typeset:1.1}]");
+                    assertEquals(mapValue, "{2:{typetext:'map',typeinteger:22,typeset:22.22}}");
+                    assertEquals(setValue, "[{typetext:'set',typeinteger:333,typeset:333.333}]");
+                    assertEquals(VARCHAR.getSlice(udtValue, 0).toStringUtf8(), "frozen");
+                    assertEquals(INTEGER.getLong(udtValue, 1), 4444);
+                    assertEquals(DOUBLE.getDouble(udtValue, 2), 4444.4444);
+
+                    long newCompletedBytes = cursor.getCompletedBytes();
+                    assertTrue(newCompletedBytes >= completedBytes);
+                    completedBytes = newCompletedBytes;
+                }
+            }
+        }
+        assertEquals(rowNumber, 1);
+    }
+
     private static void assertReadFields(RecordCursor cursor, List<ColumnMetadata> schema)
     {
         for (int columnIndex = 0; columnIndex < schema.size(); columnIndex++) {
@@ -240,6 +299,9 @@ public class TestCassandraConnector
                     catch (RuntimeException e) {
                         throw new RuntimeException("column " + column, e);
                     }
+                }
+                else if (type instanceof RowType) {
+                    cursor.getObject(columnIndex);
                 }
                 else {
                     fail("Unknown primitive type " + columnIndex);

@@ -314,6 +314,26 @@ public class TestSelect
     }
 
     @Test(groups = CASSANDRA)
+    public void testSelectUserDefinedType()
+    {
+        String udtName = "type_user_defined";
+        String tableName = "user_defined_type_table";
+
+        onCassandra(format("DROP TABLE IF EXISTS %s.%s", KEY_SPACE, tableName));
+        onCassandra(format("DROP TYPE IF EXISTS %s.%s", KEY_SPACE, udtName));
+
+        onCassandra(format("CREATE TYPE %s.%s (a double, b int, c text)", KEY_SPACE, udtName));
+        onCassandra(format("CREATE TABLE %s.%s (key int, t text, ut %s, PRIMARY KEY (key, t) )", KEY_SPACE, tableName, udtName));
+        onCassandra(format("INSERT INTO %s.%s (key, t, ut) VALUES (1, 'this is a text value', {a:1.23, b:-999, c:'text'})", KEY_SPACE, tableName));
+
+        QueryResult queryResult = onPresto().executeQuery(format("SELECT ut.a, ut.b, ut.c FROM %s.%s.%s", CONNECTOR_NAME, KEY_SPACE, tableName));
+        assertThat(queryResult).containsOnly(row(1.23, -999, "text"));
+
+        onCassandra(format("DROP TABLE IF EXISTS %s.%s", KEY_SPACE, tableName));
+        onCassandra(format("DROP TYPE IF EXISTS %s.%s", KEY_SPACE, udtName));
+    }
+
+    @Test(groups = CASSANDRA)
     public void testProtocolVersion()
     {
         QueryResult queryResult = onPresto()

@@ -23,6 +23,8 @@ import org.testng.annotations.Test;
 import java.util.Map;
 
 import static io.airlift.testing.Assertions.assertEqualsIgnoreOrder;
+import static io.prestosql.plugin.cassandra.CassandraType.BIGINT;
+import static io.prestosql.plugin.cassandra.CassandraType.SET;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
@@ -83,7 +85,7 @@ public class TestJsonCassandraHandles
     public void testColumnHandleSerialize()
             throws Exception
     {
-        CassandraColumnHandle columnHandle = new CassandraColumnHandle("column", 42, CassandraType.BIGINT, false, true, false, false);
+        CassandraColumnHandle columnHandle = new CassandraColumnHandle("column", 42, BIGINT, false, true, false, false);
 
         assertTrue(objectMapper.canSerialize(CassandraColumnHandle.class));
         String json = objectMapper.writeValueAsString(columnHandle);
@@ -97,7 +99,7 @@ public class TestJsonCassandraHandles
         CassandraColumnHandle columnHandle = new CassandraColumnHandle(
                 "column2",
                 0,
-                CassandraType.SET,
+                SET,
                 false,
                 false,
                 false,
@@ -118,7 +120,7 @@ public class TestJsonCassandraHandles
 
         assertEquals(columnHandle.getName(), "column");
         assertEquals(columnHandle.getOrdinalPosition(), 42);
-        assertEquals(columnHandle.getCassandraType(), CassandraType.BIGINT);
+        assertEquals(columnHandle.getCassandraType(), BIGINT);
         assertEquals(columnHandle.isPartitionKey(), false);
         assertEquals(columnHandle.isClusteringKey(), true);
     }
@@ -133,7 +135,7 @@ public class TestJsonCassandraHandles
 
         assertEquals(columnHandle.getName(), "column2");
         assertEquals(columnHandle.getOrdinalPosition(), 0);
-        assertEquals(columnHandle.getCassandraType(), CassandraType.SET);
+        assertEquals(columnHandle.getCassandraType(), SET);
         assertEquals(columnHandle.isPartitionKey(), false);
         assertEquals(columnHandle.isClusteringKey(), false);
     }
