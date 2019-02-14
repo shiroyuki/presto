@@ -35,6 +35,7 @@ public class CassandraTestingUtils
     public static final String TABLE_ALL_TYPES = "table_all_types";
     public static final String TABLE_ALL_TYPES_INSERT = "table_all_types_insert";
     public static final String TABLE_ALL_TYPES_PARTITION_KEY = "table_all_types_partition_key";
+    public static final String TABLE_USER_DEFINED_TYPE = "table_user_defined_type";
     public static final String TABLE_CLUSTERING_KEYS = "table_clustering_keys";
     public static final String TABLE_CLUSTERING_KEYS_LARGE = "table_clustering_keys_large";
     public static final String TABLE_MULTI_PARTITION_CLUSTERING_KEYS = "table_multi_partition_clustering_keys";
@@ -48,6 +49,7 @@ public class CassandraTestingUtils
         createTableAllTypes(cassandraSession, new SchemaTableName(keyspace, TABLE_ALL_TYPES), date, 9);
         createTableAllTypes(cassandraSession, new SchemaTableName(keyspace, TABLE_ALL_TYPES_INSERT), date, 0);
         createTableAllTypesPartitionKey(cassandraSession, new SchemaTableName(keyspace, TABLE_ALL_TYPES_PARTITION_KEY), date);
+        createTableUserDefinedType(cassandraSession, new SchemaTableName(keyspace, TABLE_USER_DEFINED_TYPE));
         createTableClusteringKeys(cassandraSession, new SchemaTableName(keyspace, TABLE_CLUSTERING_KEYS), 9);
         createTableClusteringKeys(cassandraSession, new SchemaTableName(keyspace, TABLE_CLUSTERING_KEYS_LARGE), 1000);
         createTableMultiPartitionClusteringKeys(cassandraSession, new SchemaTableName(keyspace, TABLE_MULTI_PARTITION_CLUSTERING_KEYS));
@@ -218,6 +220,38 @@ public class CassandraTestingUtils
                 ")");
 
         insertTestData(session, table, date, 9);
+    }
+
+    private static void createTableUserDefinedType(CassandraSession session, SchemaTableName table)
+    {
+        String typeName = "type_user_defined";
+
+        session.execute("DROP TABLE IF EXISTS " + table);
+        session.execute("DROP TYPE IF EXISTS " + table.getSchemaName() + "." + typeName);
+
+        session.execute("CREATE TYPE " + table.getSchemaName() + "." + typeName + " (" +
+                "typetext text, " +
+                "typeinteger int, " +
+                "typeset double " +
+                ")");
+
+        session.execute("CREATE TABLE " + table + " (" +
+                "key text PRIMARY KEY, " +
+                "typelist frozen<list<" + typeName + ">>, " +
+                "typemap frozen<map<int, " + typeName + ">>, " +
+                "typeset frozen<set<" + typeName + ">>, " +
+                "typefrozen frozen <" + typeName + ">, " +
+                ")");
+
+        session.execute("INSERT INTO " + table + "(key, typelist, typemap, typeset, typefrozen) VALUES (" +
+                "'key'," +
+                "[ { typetext: 'list', typeinteger: 1, typeset: 1.1 } ], " +
+                "{ 2: { typetext: 'map', typeinteger: 22, typeset: 22.22 } }, " +
+                "{ {typetext: 'set', typeinteger: 333, typeset: 333.333 } }, " +
+                "{ typetext: 'frozen', typeinteger: 4444, typeset: 4444.4444 }" +
+                ");");
+
+        assertEquals(session.execute("SELECT COUNT(*) FROM " + table).all().get(0).getLong(0), 1);
     }
 
     private static void insertTestData(CassandraSession session, SchemaTableName table, Date date, int rowsCount)

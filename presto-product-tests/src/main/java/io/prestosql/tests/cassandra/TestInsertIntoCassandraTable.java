@@ -160,6 +160,29 @@ public class TestInsertIntoCassandraTable
         onCassandra(format("DROP MATERIALIZED VIEW IF EXISTS %s.%s", KEY_SPACE, CASSANDRA_MATERIALIZED_VIEW));
     }
 
+    @Test(groups = CASSANDRA)
+    public void testInsertIntoUserDefinedType()
+    {
+        String udtName = "type_user_defined_insert";
+        String tableName = "insert_user_defined_type_table";
+
+        onCassandra(format("DROP TABLE IF EXISTS %s.%s", KEY_SPACE, tableName));
+        onCassandra(format("DROP TYPE IF EXISTS %s.%s", KEY_SPACE, udtName));
+
+        onCassandra(format("CREATE TYPE %s.%s (a float, b int, c text)", KEY_SPACE, udtName));
+        onCassandra(format("CREATE TABLE %s.%s (key int, udt %s, PRIMARY KEY (key))", KEY_SPACE, tableName, udtName));
+
+        query(format("INSERT INTO %s.%s.%s (key, udt) VALUES (1, null)", CONNECTOR_NAME, KEY_SPACE, tableName));
+        assertThat(query(format("SELECT * FROM %s.%s.%s", CONNECTOR_NAME, KEY_SPACE, tableName))).containsOnly(
+                row(1, null));
+
+        assertThat(() -> query(format("INSERT INTO %s.%s.%s (key, udt) VALUES (2, '{a:1.23, b:-999, c:''text''}')", CONNECTOR_NAME, KEY_SPACE, tableName)))
+                .failsWithMessage("Codec not found for requested operation: [frozen<test.type_user_defined_insert> <-> java.lang.String]");
+
+        onCassandra(format("DROP TABLE IF EXISTS %s.%s", KEY_SPACE, tableName));
+        onCassandra(format("DROP TYPE IF EXISTS %s.%s", KEY_SPACE, udtName));
+    }
+
     private void onCassandra(String query)
     {
         CassandraQueryExecutor queryExecutor = new CassandraQueryExecutor(configuration);

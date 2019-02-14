@@ -15,6 +15,7 @@ package io.prestosql.plugin.cassandra;
 
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.Row;
+import com.datastax.driver.core.UDTValue;
 import com.datastax.driver.core.utils.Bytes;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.net.InetAddresses;
@@ -74,7 +75,8 @@ public enum CassandraType
     VARINT(createUnboundedVarcharType(), BigInteger.class),
     LIST(createUnboundedVarcharType(), null),
     MAP(createUnboundedVarcharType(), null),
-    SET(createUnboundedVarcharType(), null);
+    SET(createUnboundedVarcharType(), null),
+    UDT(createUnboundedVarcharType(), UDTValue.class);
 
     private static class Constants
     {
@@ -155,6 +157,8 @@ public enum CassandraType
                 return VARCHAR;
             case VARINT:
                 return VARINT;
+            case UDT:
+                return UDT;
             default:
                 return null;
         }
@@ -212,6 +216,8 @@ public enum CassandraType
                 case MAP:
                     checkTypeArguments(cassandraType, 2, typeArguments);
                     return NullableValue.of(nativeType, utf8Slice(buildMapValue(row, position, typeArguments.get(0), typeArguments.get(1))));
+                case UDT:
+                    return NullableValue.of(nativeType, utf8Slice(buildUdtValue(row, position)));
                 default:
                     throw new IllegalStateException("Handling of type " + cassandraType
                             + " is not implemented");
@@ -262,6 +268,11 @@ public enum CassandraType
         }
         sb.append("}");
         return sb.toString();
+    }
+
+    private static String buildUdtValue(Row row, int position)
+    {
+        return row.getUDTValue(position).toString();
     }
 
     @VisibleForTesting
@@ -323,6 +334,7 @@ public enum CassandraType
                     return row.getVarint(position).toString();
                 case BLOB:
                 case CUSTOM:
+                case UDT:
                     return Bytes.toHexString(row.getBytesUnsafe(position));
                 default:
                     throw new IllegalStateException("Handling of type " + cassandraType
@@ -355,6 +367,7 @@ public enum CassandraType
             case DOUBLE:
             case FLOAT:
             case DECIMAL:
+            case UDT:
                 return object.toString();
             default:
                 throw new IllegalStateException("Handling of type " + elemType + " is not implemented");
@@ -416,6 +429,7 @@ public enum CassandraType
                 return java.util.UUID.fromString(((Slice) nativeValue).toStringUtf8());
             case BLOB:
             case CUSTOM:
+            case UDT:
                 return ((Slice) nativeValue).toStringUtf8();
             case VARINT:
                 return new BigInteger(((Slice) nativeValue).toStringUtf8());
@@ -451,6 +465,7 @@ public enum CassandraType
             case SET:
             case LIST:
             case MAP:
+            case UDT:
             default:
                 // todo should we just skip partition pruning instead of throwing an exception?
                 throw new PrestoException(NOT_SUPPORTED, "Unsupport partition key type: " + this);
