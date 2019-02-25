@@ -22,6 +22,7 @@ import com.datastax.driver.core.IndexMetadata;
 import com.datastax.driver.core.KeyspaceMetadata;
 import com.datastax.driver.core.MaterializedViewMetadata;
 import com.datastax.driver.core.PreparedStatement;
+import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.RegularStatement;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
@@ -117,6 +118,19 @@ public class NativeCassandraSession
                     "and that the contact points are specified correctly.");
         }
         return VersionNumber.parse(versionRow.getString("release_version"));
+    }
+
+    @Override
+    public ProtocolVersion getProtocolVersion()
+    {
+        ResultSet result = executeWithSession(session -> session.execute("select native_protocol_version from system.local"));
+        Row versionRow = result.one();
+        if (versionRow == null) {
+            throw new PrestoException(CASSANDRA_VERSION_ERROR, "The protocol version is not available. " +
+                    "Please make sure that the Cassandra cluster is up and running, " +
+                    "and that the contact points are specified correctly.");
+        }
+        return ProtocolVersion.valueOf(versionRow.getString("native_protocol_version"));
     }
 
     @Override
