@@ -53,6 +53,8 @@ import static io.prestosql.spi.type.BooleanType.BOOLEAN;
 import static io.prestosql.spi.type.TypeSignature.parseTypeSignature;
 import static io.prestosql.util.Failures.internalError;
 import static io.prestosql.util.Reflection.methodHandle;
+import static java.lang.Double.NaN;
+import static java.lang.Float.intBitsToFloat;
 
 public abstract class AbstractMinMaxAggregationFunction
         extends SqlAggregationFunction
@@ -255,6 +257,9 @@ public abstract class AbstractMinMaxAggregationFunction
             if ((boolean) methodHandle.invokeExact(value, state.getLong())) {
                 state.setLong(value);
             }
+            else if (Float.isNaN(intBitsToFloat((int) value))) {
+                state.setLong(value);
+            }
         }
         catch (Throwable t) {
             throw internalError(t);
@@ -271,6 +276,9 @@ public abstract class AbstractMinMaxAggregationFunction
         try {
             if ((boolean) methodHandle.invokeExact(value, state.getDouble())) {
                 state.setDouble(value);
+            }
+            else if (Double.isNaN(value)) {
+                state.setDouble(NaN);
             }
         }
         catch (Throwable t) {
