@@ -166,7 +166,7 @@ public final class CassandraCqlUtils
 
     public static String cqlValue(String value, CassandraType cassandraType)
     {
-        switch (cassandraType) {
+        switch (cassandraType.getName()) {
             case ASCII:
             case TEXT:
             case VARCHAR:

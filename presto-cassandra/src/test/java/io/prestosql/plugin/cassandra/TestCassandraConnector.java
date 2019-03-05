@@ -16,6 +16,7 @@ package io.prestosql.plugin.cassandra;
 import com.datastax.driver.core.utils.Bytes;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import io.prestosql.spi.block.Block;
 import io.prestosql.spi.connector.ColumnHandle;
 import io.prestosql.spi.connector.ColumnMetadata;
 import io.prestosql.spi.connector.Connector;
@@ -35,13 +36,19 @@ import io.prestosql.spi.connector.RecordCursor;
 import io.prestosql.spi.connector.SchemaNotFoundException;
 import io.prestosql.spi.connector.SchemaTableName;
 import io.prestosql.spi.connector.SchemaTablePrefix;
+import io.prestosql.spi.type.DoubleType;
+import io.prestosql.spi.type.IntegerType;
+import io.prestosql.spi.type.StandardTypes;
 import io.prestosql.spi.type.Type;
+import io.prestosql.spi.type.VarcharType;
 import io.prestosql.testing.TestingConnectorContext;
 import io.prestosql.testing.TestingConnectorSession;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -261,10 +268,11 @@ public class TestCassandraConnector
                     String udtValue = cursor.getSlice(columnIndex.get("typefrozen")).toStringUtf8();
 
                     assertEquals(keyValue, "key");
-                    assertEquals(listValue, "[{typetext:'list',typeinteger:1,typeset:1.1}]");
-                    assertEquals(mapValue, "{2:{typetext:'map',typeinteger:22,typeset:22.22}}");
-                    assertEquals(setValue, "[{typetext:'set',typeinteger:333,typeset:333.333}]");
-                    assertEquals(udtValue, "{typetext:'frozen',typeinteger:4444,typeset:4444.4444}");
+                    assertEquals(listValue, "[{typetext:'list',typeinteger:1,typedouble:1.1}]");
+                    assertEquals(mapValue, "{2:{typetext:'map',typeinteger:22,typedouble:22.22}}");
+                    assertEquals(setValue, "[{typetext:'set',typeinteger:333,typedouble:333.333}]");
+                    Block udtBlock = (Block) cursor.getObject(columnIndex.get("typefrozen"));
+                    assertEquals(ImmutableList.of("frozen", 4444, 4444.4444), toRowValue(udtBlock, ImmutableList.of(VarcharType.VARCHAR, IntegerType.INTEGER, DoubleType.DOUBLE)));
 
                     long newCompletedBytes = cursor.getCompletedBytes();
                     assertTrue(newCompletedBytes >= completedBytes);
@@ -307,11 +315,28 @@ public class TestCassandraConnector
                         throw new RuntimeException("column " + column, e);
                     }
                 }
+                else if (isRowType(type)) {
+                    cursor.getObject(columnIndex);
+                }
                 else {
                     fail("Unknown primitive type " + columnIndex);
                 }
             }
         }
+    }
+
+    private static List<?> toRowValue(Block rowBlock, List<Type> fieldTypes)
+    {
+        List<Object> values = new ArrayList<>(rowBlock.getPositionCount());
+        for (int i = 0; i < rowBlock.getPositionCount(); i++) {
+            values.add(fieldTypes.get(i).getObjectValue(SESSION, rowBlock, i));
+        }
+        return Collections.unmodifiableList(values);
+    }
+
+    private static boolean isRowType(Type type)
+    {
+        return type.getTypeSignature().getBase().equals(StandardTypes.ROW);
     }
 
     private ConnectorTableHandle getTableHandle(SchemaTableName tableName)

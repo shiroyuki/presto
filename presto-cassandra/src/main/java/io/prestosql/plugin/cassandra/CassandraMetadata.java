@@ -285,7 +285,7 @@ public class CassandraMetadata
             queryBuilder.append(", ")
                     .append(name)
                     .append(" ")
-                    .append(toCassandraType(type, protocolVersion).name().toLowerCase(ENGLISH));
+                    .append(toCassandraType(type, protocolVersion).getName().name().toLowerCase(ENGLISH));
         }
         queryBuilder.append(") ");
 

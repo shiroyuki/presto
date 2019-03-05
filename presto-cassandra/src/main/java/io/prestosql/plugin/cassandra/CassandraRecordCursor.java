@@ -23,6 +23,9 @@ import io.prestosql.spi.type.Type;
 import java.util.List;
 
 import static io.airlift.slice.Slices.utf8Slice;
+import static io.prestosql.plugin.cassandra.CassandraType.DECIMAL;
+import static io.prestosql.plugin.cassandra.CassandraType.DOUBLE;
+import static io.prestosql.plugin.cassandra.CassandraType.FLOAT;
 import static java.lang.Float.floatToRawIntBits;
 
 public class CassandraRecordCursor
@@ -77,7 +80,7 @@ public class CassandraRecordCursor
     @Override
     public double getDouble(int i)
     {
-        switch (getCassandraType(i)) {
+        switch (getCassandraType(i).getName()) {
             case DOUBLE:
                 return currentRow.getDouble(i);
             case FLOAT:
@@ -92,7 +95,7 @@ public class CassandraRecordCursor
     @Override
     public long getLong(int i)
     {
-        switch (getCassandraType(i)) {
+        switch (getCassandraType(i).getName()) {
             case INT:
                 return currentRow.getInt(i);
             case SMALLINT:
@@ -131,12 +134,14 @@ public class CassandraRecordCursor
     @Override
     public Object getObject(int field)
     {
-        throw new UnsupportedOperationException();
+        NullableValue value = CassandraType.getColumnValue(currentRow, field, fullCassandraTypes.get(field));
+        return value.getValue();
     }
 
     @Override
     public Type getType(int i)
     {
+        System.out.println("Type getType(int i)");
         return getCassandraType(i).getNativeType();
     }
 

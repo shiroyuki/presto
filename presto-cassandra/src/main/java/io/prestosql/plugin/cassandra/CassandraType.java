@@ -13,25 +13,35 @@
  */
 package io.prestosql.plugin.cassandra;
 
+import com.datastax.driver.core.ColumnMetadata;
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.LocalDate;
 import com.datastax.driver.core.ProtocolVersion;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.UDTValue;
+import com.datastax.driver.core.UserType;
 import com.datastax.driver.core.utils.Bytes;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableList;
 import com.google.common.net.InetAddresses;
 import io.airlift.slice.Slice;
+import io.airlift.slice.Slices;
 import io.prestosql.plugin.cassandra.util.CassandraCqlUtils;
 import io.prestosql.spi.PrestoException;
+import io.prestosql.spi.block.Block;
+import io.prestosql.spi.block.BlockBuilder;
 import io.prestosql.spi.predicate.NullableValue;
 import io.prestosql.spi.type.BigintType;
 import io.prestosql.spi.type.BooleanType;
 import io.prestosql.spi.type.DateType;
+import io.prestosql.spi.type.Decimals;
 import io.prestosql.spi.type.DoubleType;
 import io.prestosql.spi.type.IntegerType;
 import io.prestosql.spi.type.RealType;
+import io.prestosql.spi.type.RowType;
 import io.prestosql.spi.type.SmallintType;
+import io.prestosql.spi.type.SqlDecimal;
+import io.prestosql.spi.type.StandardTypes;
 import io.prestosql.spi.type.TimestampType;
 import io.prestosql.spi.type.TinyintType;
 import io.prestosql.spi.type.Type;
@@ -41,15 +51,18 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static com.google.common.net.InetAddresses.toAddrString;
 import static io.airlift.slice.Slices.utf8Slice;
 import static io.airlift.slice.Slices.wrappedBuffer;
 import static io.prestosql.spi.StandardErrorCode.NOT_SUPPORTED;
+import static io.prestosql.spi.type.RealType.REAL;
 import static io.prestosql.spi.type.VarcharType.createUnboundedVarcharType;
 import static io.prestosql.spi.type.VarcharType.createVarcharType;
 import static io.prestosql.spi.type.Varchars.isVarcharType;
@@ -57,33 +70,39 @@ import static java.lang.Float.floatToRawIntBits;
 import static java.lang.Float.intBitsToFloat;
 import static java.util.Objects.requireNonNull;
 
-public enum CassandraType
+public final class CassandraType
         implements FullCassandraType
 {
-    ASCII(createUnboundedVarcharType(), String.class),
-    BIGINT(BigintType.BIGINT, Long.class),
-    BLOB(VarbinaryType.VARBINARY, ByteBuffer.class),
-    CUSTOM(VarbinaryType.VARBINARY, ByteBuffer.class),
-    BOOLEAN(BooleanType.BOOLEAN, Boolean.class),
-    COUNTER(BigintType.BIGINT, Long.class),
-    DECIMAL(DoubleType.DOUBLE, BigDecimal.class),
-    DOUBLE(DoubleType.DOUBLE, Double.class),
-    FLOAT(RealType.REAL, Float.class),
-    INET(createVarcharType(Constants.IP_ADDRESS_STRING_MAX_LENGTH), InetAddress.class),
-    INT(IntegerType.INTEGER, Integer.class),
-    SMALLINT(SmallintType.SMALLINT, Short.class),
-    TINYINT(TinyintType.TINYINT, Byte.class),
-    TEXT(createUnboundedVarcharType(), String.class),
-    DATE(DateType.DATE, LocalDate.class),
-    TIMESTAMP(TimestampType.TIMESTAMP, Date.class),
-    UUID(createVarcharType(Constants.UUID_STRING_MAX_LENGTH), java.util.UUID.class),
-    TIMEUUID(createVarcharType(Constants.UUID_STRING_MAX_LENGTH), java.util.UUID.class),
-    VARCHAR(createUnboundedVarcharType(), String.class),
-    VARINT(createUnboundedVarcharType(), BigInteger.class),
-    LIST(createUnboundedVarcharType(), null),
-    MAP(createUnboundedVarcharType(), null),
-    SET(createUnboundedVarcharType(), null),
-    UDT(createUnboundedVarcharType(), UDTValue.class);
+    public static final CassandraType ASCII = new CassandraType(createUnboundedVarcharType(), String.class, DataType.Name.ASCII);
+    public static final CassandraType BIGINT = new CassandraType(BigintType.BIGINT, Long.class, DataType.Name.BIGINT);
+    public static final CassandraType BLOB = new CassandraType(VarbinaryType.VARBINARY, ByteBuffer.class, DataType.Name.BLOB);
+    public static final CassandraType CUSTOM = new CassandraType(VarbinaryType.VARBINARY, ByteBuffer.class, DataType.Name.CUSTOM);
+    public static final CassandraType BOOLEAN = new CassandraType(BooleanType.BOOLEAN, Boolean.class, DataType.Name.BOOLEAN);
+    public static final CassandraType COUNTER = new CassandraType(BigintType.BIGINT, Long.class, DataType.Name.COUNTER);
+    public static final CassandraType DECIMAL = new CassandraType(DoubleType.DOUBLE, BigDecimal.class, DataType.Name.DECIMAL);
+    public static final CassandraType DOUBLE = new CassandraType(DoubleType.DOUBLE, Double.class, DataType.Name.DOUBLE);
+    public static final CassandraType FLOAT = new CassandraType(RealType.REAL, Float.class, DataType.Name.FLOAT);
+    public static final CassandraType INET = new CassandraType(createVarcharType(Constants.IP_ADDRESS_STRING_MAX_LENGTH), InetAddress.class, DataType.Name.INET);
+    public static final CassandraType INT = new CassandraType(IntegerType.INTEGER, Integer.class, DataType.Name.INT);
+    public static final CassandraType SMALLINT = new CassandraType(SmallintType.SMALLINT, Short.class, DataType.Name.SMALLINT);
+    public static final CassandraType TINYINT = new CassandraType(TinyintType.TINYINT, Byte.class, DataType.Name.TINYINT);
+    public static final CassandraType TEXT = new CassandraType(createUnboundedVarcharType(), String.class, DataType.Name.TEXT);
+    public static final CassandraType DATE = new CassandraType(DateType.DATE, LocalDate.class, DataType.Name.DATE);
+    public static final CassandraType TIMESTAMP = new CassandraType(TimestampType.TIMESTAMP, Date.class, DataType.Name.TIMESTAMP);
+    public static final CassandraType UUID = new CassandraType(createVarcharType(Constants.UUID_STRING_MAX_LENGTH), java.util.UUID.class, DataType.Name.UUID);
+    public static final CassandraType TIMEUUID = new CassandraType(createVarcharType(Constants.UUID_STRING_MAX_LENGTH), java.util.UUID.class, DataType.Name.TIMEUUID);
+    public static final CassandraType VARCHAR = new CassandraType(createUnboundedVarcharType(), String.class, DataType.Name.VARCHAR);
+    public static final CassandraType VARINT = new CassandraType(createUnboundedVarcharType(), BigInteger.class, DataType.Name.VARINT);
+    public static final CassandraType LIST = new CassandraType(createUnboundedVarcharType(), null, DataType.Name.LIST);
+    public static final CassandraType MAP = new CassandraType(createUnboundedVarcharType(), null, DataType.Name.MAP);
+    public static final CassandraType SET = new CassandraType(createUnboundedVarcharType(), null, DataType.Name.SET);
+    public static final CassandraType UDT = new CassandraType(createRowType(), UDTValue.class, DataType.Name.UDT);
+
+    private static RowType createRowType()
+    {
+        // Expand getTypeArgumentSize to get udt definitions?
+        return RowType.from(ImmutableList.of(new RowType.Field(Optional.of("dummy"), IntegerType.INTEGER), new RowType.Field(Optional.of("dummy2"), createUnboundedVarcharType())));
+    }
 
     private static class Constants
     {
@@ -96,11 +115,13 @@ public enum CassandraType
 
     private final Type nativeType;
     private final Class<?> javaType;
+    private final DataType.Name name;
 
-    CassandraType(Type nativeType, Class<?> javaType)
+    CassandraType(Type nativeType, Class<?> javaType, DataType.Name name)
     {
         this.nativeType = requireNonNull(nativeType, "nativeType is null");
         this.javaType = javaType;
+        this.name = name;
     }
 
     public Type getNativeType()
@@ -108,17 +129,48 @@ public enum CassandraType
         return nativeType;
     }
 
+    public DataType.Name getName()
+    {
+        return name;
+    }
+
     public int getTypeArgumentSize()
     {
-        switch (this) {
+        switch (this.getName()) {
             case LIST:
             case SET:
                 return 1;
             case MAP:
                 return 2;
+            case UDT:
+                return 3;
             default:
                 return 0;
         }
+    }
+
+    public static CassandraType getCassandraType(ColumnMetadata columnMeta)
+    {
+        DataType.Name name = columnMeta.getType().getName();
+        switch (name) {
+            case UDT:
+                return new CassandraType(createRowType(columnMeta), UDTValue.class, DataType.Name.UDT);
+            default:
+                return getCassandraType(name);
+        }
+    }
+
+    private static RowType createRowType(ColumnMetadata columnMeta)
+    {
+        UserType userType = (UserType) columnMeta.getType();
+        List<RowType.Field> values = new ArrayList<>();
+        for (String fieldName : userType.getFieldNames()) {
+            CassandraType cassandraType = CassandraType.getCassandraType(userType.getFieldType(fieldName).getName());
+            RowType.Field field = new RowType.Field(Optional.of(fieldName), cassandraType.nativeType);
+            values.add(field);
+        }
+
+        return RowType.from(ImmutableList.copyOf(values));
     }
 
     public static CassandraType getCassandraType(DataType.Name name)
@@ -189,7 +241,7 @@ public enum CassandraType
             return NullableValue.asNull(nativeType);
         }
         else {
-            switch (cassandraType) {
+            switch (cassandraType.getName()) {
                 case ASCII:
                 case TEXT:
                 case VARCHAR:
@@ -235,7 +287,8 @@ public enum CassandraType
                     checkTypeArguments(cassandraType, 2, typeArguments);
                     return NullableValue.of(nativeType, utf8Slice(buildMapValue(row, position, typeArguments.get(0), typeArguments.get(1))));
                 case UDT:
-                    return NullableValue.of(nativeType, utf8Slice(buildUdtValue(row, position)));
+                    RowType rowType = buildUdtType(typeArguments);
+                    return NullableValue.of(rowType, buildUdtValue(rowType, row, position));
                 default:
                     throw new IllegalStateException("Handling of type " + cassandraType
                             + " is not implemented");
@@ -249,7 +302,7 @@ public enum CassandraType
         if (row.isNull(position)) {
             return NullableValue.asNull(nativeType);
         }
-        switch (cassandraType) {
+        switch (cassandraType.getName()) {
             case ASCII:
             case TEXT:
             case VARCHAR:
@@ -288,9 +341,109 @@ public enum CassandraType
         return sb.toString();
     }
 
-    private static String buildUdtValue(Row row, int position)
+    private static Block buildUdtValue(RowType rowType, Row row, int position)
     {
-        return row.getUDTValue(position).toString();
+        UserType dataType = (UserType) row.getColumnDefinitions().getType(position);
+        System.out.println(dataType.getFieldNames());
+
+        List<Object> values = new ArrayList<>();
+        for (int i = 0; i < rowType.getTypeParameters().size(); i++) {
+            Object value = row.getUDTValue(position).getObject(i);
+            values.add(value);
+        }
+        return rowBlockOf(rowType.getTypeParameters(), values);
+    }
+
+    private static RowType buildUdtType(List<CassandraType> cassandraTypes)
+    {
+        List<RowType.Field> values = new ArrayList<>();
+        for (CassandraType cassandraType : cassandraTypes) {
+            // TODO
+            RowType.Field field = new RowType.Field(Optional.of(cassandraType.getName().name()), cassandraType.nativeType);
+            values.add(field);
+        }
+
+        return RowType.from(ImmutableList.copyOf(values));
+    }
+
+    public static Block rowBlockOf(List<Type> parameterTypes, List<Object> values)
+    {
+        RowType rowType = RowType.anonymous(parameterTypes);
+        BlockBuilder blockBuilder = rowType.createBlockBuilder(null, 1);
+        BlockBuilder singleRowBlockWriter = blockBuilder.beginBlockEntry();
+        for (int i = 0; i < values.size(); i++) {
+            CassandraType cassandraType = toCassandraType(parameterTypes.get(i), ProtocolVersion.V3);
+            appendToBlockBuilder(parameterTypes.get(i), values.get(i), singleRowBlockWriter);
+        }
+        blockBuilder.closeEntry();
+        return rowType.getObject(blockBuilder, 0);
+    }
+
+    // HACK: Let's hack here!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    public static void appendToBlockBuilder(Type type, Object element, BlockBuilder blockBuilder)
+    {
+        Class<?> javaType = type.getJavaType();
+        if (element == null) {
+            blockBuilder.appendNull();
+        }
+        else if (type.getTypeSignature().getBase().equals(StandardTypes.ARRAY) && element instanceof Iterable<?>) {
+            BlockBuilder subBlockBuilder = blockBuilder.beginBlockEntry();
+            for (Object subElement : (Iterable<?>) element) {
+                appendToBlockBuilder(type.getTypeParameters().get(0), subElement, subBlockBuilder);
+            }
+            blockBuilder.closeEntry();
+        }
+        else if (type.getTypeSignature().getBase().equals(StandardTypes.ROW) && element instanceof Iterable<?>) {
+            BlockBuilder subBlockBuilder = blockBuilder.beginBlockEntry();
+            int field = 0;
+            for (Object subElement : (Iterable<?>) element) {
+                appendToBlockBuilder(type.getTypeParameters().get(field), subElement, subBlockBuilder);
+                field++;
+            }
+            blockBuilder.closeEntry();
+        }
+        else if (type.getTypeSignature().getBase().equals(StandardTypes.MAP) && element instanceof Map<?, ?>) {
+            BlockBuilder subBlockBuilder = blockBuilder.beginBlockEntry();
+            for (Map.Entry<?, ?> entry : ((Map<?, ?>) element).entrySet()) {
+                appendToBlockBuilder(type.getTypeParameters().get(0), entry.getKey(), subBlockBuilder);
+                appendToBlockBuilder(type.getTypeParameters().get(1), entry.getValue(), subBlockBuilder);
+            }
+            blockBuilder.closeEntry();
+        }
+        else if (javaType == boolean.class) {
+            type.writeBoolean(blockBuilder, (Boolean) element);
+        }
+        else if (javaType == long.class) {
+            if (element instanceof SqlDecimal) {
+                type.writeLong(blockBuilder, ((SqlDecimal) element).getUnscaledValue().longValue());
+            }
+            else if (REAL.equals(type)) {
+                type.writeLong(blockBuilder, floatToRawIntBits(((Number) element).floatValue()));
+            }
+            else {
+                type.writeLong(blockBuilder, ((Number) element).longValue());
+            }
+        }
+        else if (javaType == double.class) {
+            type.writeDouble(blockBuilder, ((Number) element).doubleValue());
+        }
+        else if (javaType == Slice.class) {
+            if (element instanceof String) {
+                type.writeSlice(blockBuilder, Slices.utf8Slice(element.toString()));
+            }
+            else if (element instanceof byte[]) {
+                type.writeSlice(blockBuilder, Slices.wrappedBuffer((byte[]) element));
+            }
+            else if (element instanceof SqlDecimal) {
+                type.writeSlice(blockBuilder, Decimals.encodeUnscaledValue(((SqlDecimal) element).getUnscaledValue()));
+            }
+            else {
+                type.writeSlice(blockBuilder, (Slice) element);
+            }
+        }
+        else {
+            type.writeObject(blockBuilder, element);
+        }
     }
 
     @VisibleForTesting
@@ -322,7 +475,7 @@ public enum CassandraType
             return null;
         }
         else {
-            switch (cassandraType) {
+            switch (cassandraType.getName()) {
                 case ASCII:
                 case TEXT:
                 case VARCHAR:
@@ -357,7 +510,6 @@ public enum CassandraType
                     return row.getVarint(position).toString();
                 case BLOB:
                 case CUSTOM:
-                    return Bytes.toHexString(row.getBytesUnsafe(position));
                 case UDT:
                     return Bytes.toHexString(row.getBytesUnsafe(position));
                 default:
@@ -369,7 +521,7 @@ public enum CassandraType
 
     private static String objectToString(Object object, CassandraType elemType)
     {
-        switch (elemType) {
+        switch (elemType.getName()) {
             case ASCII:
             case TEXT:
             case VARCHAR:
@@ -427,7 +579,7 @@ public enum CassandraType
 
     public Object getJavaValue(Object nativeValue)
     {
-        switch (this) {
+        switch (this.getName()) {
             case ASCII:
             case TEXT:
             case VARCHAR:
@@ -474,7 +626,7 @@ public enum CassandraType
 
     public boolean isSupportedPartitionKey()
     {
-        switch (this) {
+        switch (this.getName()) {
             case ASCII:
             case TEXT:
             case VARCHAR:
@@ -504,7 +656,7 @@ public enum CassandraType
 
     public Object validateClusteringKey(Object value)
     {
-        switch (this) {
+        switch (this.getName()) {
             case ASCII:
             case TEXT:
             case VARCHAR:

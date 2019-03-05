@@ -29,6 +29,7 @@ import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.TableMetadata;
 import com.datastax.driver.core.TokenRange;
+import com.datastax.driver.core.UserType;
 import com.datastax.driver.core.VersionNumber;
 import com.datastax.driver.core.exceptions.NoHostAvailableException;
 import com.datastax.driver.core.policies.ReconnectionPolicy;
@@ -319,9 +320,9 @@ public class NativeCassandraSession
 
     private CassandraColumnHandle buildColumnHandle(AbstractTableMetadata tableMetadata, ColumnMetadata columnMeta, boolean partitionKey, boolean clusteringKey, int ordinalPosition, boolean hidden)
     {
-        CassandraType cassandraType = CassandraType.getCassandraType(columnMeta.getType().getName());
+        CassandraType cassandraType = CassandraType.getCassandraType(columnMeta);
         List<CassandraType> typeArguments = null;
-        if (cassandraType != null && cassandraType.getTypeArgumentSize() > 0) {
+        if (cassandraType != null && cassandraType.getTypeArgumentSize() != 0) {
             List<DataType> typeArgs = columnMeta.getType().getTypeArguments();
             switch (cassandraType.getTypeArgumentSize()) {
                 case 1:
@@ -329,6 +330,14 @@ public class NativeCassandraSession
                     break;
                 case 2:
                     typeArguments = ImmutableList.of(CassandraType.getCassandraType(typeArgs.get(0).getName()), CassandraType.getCassandraType(typeArgs.get(1).getName()));
+                    break;
+                case 3:  // Change to dynamic
+                    UserType userType = (UserType) columnMeta.getType();
+                    typeArguments = userType.getFieldNames().stream()
+                            .map(userType::getFieldType)
+                            .map(DataType::getName)
+                            .map(CassandraType::getCassandraType)
+                            .collect(ImmutableList.toImmutableList());
                     break;
                 default:
                     throw new IllegalArgumentException("Invalid type arguments: " + typeArgs);

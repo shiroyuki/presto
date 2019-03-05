@@ -211,7 +211,7 @@ TIMEUUID          VARCHAR
 TINYINT           TINYINT
 VARCHAR           VARCHAR
 VARIANT           VARCHAR
-UDT               VARCHAR
+UDT               ROW
 ================  ======
 
 Any collection (LIST/MAP/SET) can be designated as FROZEN, and the value is

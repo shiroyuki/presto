@@ -58,7 +58,7 @@ public class CassandraColumnHandle
         this.ordinalPosition = ordinalPosition;
         this.cassandraType = requireNonNull(cassandraType, "cassandraType is null");
         int typeArgsSize = cassandraType.getTypeArgumentSize();
-        if (typeArgsSize > 0) {
+        if (typeArgsSize != 0) {
             this.typeArguments = requireNonNull(typeArguments, "typeArguments is null");
             checkArgument(typeArguments.size() == typeArgsSize, cassandraType
                     + " must provide " + typeArgsSize + " type arguments");
@@ -122,11 +122,14 @@ public class CassandraColumnHandle
 
     public ColumnMetadata getColumnMetadata()
     {
+        System.out.println("ColumnMetadata getColumnMetadata()");
+        System.out.println(cassandraType.getNativeType());
         return new ColumnMetadata(CassandraCqlUtils.cqlNameToSqlName(name), cassandraType.getNativeType(), null, hidden);
     }
 
     public Type getType()
     {
+        System.out.println("Type getType()");
         return cassandraType.getNativeType();
     }
 

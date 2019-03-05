@@ -256,29 +256,29 @@ public class CassandraTestingUtils
         String typeName = "type_user_defined";
 
         session.execute("DROP TABLE IF EXISTS " + table);
-        session.execute("DROP TYPE IF EXISTS " + table.getSchemaName() + "." + typeName);
+        session.execute(format("DROP TYPE IF EXISTS %s.%s", table.getSchemaName(), typeName));
 
-        session.execute("CREATE TYPE " + table.getSchemaName() + "." + typeName + " (" +
+        session.execute(format("" + "CREATE TYPE %s.%s (" +
                 "typetext text, " +
                 "typeinteger int, " +
-                "typeset double " +
-                ")");
+                "typedouble double " +
+                ")", table.getSchemaName(), typeName));
 
-        session.execute("CREATE TABLE " + table + " (" +
+        session.execute(format("CREATE TABLE %s (" +
                 "key text PRIMARY KEY, " +
-                "typelist frozen<list<" + typeName + ">>, " +
-                "typemap frozen<map<int, " + typeName + ">>, " +
-                "typeset frozen<set<" + typeName + ">>, " +
-                "typefrozen frozen <" + typeName + ">, " +
-                ")");
+                "typelist frozen<list<%s>>, " +
+                "typemap frozen<map<int, %s>>, " +
+                "typeset frozen<set<%s>>, " +
+                "typefrozen frozen <%s>, " +
+                ")", table, typeName, typeName, typeName, typeName));
 
-        session.execute("INSERT INTO " + table + "(key, typelist, typemap, typeset, typefrozen) VALUES (" +
+        session.execute(format("INSERT INTO %s (key, typelist, typemap, typeset, typefrozen) VALUES (" +
                 "'key'," +
-                "[ { typetext: 'list', typeinteger: 1, typeset: 1.1 } ], " +
-                "{ 2: { typetext: 'map', typeinteger: 22, typeset: 22.22 } }, " +
-                "{ {typetext: 'set', typeinteger: 333, typeset: 333.333 } }, " +
-                "{ typetext: 'frozen', typeinteger: 4444, typeset: 4444.4444 }" +
-                ");");
+                "[ { typetext: 'list', typeinteger: 1, typedouble: 1.1 } ], " +
+                "{ 2: { typetext: 'map', typeinteger: 22, typedouble: 22.22 } }, " +
+                "{ {typetext: 'set', typeinteger: 333, typedouble: 333.333 } }, " +
+                "{ typetext: 'frozen', typeinteger: 4444, typedouble: 4444.4444 }" +
+                ");", table));
 
         assertEquals(session.execute("SELECT COUNT(*) FROM " + table).all().get(0).getLong(0), 1);
     }
