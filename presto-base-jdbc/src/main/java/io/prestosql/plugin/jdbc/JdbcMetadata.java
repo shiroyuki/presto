@@ -151,6 +151,12 @@ public class JdbcMetadata
     }
 
     @Override
+    public void createTable(ConnectorSession session, ConnectorTableMetadata tableMetadata, boolean ignoreExisting)
+    {
+        jdbcClient.createTable(session, tableMetadata, ignoreExisting);
+    }
+
+    @Override
     public void dropTable(ConnectorSession session, ConnectorTableHandle tableHandle)
     {
         if (!allowDropTable) {

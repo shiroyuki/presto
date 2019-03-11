@@ -275,6 +275,68 @@ public class BaseJdbcClient
     }
 
     @Override
+    public void createTable(ConnectorSession session, ConnectorTableMetadata tableMetadata, boolean ignoreExisting)
+    {
+        SchemaTableName schemaTableName = tableMetadata.getTable();
+
+        try {
+            createTable(session, schemaTableName.getSchemaName(), schemaTableName.getTableName(), tableMetadata.getColumns());
+        }
+        catch (SQLException e) {
+            throw new PrestoException(JDBC_ERROR, e);
+        }
+    }
+
+    private JdbcOutputTableHandle createTable(ConnectorSession session, String schema, String table, List<ColumnMetadata> columns)
+            throws SQLException
+    {
+        JdbcIdentity identity = JdbcIdentity.from(session);
+        if (!getSchemaNames(identity).contains(schema)) {
+            throw new PrestoException(NOT_FOUND, "Schema not found: " + schema);
+        }
+
+        try (Connection connection = connectionFactory.openConnection(identity)) {
+            boolean uppercase = connection.getMetaData().storesUpperCaseIdentifiers();
+            if (uppercase) {
+                schema = schema.toUpperCase(ENGLISH);
+                table = table.toUpperCase(ENGLISH);
+            }
+            String catalog = connection.getCatalog();
+
+            ImmutableList.Builder<String> columnNames = ImmutableList.builder();
+            ImmutableList.Builder<Type> columnTypes = ImmutableList.builder();
+            ImmutableList.Builder<String> columnList = ImmutableList.builder();
+            for (ColumnMetadata column : columns) {
+                String columnName = column.getName();
+                if (uppercase) {
+                    columnName = columnName.toUpperCase(ENGLISH);
+                }
+                columnNames.add(columnName);
+                columnTypes.add(column.getType());
+                // TODO in INSERT case, we should reuse original column type and, ideally, constraints (then JdbcPageSink must get writer from toPrestoType())
+                columnList.add(format("%s %s", quoted(columnName), toWriteMapping(session, column.getType()).getDataType()));
+            }
+
+            String sql = format(
+                    "CREATE TABLE %s (%s)",
+                    quoted(catalog, schema, table),
+                    join(", ", columnList.build()));
+            execute(connection, sql);
+
+            return new JdbcOutputTableHandle(
+                    catalog,
+                    schema,
+                    table,
+                    columnNames.build(),
+                    columnTypes.build(),
+                    table);
+        }
+        catch (SQLException e) {
+            throw new PrestoException(JDBC_ERROR, e);
+        }
+    }
+
+    @Override
     public JdbcOutputTableHandle beginCreateTable(ConnectorSession session, ConnectorTableMetadata tableMetadata)
     {
         return beginWriteTable(session, tableMetadata);
@@ -290,50 +352,10 @@ public class BaseJdbcClient
     {
         SchemaTableName schemaTableName = tableMetadata.getTable();
         String schema = schemaTableName.getSchemaName();
-        String table = schemaTableName.getTableName();
+        String temporaryName = generateTemporaryTableName();
 
-        JdbcIdentity identity = JdbcIdentity.from(session);
-        if (!getSchemaNames(identity).contains(schema)) {
-            throw new PrestoException(NOT_FOUND, "Schema not found: " + schema);
-        }
-
-        try (Connection connection = connectionFactory.openConnection(identity)) {
-            boolean uppercase = connection.getMetaData().storesUpperCaseIdentifiers();
-            if (uppercase) {
-                schema = schema.toUpperCase(ENGLISH);
-                table = table.toUpperCase(ENGLISH);
-            }
-            String catalog = connection.getCatalog();
-
-            String temporaryName = generateTemporaryTableName();
-
-            ImmutableList.Builder<String> columnNames = ImmutableList.builder();
-            ImmutableList.Builder<Type> columnTypes = ImmutableList.builder();
-            ImmutableList.Builder<String> columnList = ImmutableList.builder();
-            for (ColumnMetadata column : tableMetadata.getColumns()) {
-                String columnName = column.getName();
-                if (uppercase) {
-                    columnName = columnName.toUpperCase(ENGLISH);
-                }
-                columnNames.add(columnName);
-                columnTypes.add(column.getType());
-                // TODO in INSERT case, we should reuse original column type and, ideally, constraints (then JdbcPageSink must get writer from toPrestoType())
-                columnList.add(format("%s %s", quoted(columnName), toWriteMapping(session, column.getType()).getDataType()));
-            }
-
-            String sql = format(
-                    "CREATE TABLE %s (%s)",
-                    quoted(catalog, schema, temporaryName),
-                    join(", ", columnList.build()));
-            execute(connection, sql);
-
-            return new JdbcOutputTableHandle(
-                    catalog,
-                    schema,
-                    table,
-                    columnNames.build(),
-                    columnTypes.build(),
-                    temporaryName);
+        try {
+            return createTable(session, schema, temporaryName, tableMetadata.getColumns());
         }
         catch (SQLException e) {
             throw new PrestoException(JDBC_ERROR, e);

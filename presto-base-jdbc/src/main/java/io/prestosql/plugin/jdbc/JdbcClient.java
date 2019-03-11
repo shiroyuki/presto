@@ -62,6 +62,8 @@ public interface JdbcClient
     PreparedStatement buildSql(ConnectorSession session, Connection connection, JdbcSplit split, List<JdbcColumnHandle> columnHandles)
             throws SQLException;
 
+    void createTable(ConnectorSession session, ConnectorTableMetadata tableMetadata, boolean ignoreExisting);
+
     JdbcOutputTableHandle beginCreateTable(ConnectorSession session, ConnectorTableMetadata tableMetadata);
 
     void commitCreateTable(JdbcIdentity identity, JdbcOutputTableHandle handle);
