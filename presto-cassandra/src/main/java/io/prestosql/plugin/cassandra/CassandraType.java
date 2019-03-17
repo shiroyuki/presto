@@ -13,7 +13,6 @@
  */
 package io.prestosql.plugin.cassandra;
 
-import com.datastax.driver.core.ColumnMetadata;
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.LocalDate;
 import com.datastax.driver.core.ProtocolVersion;
@@ -21,6 +20,8 @@ import com.datastax.driver.core.Row;
 import com.datastax.driver.core.UDTValue;
 import com.datastax.driver.core.UserType;
 import com.datastax.driver.core.utils.Bytes;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.net.InetAddresses;
@@ -56,6 +57,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 import static com.google.common.net.InetAddresses.toAddrString;
@@ -96,7 +98,7 @@ public final class CassandraType
     public static final CassandraType LIST = new CassandraType(createUnboundedVarcharType(), null, DataType.Name.LIST);
     public static final CassandraType MAP = new CassandraType(createUnboundedVarcharType(), null, DataType.Name.MAP);
     public static final CassandraType SET = new CassandraType(createUnboundedVarcharType(), null, DataType.Name.SET);
-    public static final CassandraType UDT = new CassandraType(createRowType(), UDTValue.class, DataType.Name.UDT);
+//    public static final CassandraType UDT = new CassandraType(createRowType(), UDTValue.class, DataType.Name.UDT);
 
     private static RowType createRowType()
     {
@@ -117,21 +119,30 @@ public final class CassandraType
     private final Class<?> javaType;
     private final DataType.Name name;
 
-    CassandraType(Type nativeType, Class<?> javaType, DataType.Name name)
+    @JsonCreator
+    CassandraType(@JsonProperty("nativeType") Type nativeType, @JsonProperty("javaType") Class<?> javaType, @JsonProperty("name") DataType.Name name)
     {
         this.nativeType = requireNonNull(nativeType, "nativeType is null");
         this.javaType = javaType;
         this.name = name;
     }
 
+    @JsonProperty
     public Type getNativeType()
     {
         return nativeType;
     }
 
+    @JsonProperty
     public DataType.Name getName()
     {
         return name;
+    }
+
+    @JsonProperty
+    public Class<?> getJavaType()
+    {
+        return javaType;
     }
 
     public int getTypeArgumentSize()
@@ -142,30 +153,17 @@ public final class CassandraType
                 return 1;
             case MAP:
                 return 2;
-            case UDT:
-                return 3;
             default:
                 return 0;
         }
     }
 
-    public static CassandraType getCassandraType(ColumnMetadata columnMeta)
+    private static RowType createRowType(DataType type)
     {
-        DataType.Name name = columnMeta.getType().getName();
-        switch (name) {
-            case UDT:
-                return new CassandraType(createRowType(columnMeta), UDTValue.class, DataType.Name.UDT);
-            default:
-                return getCassandraType(name);
-        }
-    }
-
-    private static RowType createRowType(ColumnMetadata columnMeta)
-    {
-        UserType userType = (UserType) columnMeta.getType();
+        UserType userType = (UserType) type;
         List<RowType.Field> values = new ArrayList<>();
         for (String fieldName : userType.getFieldNames()) {
-            CassandraType cassandraType = CassandraType.getCassandraType(userType.getFieldType(fieldName).getName());
+            CassandraType cassandraType = CassandraType.getCassandraType(userType.getFieldType(fieldName));
             RowType.Field field = new RowType.Field(Optional.of(fieldName), cassandraType.nativeType);
             values.add(field);
         }
@@ -173,8 +171,9 @@ public final class CassandraType
         return RowType.from(ImmutableList.copyOf(values));
     }
 
-    public static CassandraType getCassandraType(DataType.Name name)
+    public static CassandraType getCassandraType(DataType type)
     {
+        DataType.Name name = type.getName();
         switch (name) {
             case ASCII:
                 return ASCII;
@@ -216,14 +215,14 @@ public final class CassandraType
                 return TIMEUUID;
             case TINYINT:
                 return TINYINT;
+            case UDT:
+                return new CassandraType(createRowType(type), UDTValue.class, DataType.Name.UDT);
             case UUID:
                 return UUID;
             case VARCHAR:
                 return VARCHAR;
             case VARINT:
                 return VARINT;
-            case UDT:
-                return UDT;
             default:
                 return null;
         }
@@ -723,5 +722,32 @@ public final class CassandraType
             return TIMESTAMP;
         }
         throw new IllegalArgumentException("unsupported type: " + type);
+    }
+
+    @Override
+    public boolean equals(Object o)
+    {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        CassandraType that = (CassandraType) o;
+        return Objects.equals(nativeType, that.nativeType) &&
+                Objects.equals(javaType, that.javaType) &&
+                name == that.name;
+    }
+
+    @Override
+    public int hashCode()
+    {
+        return Objects.hash(nativeType, javaType, name);
+    }
+
+    @Override
+    public String toString()
+    {
+        return name.toString();
     }
 }
