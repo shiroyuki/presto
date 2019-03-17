@@ -21,7 +21,7 @@ import com.datastax.driver.core.UDTValue;
 import com.datastax.driver.core.UserType;
 import com.datastax.driver.core.utils.Bytes;
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonValue;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.net.InetAddresses;
@@ -100,62 +100,30 @@ public final class CassandraType
     public static final CassandraType SET = new CassandraType(createUnboundedVarcharType(), null, DataType.Name.SET);
 //    public static final CassandraType UDT = new CassandraType(createRowType(), UDTValue.class, DataType.Name.UDT);
 
-    private static RowType createRowType()
-    {
-        // Expand getTypeArgumentSize to get udt definitions?
-        return RowType.from(ImmutableList.of(new RowType.Field(Optional.of("dummy"), IntegerType.INTEGER), new RowType.Field(Optional.of("dummy2"), createUnboundedVarcharType())));
-    }
-
-    private static class Constants
-    {
-        private static final int UUID_STRING_MAX_LENGTH = 36;
-        // IPv4: 255.255.255.255 - 15 characters
-        // IPv6: FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF - 39 characters
-        // IPv4 embedded into IPv6: FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:255.255.255.255 - 45 characters
-        private static final int IP_ADDRESS_STRING_MAX_LENGTH = 45;
-    }
-
-    private final Type nativeType;
-    private final Class<?> javaType;
-    private final DataType.Name name;
+    public final Type nativeType;
+    public final Class<?> javaType;
+    public final DataType.Name name;
 
     @JsonCreator
-    CassandraType(@JsonProperty("nativeType") Type nativeType, @JsonProperty("javaType") Class<?> javaType, @JsonProperty("name") DataType.Name name)
+    CassandraType(DataType type)
+    {
+        CassandraType cassandraType = getCassandraType(type);
+        nativeType = cassandraType.nativeType;
+        javaType = cassandraType.javaType;
+        name = type.getName();
+    }
+
+    CassandraType(Type nativeType, Class<?> javaType, DataType.Name name)
     {
         this.nativeType = requireNonNull(nativeType, "nativeType is null");
         this.javaType = javaType;
         this.name = name;
     }
 
-    @JsonProperty
-    public Type getNativeType()
+    private static RowType createRowType()
     {
-        return nativeType;
-    }
-
-    @JsonProperty
-    public DataType.Name getName()
-    {
-        return name;
-    }
-
-    @JsonProperty
-    public Class<?> getJavaType()
-    {
-        return javaType;
-    }
-
-    public int getTypeArgumentSize()
-    {
-        switch (this.getName()) {
-            case LIST:
-            case SET:
-                return 1;
-            case MAP:
-                return 2;
-            default:
-                return 0;
-        }
+        // Expand getTypeArgumentSize to get udt definitions?
+        return RowType.from(ImmutableList.of(new RowType.Field(Optional.of("dummy"), IntegerType.INTEGER), new RowType.Field(Optional.of("dummy2"), createUnboundedVarcharType())));
     }
 
     private static RowType createRowType(DataType type)
@@ -171,7 +139,7 @@ public final class CassandraType
         return RowType.from(ImmutableList.copyOf(values));
     }
 
-    public static CassandraType getCassandraType(DataType type)
+    private static CassandraType getCassandraType(DataType type)
     {
         DataType.Name name = type.getName();
         switch (name) {
@@ -552,6 +520,72 @@ public final class CassandraType
         }
     }
 
+    public static CassandraType toCassandraType(Type type, ProtocolVersion protocolVersion)
+    {
+        if (type.equals(BooleanType.BOOLEAN)) {
+            return BOOLEAN;
+        }
+        else if (type.equals(BigintType.BIGINT)) {
+            return BIGINT;
+        }
+        else if (type.equals(IntegerType.INTEGER)) {
+            return INT;
+        }
+        else if (type.equals(SmallintType.SMALLINT)) {
+            return SMALLINT;
+        }
+        else if (type.equals(TinyintType.TINYINT)) {
+            return TINYINT;
+        }
+        else if (type.equals(DoubleType.DOUBLE)) {
+            return DOUBLE;
+        }
+        else if (type.equals(RealType.REAL)) {
+            return FLOAT;
+        }
+        else if (isVarcharType(type)) {
+            return TEXT;
+        }
+        else if (type.equals(DateType.DATE)) {
+            return protocolVersion.toInt() <= ProtocolVersion.V3.toInt() ? TEXT : DATE;
+        }
+        else if (type.equals(VarbinaryType.VARBINARY)) {
+            return BLOB;
+        }
+        else if (type.equals(TimestampType.TIMESTAMP)) {
+            return TIMESTAMP;
+        }
+        throw new IllegalArgumentException("unsupported type: " + type);
+    }
+
+    public Type getNativeType()
+    {
+        return nativeType;
+    }
+
+    public DataType.Name getName()
+    {
+        return name;
+    }
+
+    public Class<?> getJavaType()
+    {
+        return javaType;
+    }
+
+    public int getTypeArgumentSize()
+    {
+        switch (this.getName()) {
+            case LIST:
+            case SET:
+                return 1;
+            case MAP:
+                return 2;
+            default:
+                return 0;
+        }
+    }
+
     @Override
     public CassandraType getCassandraType()
     {
@@ -686,44 +720,6 @@ public final class CassandraType
         }
     }
 
-    public static CassandraType toCassandraType(Type type, ProtocolVersion protocolVersion)
-    {
-        if (type.equals(BooleanType.BOOLEAN)) {
-            return BOOLEAN;
-        }
-        else if (type.equals(BigintType.BIGINT)) {
-            return BIGINT;
-        }
-        else if (type.equals(IntegerType.INTEGER)) {
-            return INT;
-        }
-        else if (type.equals(SmallintType.SMALLINT)) {
-            return SMALLINT;
-        }
-        else if (type.equals(TinyintType.TINYINT)) {
-            return TINYINT;
-        }
-        else if (type.equals(DoubleType.DOUBLE)) {
-            return DOUBLE;
-        }
-        else if (type.equals(RealType.REAL)) {
-            return FLOAT;
-        }
-        else if (isVarcharType(type)) {
-            return TEXT;
-        }
-        else if (type.equals(DateType.DATE)) {
-            return protocolVersion.toInt() <= ProtocolVersion.V3.toInt() ? TEXT : DATE;
-        }
-        else if (type.equals(VarbinaryType.VARBINARY)) {
-            return BLOB;
-        }
-        else if (type.equals(TimestampType.TIMESTAMP)) {
-            return TIMESTAMP;
-        }
-        throw new IllegalArgumentException("unsupported type: " + type);
-    }
-
     @Override
     public boolean equals(Object o)
     {
@@ -745,9 +741,19 @@ public final class CassandraType
         return Objects.hash(nativeType, javaType, name);
     }
 
+    @JsonValue
     @Override
     public String toString()
     {
-        return name.toString();
+        return name.name();
+    }
+
+    private static class Constants
+    {
+        private static final int UUID_STRING_MAX_LENGTH = 36;
+        // IPv4: 255.255.255.255 - 15 characters
+        // IPv6: FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF - 39 characters
+        // IPv4 embedded into IPv6: FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:255.255.255.255 - 45 characters
+        private static final int IP_ADDRESS_STRING_MAX_LENGTH = 45;
     }
 }

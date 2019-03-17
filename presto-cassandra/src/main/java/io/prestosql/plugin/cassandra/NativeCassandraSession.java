@@ -319,16 +319,16 @@ public class NativeCassandraSession
 
     private CassandraColumnHandle buildColumnHandle(AbstractTableMetadata tableMetadata, ColumnMetadata columnMeta, boolean partitionKey, boolean clusteringKey, int ordinalPosition, boolean hidden)
     {
-        CassandraType cassandraType = CassandraType.getCassandraType(columnMeta.getType());
+        CassandraType cassandraType = new CassandraType(columnMeta.getType());
         List<CassandraType> typeArguments = null;
         if (cassandraType != null && cassandraType.getTypeArgumentSize() != 0) {
             List<DataType> typeArgs = columnMeta.getType().getTypeArguments();
             switch (cassandraType.getTypeArgumentSize()) {
                 case 1:
-                    typeArguments = ImmutableList.of(CassandraType.getCassandraType(typeArgs.get(0)));
+                    typeArguments = ImmutableList.of(new CassandraType(typeArgs.get(0)));
                     break;
                 case 2:
-                    typeArguments = ImmutableList.of(CassandraType.getCassandraType(typeArgs.get(0)), CassandraType.getCassandraType(typeArgs.get(1)));
+                    typeArguments = ImmutableList.of(new CassandraType(typeArgs.get(0)), new CassandraType(typeArgs.get(1)));
                     break;
                 default:
                     throw new IllegalArgumentException("Invalid type arguments: " + typeArgs);
