@@ -89,7 +89,7 @@ public class TableJdbcTable
             QualifiedTablePrefix prefix = tablePrefix(catalog, schemaFilter, tableFilter);
 
             if (FilterUtil.emptyOrEquals(typeFilter, "TABLE")) {
-                for (SchemaTableName name : listTables(session, metadata, accessControl, prefix)) {
+                for (SchemaTableName name : listTables(session, metadata, accessControl, prefix).keySet()) {
                     table.addRow(tableRow(catalog, name, "TABLE"));
                 }
             }

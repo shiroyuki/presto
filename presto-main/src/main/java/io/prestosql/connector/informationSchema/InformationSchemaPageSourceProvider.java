@@ -20,6 +20,7 @@ import io.prestosql.metadata.InternalTable;
 import io.prestosql.metadata.Metadata;
 import io.prestosql.metadata.QualifiedObjectName;
 import io.prestosql.metadata.QualifiedTablePrefix;
+import io.prestosql.metadata.TableMetadata;
 import io.prestosql.metadata.ViewDefinition;
 import io.prestosql.security.AccessControl;
 import io.prestosql.spi.Page;
@@ -41,7 +42,9 @@ import io.prestosql.spi.security.RoleGrant;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -179,18 +182,20 @@ public class InformationSchemaPageSourceProvider
     {
         InternalTable.Builder table = InternalTable.builder(informationSchemaTableColumns(TABLE_TABLES));
         for (QualifiedTablePrefix prefix : prefixes) {
-            Set<SchemaTableName> tables = listTables(session, metadata, accessControl, prefix);
+            Map<SchemaTableName, TableMetadata> tables = listTables(session, metadata, accessControl, prefix);
             Set<SchemaTableName> views = listViews(session, metadata, accessControl, prefix);
 
-            for (SchemaTableName name : union(tables, views)) {
+            for (SchemaTableName name : union(tables.keySet(), views)) {
                 // if table and view names overlap, the view wins
                 String type = views.contains(name) ? "VIEW" : "BASE TABLE";
+                Optional<String> comment = views.contains(name) ? Optional.empty() : tables.get(name).getMetadata().getComment();
+
                 table.add(
                         prefix.getCatalogName(),
                         name.getSchemaName(),
                         name.getTableName(),
                         type,
-                        null);
+                        comment.orElse(null));
             }
         }
         return table.build();

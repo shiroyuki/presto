@@ -302,7 +302,7 @@ public class InformationSchemaMetadata
 
         return prefixes.stream()
                 .flatMap(prefix -> Stream.concat(
-                        metadata.listTables(session, prefix).stream(),
+                        metadata.listTables(session, prefix).keySet().stream(),
                         metadata.listViews(session, prefix).stream()))
                 .filter(objectName -> !predicate.isPresent() || predicate.get().test(asFixedValues(objectName)))
                 .map(QualifiedObjectName::asQualifiedTablePrefix)

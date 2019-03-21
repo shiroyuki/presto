@@ -58,12 +58,23 @@ public final class MetadataListing
         return ImmutableSortedSet.copyOf(accessControl.filterSchemas(session.getRequiredTransactionId(), session.getIdentity(), catalogName, schemaNames));
     }
 
-    public static Set<SchemaTableName> listTables(Session session, Metadata metadata, AccessControl accessControl, QualifiedTablePrefix prefix)
+    public static Map<SchemaTableName, TableMetadata> listTables(Session session, Metadata metadata, AccessControl accessControl, QualifiedTablePrefix prefix)
     {
-        Set<SchemaTableName> tableNames = metadata.listTables(session, prefix).stream()
-                .map(QualifiedObjectName::asSchemaTableName)
-                .collect(toImmutableSet());
-        return accessControl.filterTables(session.getRequiredTransactionId(), session.getIdentity(), prefix.getCatalogName(), tableNames);
+        Map<SchemaTableName, TableMetadata> tables = metadata.listTables(session, prefix).entrySet().stream()
+                .collect(toImmutableMap(entry -> entry.getKey().asSchemaTableName(), Entry::getValue));
+        Set<SchemaTableName> allowedTables = accessControl.filterTables(
+                session.getRequiredTransactionId(),
+                session.getIdentity(),
+                prefix.getCatalogName(),
+                tables.keySet());
+
+        ImmutableMap.Builder<SchemaTableName, TableMetadata> tableNames = ImmutableMap.builder();
+        for (Entry<SchemaTableName, TableMetadata> entry : tables.entrySet()) {
+            if (allowedTables.contains(entry.getKey())) {
+                tableNames.put(entry);
+            }
+        }
+        return tableNames.build();
     }
 
     public static Set<SchemaTableName> listViews(Session session, Metadata metadata, AccessControl accessControl, QualifiedTablePrefix prefix)

@@ -533,25 +533,32 @@ public class MetadataManager
     }
 
     @Override
-    public List<QualifiedObjectName> listTables(Session session, QualifiedTablePrefix prefix)
+    public Map<QualifiedObjectName, TableMetadata> listTables(Session session, QualifiedTablePrefix prefix)
     {
         requireNonNull(prefix, "prefix is null");
 
         Optional<CatalogMetadata> catalog = getOptionalCatalogMetadata(session, prefix.getCatalogName());
-        Set<QualifiedObjectName> tables = new LinkedHashSet<>();
+        Map<QualifiedObjectName, TableMetadata> tables = new LinkedHashMap<>();
         if (catalog.isPresent()) {
             CatalogMetadata catalogMetadata = catalog.get();
 
             for (ConnectorId connectorId : catalogMetadata.listConnectorIds()) {
                 ConnectorMetadata metadata = catalogMetadata.getMetadataFor(connectorId);
                 ConnectorSession connectorSession = session.toConnectorSession(connectorId);
-                metadata.listTables(connectorSession, prefix.getSchemaName()).stream()
-                        .map(convertFromSchemaTableName(prefix.getCatalogName()))
-                        .filter(prefix::matches)
-                        .forEach(tables::add);
+
+                for (SchemaTableName schemaTableName : metadata.listTables(connectorSession, prefix.getSchemaName())) {
+                    QualifiedObjectName tableName = convertFromSchemaTableName(prefix.getCatalogName()).apply(schemaTableName);
+                    if (prefix.matches(tableName)) {
+                        ConnectorTableHandle tableHandle = metadata.getTableHandle(connectorSession, schemaTableName);
+                        ConnectorTableMetadata connectorTableMetadata = metadata.getTableMetadata(connectorSession, tableHandle);
+                        TableMetadata tableMetadata = new TableMetadata(connectorId, connectorTableMetadata);
+
+                        tables.put(tableName, tableMetadata);
+                    }
+                }
             }
         }
-        return ImmutableList.copyOf(tables);
+        return ImmutableMap.copyOf(tables);
     }
 
     @Override

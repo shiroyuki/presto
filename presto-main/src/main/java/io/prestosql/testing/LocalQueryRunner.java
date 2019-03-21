@@ -564,7 +564,7 @@ public class LocalQueryRunner
             return transaction(transactionManager, accessControl)
                     .readOnly()
                     .execute(session, transactionSession -> {
-                        return getMetadata().listTables(transactionSession, new QualifiedTablePrefix(catalog, schema));
+                        return ImmutableList.copyOf(getMetadata().listTables(transactionSession, new QualifiedTablePrefix(catalog, schema)).keySet());
                     });
         }
         finally {

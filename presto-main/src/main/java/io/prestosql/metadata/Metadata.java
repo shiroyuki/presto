@@ -111,7 +111,7 @@ public interface Metadata
     /**
      * Get the names that match the specified table prefix (never null).
      */
-    List<QualifiedObjectName> listTables(Session session, QualifiedTablePrefix prefix);
+    Map<QualifiedObjectName, TableMetadata> listTables(Session session, QualifiedTablePrefix prefix);
 
     /**
      * Gets all of the columns on the specified table, or an empty map if the columns can not be enumerated.

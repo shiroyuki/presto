@@ -171,7 +171,7 @@ public abstract class AbstractTestingPrestoClient<T>
         return transaction(prestoServer.getTransactionManager(), prestoServer.getAccessControl())
                 .readOnly()
                 .execute(session, transactionSession -> {
-                    return prestoServer.getMetadata().listTables(transactionSession, new QualifiedTablePrefix(catalog, schema));
+                    return ImmutableList.copyOf(prestoServer.getMetadata().listTables(transactionSession, new QualifiedTablePrefix(catalog, schema)).keySet());
                 });
     }
 
