@@ -161,6 +161,12 @@ public class TestCassandraIntegrationSmokeTest
         assertEquals(execute(sql).getRowCount(), 1);
         sql = "SELECT * FROM " + TABLE_CLUSTERING_KEYS + " WHERE key IN ('key_1','key_2') AND clust_one='clust_one' AND clust_two IN ('clust_two_1','clust_two_2')";
         assertEquals(execute(sql).getRowCount(), 2);
+
+        sql = "SELECT * FROM cassandra.smoke_test." + TABLE_CLUSTERING_KEYS + " WHERE key IN ('key_1','key_2') AND clust_one<>'nothing'";
+        assertEquals(execute(sql).getRowCount(), 3);
+
+        sql = "SELECT * FROM cassandra.smoke_test." + TABLE_CLUSTERING_KEYS + " WHERE key IN ('key_1','key_2') AND clust_one>'nothing'";
+        assertEquals(execute(sql).getRowCount(), 3);
     }
 
     @Test

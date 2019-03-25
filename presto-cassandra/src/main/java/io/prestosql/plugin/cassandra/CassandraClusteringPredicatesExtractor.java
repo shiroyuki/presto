@@ -75,11 +75,12 @@ public class CassandraClusteringPredicatesExtractor
             if (domain.isNullAllowed()) {
                 break;
             }
+
             String predicateString = null;
             predicateString = domain.getValues().getValuesProcessor().transform(
                     ranges -> {
                         List<Object> singleValues = new ArrayList<>();
-                        List<String> rangeConjuncts = new ArrayList<>();
+                        List<RangeConjunction> rangeConjuncts = new ArrayList<>();
                         String predicate = null;
 
                         for (Range range : ranges.getOrderedRanges()) {
@@ -94,14 +95,10 @@ public class CassandraClusteringPredicatesExtractor
                                 if (!range.getLow().isLowerUnbounded()) {
                                     switch (range.getLow().getBound()) {
                                         case ABOVE:
-                                            rangeConjuncts.add(CassandraCqlUtils.validColumnName(columnHandle.getName()) + " > "
-                                                    + CassandraCqlUtils.cqlValue(toCQLCompatibleString(range.getLow().getValue()),
-                                                    columnHandle.getCassandraType()));
+                                            rangeConjuncts.add(new RangeConjunction(columnHandle, " > ", range.getLow().getValue()));
                                             break;
                                         case EXACTLY:
-                                            rangeConjuncts.add(CassandraCqlUtils.validColumnName(columnHandle.getName()) + " >= "
-                                                    + CassandraCqlUtils.cqlValue(toCQLCompatibleString(range.getLow().getValue()),
-                                                    columnHandle.getCassandraType()));
+                                            rangeConjuncts.add(new RangeConjunction(columnHandle, " >= ", range.getLow().getValue()));
                                             break;
                                         case BELOW:
                                             throw new VerifyException("Low Marker should never use BELOW bound");
@@ -114,14 +111,10 @@ public class CassandraClusteringPredicatesExtractor
                                         case ABOVE:
                                             throw new VerifyException("High Marker should never use ABOVE bound");
                                         case EXACTLY:
-                                            rangeConjuncts.add(CassandraCqlUtils.validColumnName(columnHandle.getName()) + " <= "
-                                                    + CassandraCqlUtils.cqlValue(toCQLCompatibleString(range.getHigh().getValue()),
-                                                    columnHandle.getCassandraType()));
+                                            rangeConjuncts.add(new RangeConjunction(columnHandle, " <= ", range.getHigh().getValue()));
                                             break;
                                         case BELOW:
-                                            rangeConjuncts.add(CassandraCqlUtils.validColumnName(columnHandle.getName()) + " < "
-                                                    + CassandraCqlUtils.cqlValue(toCQLCompatibleString(range.getHigh().getValue()),
-                                                    columnHandle.getCassandraType()));
+                                            rangeConjuncts.add(new RangeConjunction(columnHandle, " < ", range.getHigh().getValue()));
                                             break;
                                         default:
                                             throw new AssertionError("Unhandled bound: " + range.getHigh().getBound());
@@ -199,6 +192,26 @@ public class CassandraClusteringPredicatesExtractor
         public String getDomainQuery()
         {
             return domainQuery;
+        }
+    }
+
+    private static class RangeConjunction
+    {
+        private final CassandraColumnHandle columnHandle;
+        private final String bound;
+        private final Object value;
+
+        public RangeConjunction(CassandraColumnHandle columnHandle, String bound, Object value)
+        {
+            this.columnHandle = columnHandle;
+            this.bound = bound;
+            this.value = value;
+        }
+
+        @Override
+        public String toString()
+        {
+            return String.format("%s %s %s", CassandraCqlUtils.validColumnName(columnHandle.getName()), bound, CassandraCqlUtils.cqlValue(toCQLCompatibleString(value), columnHandle.getCassandraType()));
         }
     }
 }

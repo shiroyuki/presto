@@ -61,6 +61,7 @@ public class CassandraRecordSetProvider
         sb.append(cassandraSplit.getWhereClause());
         String cql = sb.toString();
         log.debug("Creating record set: %s", cql);
+        System.out.println(cql);
 
         return new CassandraRecordSet(cassandraSession, cql, cassandraColumns);
     }
