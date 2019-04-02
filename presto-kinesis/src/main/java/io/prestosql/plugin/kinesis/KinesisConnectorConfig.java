@@ -95,9 +95,9 @@ public class KinesisConnectorConfig
 
     private long dynamoReadCapacity = 50L;
 
-    private long dyanamoWriteCapacity = 10L;
+    private long dynamoWriteCapacity = 10L;
 
-    private Duration checkpointIntervalMS = new Duration(60000, TimeUnit.MILLISECONDS);
+    private Duration checkpointInterval = new Duration(60000, TimeUnit.MILLISECONDS);
 
     private String logicalProcessName = "process1";
 
@@ -300,25 +300,25 @@ public class KinesisConnectorConfig
 
     public long getDynamoWriteCapacity()
     {
-        return dyanamoWriteCapacity;
+        return dynamoWriteCapacity;
     }
 
     @Config("kinesis.dynamo-write-capacity")
     public KinesisConnectorConfig setDynamoWriteCapacity(long dynamoWriteCapacity)
     {
-        this.dyanamoWriteCapacity = dynamoWriteCapacity;
+        this.dynamoWriteCapacity = dynamoWriteCapacity;
         return this;
     }
 
-    public Duration getCheckpointIntervalMS()
+    public Duration getCheckpointInterval()
     {
-        return checkpointIntervalMS;
+        return checkpointInterval;
     }
 
-    @Config("kinesis.checkpoint-interval-ms")
-    public KinesisConnectorConfig setCheckpointIntervalMS(Duration checkpointIntervalMS)
+    @Config("kinesis.checkpoint-interval")
+    public KinesisConnectorConfig setCheckpointInterval(Duration checkpointInterval)
     {
-        this.checkpointIntervalMS = checkpointIntervalMS;
+        this.checkpointInterval = checkpointInterval;
         return this;
     }
 

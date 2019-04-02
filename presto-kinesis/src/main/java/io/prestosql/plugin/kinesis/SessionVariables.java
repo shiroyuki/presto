@@ -53,26 +53,22 @@ public class SessionVariables
 
     public static int getBatchSize(ConnectorSession session)
     {
-        int value = session.getProperty(BATCH_SIZE, Integer.class);
-        return value;
+        return session.getProperty(BATCH_SIZE, Integer.class);
     }
 
     public static int getMaxBatches(ConnectorSession session)
     {
-        int value = session.getProperty(MAX_BATCHES, Integer.class);
-        return value;
+        return session.getProperty(MAX_BATCHES, Integer.class);
     }
 
     public static boolean getIterFromTimestamp(ConnectorSession session)
     {
-        boolean value = session.getProperty(ITER_FROM_TIMESTAMP, Boolean.class);
-        return value;
+        return session.getProperty(ITER_FROM_TIMESTAMP, Boolean.class);
     }
 
     public static long getIterOffsetSeconds(ConnectorSession session)
     {
-        long value = session.getProperty(ITER_OFFSET_SECONDS, Long.class);
-        return value;
+        return session.getProperty(ITER_OFFSET_SECONDS, Long.class);
     }
 
     public static long getIterStartTimestamp(ConnectorSession session)
@@ -114,15 +110,14 @@ public class SessionVariables
     {
         // Parse this as a date and return the long timestamp value (2016-07-10 17:03:56.124).
         // They will be entering timestamps in their session's timezone.  Use session.getTimeZoneKey().
-        SimpleDateFormat frmt = new SimpleDateFormat(PRESTO_TIMESTAMP_FORMAT);
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat(PRESTO_TIMESTAMP_FORMAT);
 
         if (!session.getTimeZoneKey().getId().equals(TimeZone.getDefault().getID())) {
             TimeZone sessionTz = TimeZone.getTimeZone(session.getTimeZoneKey().getId());
-            frmt.setTimeZone(sessionTz);
+            simpleDateFormat.setTimeZone(sessionTz);
         }
 
-        Date result = frmt.parse(tsValue, new ParsePosition(0));
-        long res = result.getTime();
-        return res;
+        Date result = simpleDateFormat.parse(tsValue, new ParsePosition(0));
+        return result.getTime();
     }
 }

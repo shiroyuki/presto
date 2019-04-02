@@ -22,6 +22,8 @@ import io.airlift.log.Logger;
 import io.prestosql.plugin.kinesis.s3config.S3TableConfigClient;
 import io.prestosql.spi.connector.SchemaTableName;
 
+import javax.annotation.PreDestroy;
+
 import java.io.IOException;
 import java.nio.file.DirectoryIteratorException;
 import java.nio.file.DirectoryStream;
@@ -40,7 +42,7 @@ import static java.util.Objects.requireNonNull;
  * and then creates user defined field for Presto Table.
  */
 public class KinesisTableDescriptionSupplier
-        implements Supplier<Map<SchemaTableName, KinesisStreamDescription>>, ConnectorShutdown
+        implements Supplier<Map<SchemaTableName, KinesisStreamDescription>>
 {
     private static final Logger log = Logger.get(KinesisTableDescriptionSupplier.class);
 
@@ -96,7 +98,7 @@ public class KinesisTableDescriptionSupplier
     /**
      * Shutdown any periodic update jobs.
      */
-    @Override
+    @PreDestroy
     public void shutdown()
     {
         this.s3TableConfigClient.shutdown();

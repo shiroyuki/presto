@@ -123,7 +123,7 @@ public class KinesisRecordSet
                 AmazonDynamoDBClient dynamoDBClient = clientManager.getDynamoDBClient();
                 long dynamoReadCapacity = kinesisConnectorConfig.getDynamoReadCapacity();
                 long dynamoWriteCapacity = kinesisConnectorConfig.getDynamoWriteCapacity();
-                long checkpointIntervalMs = kinesisConnectorConfig.getCheckpointIntervalMS().toMillis();
+                long checkpointIntervalMs = kinesisConnectorConfig.getCheckpointInterval().toMillis();
                 String logicalProcessName = kinesisConnectorConfig.getLogicalProcessName();
                 String dynamoDBTable = split.getStreamName();
                 int curIterationNumber = kinesisConnectorConfig.getIterationNumber();

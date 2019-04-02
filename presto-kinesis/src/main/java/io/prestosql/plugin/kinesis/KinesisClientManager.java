@@ -82,8 +82,8 @@ public class KinesisClientManager
         return new DescribeStreamRequest();
     }
 
-    public boolean nonEmpty(String str)
+    public boolean nonEmpty(String value)
     {
-        return str != null && !str.isEmpty();
+        return value != null && !value.isEmpty();
     }
 }

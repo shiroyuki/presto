@@ -44,27 +44,21 @@ public class TestKinesisConnectorConfig
                 .setCheckpointEnabled(false)
                 .setDynamoReadCapacity(50)
                 .setDynamoWriteCapacity(10)
-                .setCheckpointIntervalMS(new Duration(60000, TimeUnit.MILLISECONDS))
+                .setCheckpointInterval(new Duration(60000, TimeUnit.MILLISECONDS))
                 .setLogicalProcessName("process1")
                 .setIterationNumber(0));
     }
 
-    /*@Parameters({
-            "kinesis.awsAccessKey",
-            "kinesis.awsSecretKey"
-    })*/
     @Test
     public void testExplicitPropertyMappings(/*String accessKey, String secretKey*/)
     {
-        String accessKey = "kinesis.accessKey";
-        String secretKey = "kinesis.secretKey";
         Map<String, String> properties = new ImmutableMap.Builder<String, String>()
                 .put("kinesis.table-description-dir", "/var/lib/kinesis")
                 .put("kinesis.table-descriptions-s3", "s3://bucket.name/folder.name")
                 .put("kinesis.default-schema", "kinesis")
                 .put("kinesis.hide-internal-columns", "false")
-                .put("kinesis.access-key", accessKey)
-                .put("kinesis.secret-key", secretKey)
+                .put("kinesis.access-key", "kinesis.accessKey")
+                .put("kinesis.secret-key", "kinesis.secretKey")
                 .put("kinesis.fetch-attempts", "3")
                 .put("kinesis.max-batches", "500")
                 .put("kinesis.aws-region", "us-west-1")
@@ -86,8 +80,8 @@ public class TestKinesisConnectorConfig
                 .setTableDescriptionsS3("s3://bucket.name/folder.name")
                 .setDefaultSchema("kinesis")
                 .setHideInternalColumns(false)
-                .setAccessKey(accessKey)
-                .setSecretKey(secretKey)
+                .setAccessKey("kinesis.accessKey")
+                .setSecretKey("kinesis.secretKey")
                 .setAwsRegion("us-west-1")
                 .setFetchAttempts(3)
                 .setMaxBatches(500)
@@ -99,7 +93,7 @@ public class TestKinesisConnectorConfig
                 .setCheckpointEnabled(true)
                 .setDynamoReadCapacity(100)
                 .setDynamoWriteCapacity(20)
-                .setCheckpointIntervalMS(new Duration(50000, TimeUnit.MILLISECONDS))
+                .setCheckpointInterval(new Duration(50000, TimeUnit.MILLISECONDS))
                 .setLogicalProcessName("process")
                 .setIterationNumber(1);
 

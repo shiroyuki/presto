@@ -246,14 +246,7 @@ public class S3TableConfigClient
                     log.error(sb.toString(), ase);
                 }
                 catch (AmazonClientException ace) {
-                    StringBuilder sb = new StringBuilder();
-                    sb.append("Caught an AmazonClientException, " +
-                            "which means the client encountered " +
-                            "an internal error while trying to communicate" +
-                            " with S3, " +
-                            "such as not being able to access the network.");
-                    sb.append("Error Message: " + ace.getMessage());
-                    log.error(sb.toString(), ace);
+                    log.error(ace, "Request to S3 failed");
                 }
             }
         } // end loop through object descriptions

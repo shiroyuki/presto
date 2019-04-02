@@ -23,7 +23,6 @@ import com.google.inject.name.Names;
 import io.airlift.bootstrap.Bootstrap;
 import io.airlift.json.JsonModule;
 import io.airlift.log.Logger;
-import io.prestosql.connector.ConnectorId;
 import io.prestosql.spi.NodeManager;
 import io.prestosql.spi.connector.Connector;
 import io.prestosql.spi.connector.ConnectorContext;
@@ -59,7 +58,9 @@ public class KinesisConnectorFactory
 
     private Injector injector;
 
-    KinesisConnectorFactory(ClassLoader classLoader, Optional<Supplier<Map<SchemaTableName, KinesisStreamDescription>>> tableDescriptionSupplier,
+    KinesisConnectorFactory(
+            ClassLoader classLoader,
+            Optional<Supplier<Map<SchemaTableName, KinesisStreamDescription>>> tableDescriptionSupplier,
             Map<String, String> optionalConfig,
             Optional<Class<? extends KinesisClientProvider>> altProviderClass)
     {
@@ -69,11 +70,6 @@ public class KinesisConnectorFactory
         this.altProviderClass = requireNonNull(altProviderClass, "altProviderClass is null");
 
         this.handleResolver = new KinesisHandleResolver(connectorName);
-
-        // Explanation: AWS uses a newer version of jackson (2.6.6) than airlift (2.4.4).  In order to upgrade
-        // to the latest version of the AWS API, we need to turn this feature off.  This can be set
-        // in jvm.properties but trying to make this more foolproof.
-        System.setProperty("com.amazonaws.sdk.disableCbor", "true");
     }
 
     @Override
@@ -101,7 +97,7 @@ public class KinesisConnectorFactory
                     new KinesisConnectorModule(),
                     binder -> {
                         binder.bindConstant().annotatedWith(Names.named("connectorId")).to(connectorId);
-                        binder.bind(ConnectorId.class).toInstance(new ConnectorId(connectorId));
+                        binder.bind(KinesisConnectorId.class).toInstance(new KinesisConnectorId(connectorId));
                         binder.bind(TypeManager.class).toInstance(context.getTypeManager());
                         binder.bind(NodeManager.class).toInstance(context.getNodeManager());
                         // Note: moved creation from KinesisConnectorModule because connector manager accesses it earlier!
@@ -131,12 +127,12 @@ public class KinesisConnectorFactory
 
             KinesisConnector connector = this.injector.getInstance(KinesisConnector.class);
 
-            // Register objects for shutdown, at the moment only KinesisTableDescriptionSupplier
+   /*         // Register objects for shutdown, at the moment only KinesisTableDescriptionSupplier
             if (!tableDescriptionSupplier.isPresent()) {
                 // This will shutdown related dependent objects as well:
                 KinesisTableDescriptionSupplier supp = getTableDescSupplier(this.injector);
                 connector.registerShutdownObject(supp);
-            }
+            }*/
 
             log.info("Done with injector.  Returning the connector itself.");
             return connector;
