@@ -41,6 +41,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -65,7 +66,7 @@ public class S3TableConfigClient
     private final KinesisClientProvider clientManager;
     private final JsonCodec<KinesisStreamDescription> streamDescriptionCodec;
 
-    private final String bucketUrl;
+    private final Optional<String> bucketUrl;
     private long lastCheck;
     private ScheduledFuture<?> updateTaskHandle;
 
@@ -82,8 +83,14 @@ public class S3TableConfigClient
         this.streamDescriptionCodec = requireNonNull(jsonCodec, "JSON codec object is null");
 
         // If using S3 start thread that periodically looks for updates
-        this.bucketUrl = this.kinesisConnectorConfig.getTableDescriptionsS3();
-        if (!this.bucketUrl.isEmpty()) {
+        if (kinesisConnectorConfig.getTableDescriptionLoc().startsWith("s3://")) {
+            this.bucketUrl = Optional.of(kinesisConnectorConfig.getTableDescriptionLoc());
+        }
+        else {
+            this.bucketUrl = Optional.empty();
+        }
+
+        if (this.bucketUrl.isPresent()) {
             startS3Updates();
         }
     }
@@ -93,7 +100,7 @@ public class S3TableConfigClient
      */
     public boolean isUsingS3()
     {
-        return !this.bucketUrl.isEmpty();
+        return this.bucketUrl.isPresent();
     }
 
     /**
@@ -144,7 +151,7 @@ public class S3TableConfigClient
     protected List<S3ObjectSummary> getObjectSummaries()
     {
         AmazonS3Client s3client = this.clientManager.getS3Client();
-        AmazonS3URI directoryURI = new AmazonS3URI(this.bucketUrl);
+        AmazonS3URI directoryURI = new AmazonS3URI(this.bucketUrl.get());
 
         ArrayList<S3ObjectSummary> returnList = new ArrayList<S3ObjectSummary>();
         try {
@@ -198,7 +205,7 @@ public class S3TableConfigClient
 
         List<S3ObjectSummary> objectList = this.getObjectSummaries();
         AmazonS3Client s3client = this.clientManager.getS3Client();
-        AmazonS3URI directoryURI = new AmazonS3URI(this.bucketUrl);
+        //AmazonS3URI directoryURI = new AmazonS3URI(this.bucketUrl.get());
 
         for (S3ObjectSummary objInfo : objectList) {
             if (!this.internalMap.containsKey(objInfo.getKey()) || objInfo.getLastModified().getTime() >= this.lastCheck) {

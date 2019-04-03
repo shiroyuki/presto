@@ -68,18 +68,6 @@ public class KinesisPlugin
         return ImmutableList.of(this.factory);
     }
 
-    /*public synchronized <T> List<T> getServices(Class<T> type)
-    {
-        if (type == ConnectorFactory.class) {
-            if (this.factory == null) {
-                log.info("Creating connector factory.");
-                this.factory = new KinesisConnectorFactory(typeManager, nodeManager, tableDescriptionSupplier, optionalConfig, altProviderClass);
-            }
-            return ImmutableList.of(type.cast(this.factory));
-        }
-        return ImmutableList.of();
-    }*/
-
     @VisibleForTesting
     public synchronized void setTableDescriptionSupplier(Supplier<Map<SchemaTableName, KinesisStreamDescription>> tableDescriptionSupplier)
     {

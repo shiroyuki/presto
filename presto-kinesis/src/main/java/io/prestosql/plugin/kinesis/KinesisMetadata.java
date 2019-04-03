@@ -66,7 +66,7 @@ public class KinesisMetadata
         this.kinesisConnectorConfig = requireNonNull(kinesisConnectorConfig, "kinesisConfig is null");
         this.handleResolver = requireNonNull(handleResolver, "handleResolver is null");
 
-        log.debug("Loading kinesis table definitions from %s", kinesisConnectorConfig.getTableDescriptionDir());
+        log.debug("Loading kinesis table definitions from %s", kinesisConnectorConfig.getTableDescriptionLoc());
 
         this.kinesisTableDescriptionSupplier = kinesisTableDescriptionSupplier;
         this.internalFieldDescriptions = requireNonNull(internalFieldDescriptions, "internalFieldDescriptions is null");

@@ -33,14 +33,7 @@ public class KinesisConnectorConfig
     /**
      * Folder holding the JSON description files for Kinesis streams.
      */
-    private String tableDescriptionDir = "etc/kinesis/";
-
-    /**
-     * An S3 URL with JSON description files for Kinesis streams.
-     * <p>
-     * This is empty by default and will override tableDescriptionDir when set.
-     */
-    private String tableDescriptionsS3 = "";
+    private String tableDescriptionLoc = "etc/kinesis/";
 
     /**
      * Whether internal columns are shown in table metadata or not. Default is no.
@@ -104,28 +97,15 @@ public class KinesisConnectorConfig
     private int iterationNumber;
 
     @NotNull
-    public String getTableDescriptionDir()
+    public String getTableDescriptionLoc()
     {
-        return tableDescriptionDir;
+        return tableDescriptionLoc;
     }
 
-    @Config("kinesis.table-description-dir")
-    public KinesisConnectorConfig setTableDescriptionDir(String tableDescriptionDir)
+    @Config("kinesis.table-description-loc")
+    public KinesisConnectorConfig setTableDescriptionLoc(String tableDescriptionLoc)
     {
-        this.tableDescriptionDir = tableDescriptionDir;
-        return this;
-    }
-
-    @NotNull
-    public String getTableDescriptionsS3()
-    {
-        return tableDescriptionsS3;
-    }
-
-    @Config("kinesis.table-descriptions-s3")
-    public KinesisConnectorConfig setTableDescriptionsS3(String tableDescriptionsS3)
-    {
-        this.tableDescriptionsS3 = tableDescriptionsS3;
+        this.tableDescriptionLoc = tableDescriptionLoc;
         return this;
     }
 

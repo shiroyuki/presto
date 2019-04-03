@@ -24,13 +24,12 @@ import java.util.concurrent.TimeUnit;
 public class TestKinesisConnectorConfig
 {
     @Test
-    public void testDefaults(/*String accessKey, String secretKey*/)
+    public void testDefaults()
     {
         ConfigAssertions.assertRecordedDefaults(ConfigAssertions.recordDefaults(KinesisConnectorConfig.class)
                 .setDefaultSchema("default")
                 .setHideInternalColumns(true)
-                .setTableDescriptionsS3("")
-                .setTableDescriptionDir("etc/kinesis/")
+                .setTableDescriptionLoc("etc/kinesis/")
                 .setAccessKey(null)
                 .setSecretKey(null)
                 .setAwsRegion("us-east-1")
@@ -53,8 +52,7 @@ public class TestKinesisConnectorConfig
     public void testExplicitPropertyMappings(/*String accessKey, String secretKey*/)
     {
         Map<String, String> properties = new ImmutableMap.Builder<String, String>()
-                .put("kinesis.table-description-dir", "/var/lib/kinesis")
-                .put("kinesis.table-descriptions-s3", "s3://bucket.name/folder.name")
+                .put("kinesis.table-description-loc", "/var/lib/kinesis")
                 .put("kinesis.default-schema", "kinesis")
                 .put("kinesis.hide-internal-columns", "false")
                 .put("kinesis.access-key", "kinesis.accessKey")
@@ -70,14 +68,13 @@ public class TestKinesisConnectorConfig
                 .put("kinesis.checkpoint-enabled", "true")
                 .put("kinesis.dynamo-read-capacity", "100")
                 .put("kinesis.dynamo-write-capacity", "20")
-                .put("kinesis.checkpoint-interval-ms", "50000ms")
+                .put("kinesis.checkpoint-interval", "50000ms")
                 .put("kinesis.checkpoint-logical-name", "process")
                 .put("kinesis.iteration-number", "1")
                 .build();
 
         KinesisConnectorConfig expected = new KinesisConnectorConfig()
-                .setTableDescriptionDir("/var/lib/kinesis")
-                .setTableDescriptionsS3("s3://bucket.name/folder.name")
+                .setTableDescriptionLoc("/var/lib/kinesis")
                 .setDefaultSchema("kinesis")
                 .setHideInternalColumns(false)
                 .setAccessKey("kinesis.accessKey")
