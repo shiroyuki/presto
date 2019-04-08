@@ -15,7 +15,7 @@ package io.prestosql.connector.system;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import io.prestosql.connector.ConnectorId;
+import io.prestosql.connector.CatalogName;
 import io.prestosql.spi.PrestoException;
 import io.prestosql.spi.connector.ColumnHandle;
 import io.prestosql.spi.connector.ColumnMetadata;
@@ -48,13 +48,13 @@ import static java.util.Objects.requireNonNull;
 public class SystemTablesMetadata
         implements ConnectorMetadata
 {
-    private final ConnectorId connectorId;
+    private final CatalogName catalogName;
 
     private final SystemTablesProvider tables;
 
-    public SystemTablesMetadata(ConnectorId connectorId, SystemTablesProvider tables)
+    public SystemTablesMetadata(CatalogName catalogName, SystemTablesProvider tables)
     {
-        this.connectorId = requireNonNull(connectorId, "connectorId");
+        this.catalogName = requireNonNull(catalogName, "connectorId");
         this.tables = requireNonNull(tables, "tables is null");
     }
 
@@ -74,14 +74,14 @@ public class SystemTablesMetadata
         if (!table.isPresent()) {
             return null;
         }
-        return SystemTableHandle.fromSchemaTableName(connectorId, tableName);
+        return SystemTableHandle.fromSchemaTableName(tableName);
     }
 
     @Override
     public List<ConnectorTableLayoutResult> getTableLayouts(ConnectorSession session, ConnectorTableHandle table, Constraint<ColumnHandle> constraint, Optional<Set<ColumnHandle>> desiredColumns)
     {
         SystemTableHandle tableHandle = (SystemTableHandle) table;
-        ConnectorTableLayout layout = new ConnectorTableLayout(new SystemTableLayoutHandle(tableHandle.getConnectorId(), tableHandle, constraint.getSummary()));
+        ConnectorTableLayout layout = new ConnectorTableLayout(new SystemTableLayoutHandle(tableHandle, constraint.getSummary()));
         return ImmutableList.of(new ConnectorTableLayoutResult(layout, constraint.getSummary()));
     }
 
@@ -123,7 +123,7 @@ public class SystemTablesMetadata
     public Map<String, ColumnHandle> getColumnHandles(ConnectorSession session, ConnectorTableHandle tableHandle)
     {
         ConnectorTableMetadata tableMetadata = checkAndGetTable(session, tableHandle).getTableMetadata();
-        return toSystemColumnHandles(((SystemTableHandle) tableHandle).getConnectorId(), tableMetadata);
+        return toSystemColumnHandles(tableMetadata);
     }
 
     private SystemTable checkAndGetTable(ConnectorSession session, ConnectorTableHandle tableHandle)

@@ -134,6 +134,9 @@ public class JdbcPageSink
         else if (javaType == Slice.class) {
             ((SliceWriteFunction) writeFunction).set(statement, parameterIndex, type.getSlice(block, position));
         }
+        else if (javaType == Block.class) {
+            ((BlockWriteFunction) writeFunction).set(statement, parameterIndex, (Block) type.getObject(block, position));
+        }
         else {
             throw new VerifyException(format("Unexpected type %s with java type %s", type, javaType.getName()));
         }
@@ -167,7 +170,10 @@ public class JdbcPageSink
         // rollback and close
         try (Connection connection = this.connection;
                 PreparedStatement statement = this.statement) {
-            connection.rollback();
+            // skip rollback if implicitly closed due to an error
+            if (!connection.isClosed()) {
+                connection.rollback();
+            }
         }
         catch (SQLException e) {
             throw new PrestoException(JDBC_ERROR, e);

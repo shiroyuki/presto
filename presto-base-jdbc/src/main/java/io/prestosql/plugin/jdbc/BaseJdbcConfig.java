@@ -16,6 +16,7 @@ package io.prestosql.plugin.jdbc;
 import io.airlift.configuration.Config;
 import io.airlift.configuration.ConfigSecuritySensitive;
 
+import javax.annotation.Nullable;
 import javax.validation.constraints.NotNull;
 
 public class BaseJdbcConfig
@@ -23,6 +24,8 @@ public class BaseJdbcConfig
     private String connectionUrl;
     private String connectionUser;
     private String connectionPassword;
+    private String userCredentialName;
+    private String passwordCredentialName;
 
     @NotNull
     public String getConnectionUrl()
@@ -37,6 +40,7 @@ public class BaseJdbcConfig
         return this;
     }
 
+    @Nullable
     public String getConnectionUser()
     {
         return connectionUser;
@@ -49,6 +53,7 @@ public class BaseJdbcConfig
         return this;
     }
 
+    @Nullable
     public String getConnectionPassword()
     {
         return connectionPassword;
@@ -59,6 +64,32 @@ public class BaseJdbcConfig
     public BaseJdbcConfig setConnectionPassword(String connectionPassword)
     {
         this.connectionPassword = connectionPassword;
+        return this;
+    }
+
+    @Nullable
+    public String getUserCredentialName()
+    {
+        return userCredentialName;
+    }
+
+    @Config("user-credential-name")
+    public BaseJdbcConfig setUserCredentialName(String userCredentialName)
+    {
+        this.userCredentialName = userCredentialName;
+        return this;
+    }
+
+    @Nullable
+    public String getPasswordCredentialName()
+    {
+        return passwordCredentialName;
+    }
+
+    @Config("password-credential-name")
+    public BaseJdbcConfig setPasswordCredentialName(String passwordCredentialName)
+    {
+        this.passwordCredentialName = passwordCredentialName;
         return this;
     }
 }

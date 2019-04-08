@@ -25,7 +25,9 @@ import io.prestosql.sql.planner.plan.ValuesNode;
 import java.util.List;
 
 import static io.prestosql.sql.planner.optimizations.PlanNodeSearcher.searchFrom;
+import static io.prestosql.sql.planner.plan.Patterns.LateralJoin.filter;
 import static io.prestosql.sql.planner.plan.Patterns.lateralJoin;
+import static io.prestosql.sql.tree.BooleanLiteral.TRUE_LITERAL;
 
 /**
  * This optimizer can rewrite correlated single row subquery to projection in a way described here:
@@ -47,7 +49,8 @@ import static io.prestosql.sql.planner.plan.Patterns.lateralJoin;
 public class TransformCorrelatedSingleRowSubqueryToProject
         implements Rule<LateralJoinNode>
 {
-    private static final Pattern<LateralJoinNode> PATTERN = lateralJoin();
+    private static final Pattern<LateralJoinNode> PATTERN = lateralJoin()
+            .with(filter().equalTo(TRUE_LITERAL));
 
     @Override
     public Pattern<LateralJoinNode> getPattern()
@@ -74,7 +77,7 @@ public class TransformCorrelatedSingleRowSubqueryToProject
         if (subqueryProjections.size() == 0) {
             return Result.ofPlanNode(parent.getInput());
         }
-        else if (subqueryProjections.size() == 1) {
+        if (subqueryProjections.size() == 1) {
             Assignments assignments = Assignments.builder()
                     .putIdentities(parent.getInput().getOutputSymbols())
                     .putAll(subqueryProjections.get(0).getAssignments())

@@ -55,10 +55,16 @@ public class TestPostgreSqlDistributedQueries
     }
 
     @Override
-    public void testInsert()
+    protected boolean supportsArrays()
     {
-        // Test not supported due to lack of support for array types.
-        // See TestPostgreSqlIntegrationSmokeTest for insertion tests.
+        return false;
+    }
+
+    @Override
+    public void testCommentTable()
+    {
+        // PostgreSQL connector currently does not support comment on table
+        assertQueryFails("COMMENT ON TABLE orders IS 'hello'", "This connector does not support setting table comments");
     }
 
     @Override

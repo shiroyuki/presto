@@ -39,7 +39,7 @@ import static com.google.common.collect.Iterables.getOnlyElement;
 import static com.google.common.util.concurrent.Uninterruptibles.sleepUninterruptibly;
 import static io.airlift.units.Duration.nanosSince;
 import static io.prestosql.SystemSessionProperties.QUERY_MAX_MEMORY;
-import static io.prestosql.connector.informationSchema.InformationSchemaMetadata.INFORMATION_SCHEMA;
+import static io.prestosql.connector.informationschema.InformationSchemaMetadata.INFORMATION_SCHEMA;
 import static io.prestosql.spi.type.VarcharType.VARCHAR;
 import static io.prestosql.testing.MaterializedResult.resultBuilder;
 import static io.prestosql.testing.TestingAccessControlManager.TestingPrivilegeType.ADD_COLUMN;
@@ -77,6 +77,11 @@ public abstract class AbstractTestDistributedQueries
     }
 
     protected boolean supportsViews()
+    {
+        return true;
+    }
+
+    protected boolean supportsArrays()
     {
         return true;
     }
@@ -353,6 +358,26 @@ public abstract class AbstractTestDistributedQueries
     }
 
     @Test
+    public void testCommentTable()
+    {
+        assertUpdate("CREATE TABLE test_comment(id integer)");
+
+        assertUpdate("COMMENT ON TABLE test_comment IS 'new comment'");
+        MaterializedResult materializedRows = computeActual("SHOW CREATE TABLE test_comment");
+        assertTrue(materializedRows.getMaterializedRows().get(0).getField(0).toString().contains("COMMENT 'new comment'"));
+
+        assertUpdate("COMMENT ON TABLE test_comment IS ''");
+        materializedRows = computeActual("SHOW CREATE TABLE test_comment");
+        assertTrue(materializedRows.getMaterializedRows().get(0).getField(0).toString().contains("COMMENT ''"));
+
+        assertUpdate("COMMENT ON TABLE test_comment IS NULL");
+        materializedRows = computeActual("SHOW CREATE TABLE test_comment");
+        assertFalse(materializedRows.getMaterializedRows().get(0).getField(0).toString().contains("COMMENT"));
+
+        assertUpdate("DROP TABLE test_comment");
+    }
+
+    @Test
     public void testRenameColumn()
     {
         assertUpdate("CREATE TABLE test_rename_column AS SELECT 123 x", 1);
@@ -457,16 +482,22 @@ public abstract class AbstractTestDistributedQueries
                 "SELECT 2 * count(*) FROM orders");
 
         assertUpdate("DROP TABLE test_insert");
+    }
 
-        assertUpdate("CREATE TABLE test_insert (a ARRAY<DOUBLE>, b ARRAY<BIGINT>)");
+    @Test
+    public void testInsertArray()
+    {
+        skipTestUnless(supportsArrays());
 
-        assertUpdate("INSERT INTO test_insert (a) VALUES (ARRAY[null])", 1);
-        assertUpdate("INSERT INTO test_insert (a) VALUES (ARRAY[1234])", 1);
-        assertQuery("SELECT a[1] FROM test_insert", "VALUES (null), (1234)");
+        assertUpdate("CREATE TABLE test_insert_array (a ARRAY<DOUBLE>, b ARRAY<BIGINT>)");
 
-        assertQueryFails("INSERT INTO test_insert (b) VALUES (ARRAY[1.23E1])", "Insert query has mismatched column types: .*");
+        assertUpdate("INSERT INTO test_insert_array (a) VALUES (ARRAY[null])", 1);
+        assertUpdate("INSERT INTO test_insert_array (a) VALUES (ARRAY[1234])", 1);
+        assertQuery("SELECT a[1] FROM test_insert_array", "VALUES (null), (1234)");
 
-        assertUpdate("DROP TABLE test_insert");
+        assertQueryFails("INSERT INTO test_insert_array (b) VALUES (ARRAY[1.23E1])", "Insert query has mismatched column types: .*");
+
+        assertUpdate("DROP TABLE test_insert_array");
     }
 
     @Test

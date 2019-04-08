@@ -22,7 +22,7 @@ import io.airlift.stats.Distribution;
 import io.airlift.stats.Distribution.DistributionSnapshot;
 import io.prestosql.SessionRepresentation;
 import io.prestosql.client.NodeVersion;
-import io.prestosql.connector.ConnectorId;
+import io.prestosql.connector.CatalogName;
 import io.prestosql.cost.PlanCostEstimate;
 import io.prestosql.cost.PlanNodeStatsEstimate;
 import io.prestosql.cost.StatsAndCosts;
@@ -68,7 +68,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static io.prestosql.execution.QueryState.QUEUED;
-import static io.prestosql.sql.planner.planPrinter.PlanPrinter.textDistributedPlan;
+import static io.prestosql.sql.planner.planprinter.PlanPrinter.textDistributedPlan;
 import static java.lang.Math.max;
 import static java.lang.Math.toIntExact;
 import static java.time.Duration.ofMillis;
@@ -89,6 +89,7 @@ public class QueryMonitor
     private final String environment;
     private final SessionPropertyManager sessionPropertyManager;
     private final FunctionRegistry functionRegistry;
+    private final Metadata metadata;
     private final int maxJsonLimit;
 
     @Inject
@@ -113,7 +114,8 @@ public class QueryMonitor
         this.serverAddress = requireNonNull(nodeInfo, "nodeInfo is null").getExternalAddress();
         this.environment = requireNonNull(nodeInfo, "nodeInfo is null").getEnvironment();
         this.sessionPropertyManager = requireNonNull(sessionPropertyManager, "sessionPropertyManager is null");
-        this.functionRegistry = requireNonNull(metadata, "metadata is null").getFunctionRegistry();
+        this.metadata = requireNonNull(metadata, "metadata is null");
+        this.functionRegistry = metadata.getFunctionRegistry();
         this.maxJsonLimit = toIntExact(requireNonNull(config, "config is null").getMaxOutputStageJsonSize().toBytes());
     }
 
@@ -148,6 +150,7 @@ public class QueryMonitor
                         ofMillis(0),
                         ofMillis(0),
                         ofMillis(0),
+                        Optional.empty(),
                         Optional.empty(),
                         Optional.empty(),
                         0,
@@ -227,6 +230,7 @@ public class QueryMonitor
                 ofMillis(queryStats.getTotalCpuTime().toMillis()),
                 ofMillis(queryStats.getTotalScheduledTime().toMillis()),
                 ofMillis(queryStats.getQueuedTime().toMillis()),
+                Optional.of(ofMillis(queryStats.getResourceWaitingTime().toMillis())),
                 Optional.of(ofMillis(queryStats.getAnalysisTime().toMillis())),
                 Optional.of(ofMillis(queryStats.getDistributedPlanningTime().toMillis())),
                 queryStats.getPeakUserMemoryReservation().toBytes(),
@@ -304,6 +308,7 @@ public class QueryMonitor
                 return Optional.of(textDistributedPlan(
                         queryInfo.getOutputStage().get(),
                         functionRegistry,
+                        Optional.empty(), // transaction is no longer active, so metadata is useless
                         queryInfo.getSession().toSession(sessionPropertyManager),
                         false));
             }
@@ -321,7 +326,7 @@ public class QueryMonitor
         ImmutableList.Builder<QueryInputMetadata> inputs = ImmutableList.builder();
         for (Input input : queryInfo.getInputs()) {
             inputs.add(new QueryInputMetadata(
-                    input.getConnectorId().getCatalogName(),
+                    input.getCatalogName().getCatalogName(),
                     input.getSchema(),
                     input.getTable(),
                     input.getColumns().stream()
@@ -339,7 +344,7 @@ public class QueryMonitor
 
             output = Optional.of(
                     new QueryOutputMetadata(
-                            queryInfo.getOutput().get().getConnectorId().getCatalogName(),
+                            queryInfo.getOutput().get().getCatalogName().getCatalogName(),
                             queryInfo.getOutput().get().getSchema(),
                             queryInfo.getOutput().get().getTable(),
                             tableFinishInfo.map(TableFinishInfo::getConnectorOutputMetadata),
@@ -389,7 +394,7 @@ public class QueryMonitor
                 mergedProperties.put(catalogEntry.getKey() + "." + entry.getKey(), entry.getValue());
             }
         }
-        for (Map.Entry<ConnectorId, Map<String, String>> catalogEntry : session.getCatalogProperties().entrySet()) {
+        for (Map.Entry<CatalogName, Map<String, String>> catalogEntry : session.getCatalogProperties().entrySet()) {
             for (Map.Entry<String, String> entry : catalogEntry.getValue().entrySet()) {
                 mergedProperties.put(catalogEntry.getKey().getCatalogName() + "." + entry.getKey(), entry.getValue());
             }
@@ -411,6 +416,9 @@ public class QueryMonitor
 
             // planning duration -- start to end of planning
             long planning = queryStats.getTotalPlanningTime().toMillis();
+
+            // Time spent waiting for required no. of worker nodes to be present
+            long waiting = queryStats.getResourceWaitingTime().toMillis();
 
             List<StageInfo> stages = StageInfo.getAllStages(queryInfo.getOutputStage());
             // long lastSchedulingCompletion = 0;
@@ -453,6 +461,7 @@ public class QueryMonitor
                     queryInfo.getSession().getTransactionId().map(TransactionId::toString).orElse(""),
                     elapsed,
                     planning,
+                    waiting,
                     scheduling,
                     running,
                     finishing,
@@ -484,6 +493,7 @@ public class QueryMonitor
                 0,
                 0,
                 0,
+                0,
                 queryStartTime,
                 queryEndTime);
     }
@@ -493,17 +503,19 @@ public class QueryMonitor
             String transactionId,
             long elapsedMillis,
             long planningMillis,
+            long waitingMillis,
             long schedulingMillis,
             long runningMillis,
             long finishingMillis,
             DateTime queryStartTime,
             DateTime queryEndTime)
     {
-        log.info("TIMELINE: Query %s :: Transaction:[%s] :: elapsed %sms :: planning %sms :: scheduling %sms :: running %sms :: finishing %sms :: begin %s :: end %s",
+        log.info("TIMELINE: Query %s :: Transaction:[%s] :: elapsed %sms :: planning %sms :: waiting %sms :: scheduling %sms :: running %sms :: finishing %sms :: begin %s :: end %s",
                 queryId,
                 transactionId,
                 elapsedMillis,
                 planningMillis,
+                waitingMillis,
                 schedulingMillis,
                 runningMillis,
                 finishingMillis,

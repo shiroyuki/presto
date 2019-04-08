@@ -17,9 +17,10 @@ import io.prestosql.Session;
 import io.prestosql.execution.warnings.WarningCollector;
 import io.prestosql.sql.planner.LogicalPlanner;
 import io.prestosql.sql.planner.Plan;
-import io.prestosql.sql.planner.planPrinter.PlanPrinter;
+import io.prestosql.sql.planner.planprinter.PlanPrinter;
 import io.prestosql.testing.LocalQueryRunner;
 
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.IntStream;
 
@@ -67,6 +68,7 @@ public class PlanDeterminismChecker
                     plan.getRoot(),
                     plan.getTypes(),
                     localQueryRunner.getMetadata().getFunctionRegistry(),
+                    Optional.of(localQueryRunner.getMetadata()),
                     plan.getStatsAndCosts(),
                     transactionSession,
                     0,

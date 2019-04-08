@@ -18,7 +18,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.Files;
 import io.prestosql.Session;
-import io.prestosql.connector.ConnectorId;
+import io.prestosql.connector.CatalogName;
 import io.prestosql.cost.StatsAndCosts;
 import io.prestosql.metadata.InsertTableHandle;
 import io.prestosql.metadata.Metadata;
@@ -33,16 +33,27 @@ import io.prestosql.spi.connector.ConnectorTableLayoutHandle;
 import io.prestosql.spi.connector.Constraint;
 import io.prestosql.spi.security.Identity;
 import io.prestosql.spi.security.SelectedRole;
+import io.prestosql.spi.type.BigintType;
+import io.prestosql.spi.type.BooleanType;
+import io.prestosql.spi.type.CharType;
+import io.prestosql.spi.type.DateType;
+import io.prestosql.spi.type.DecimalType;
+import io.prestosql.spi.type.DoubleType;
+import io.prestosql.spi.type.IntegerType;
+import io.prestosql.spi.type.SmallintType;
+import io.prestosql.spi.type.TimestampType;
+import io.prestosql.spi.type.TinyintType;
 import io.prestosql.spi.type.Type;
 import io.prestosql.spi.type.TypeSignature;
+import io.prestosql.spi.type.VarcharType;
 import io.prestosql.sql.planner.Plan;
 import io.prestosql.sql.planner.plan.ExchangeNode;
-import io.prestosql.sql.planner.planPrinter.IoPlanPrinter.ColumnConstraint;
-import io.prestosql.sql.planner.planPrinter.IoPlanPrinter.FormattedDomain;
-import io.prestosql.sql.planner.planPrinter.IoPlanPrinter.FormattedMarker;
-import io.prestosql.sql.planner.planPrinter.IoPlanPrinter.FormattedRange;
-import io.prestosql.sql.planner.planPrinter.IoPlanPrinter.IoPlan;
-import io.prestosql.sql.planner.planPrinter.IoPlanPrinter.IoPlan.TableColumnInfo;
+import io.prestosql.sql.planner.planprinter.IoPlanPrinter.ColumnConstraint;
+import io.prestosql.sql.planner.planprinter.IoPlanPrinter.FormattedDomain;
+import io.prestosql.sql.planner.planprinter.IoPlanPrinter.FormattedMarker;
+import io.prestosql.sql.planner.planprinter.IoPlanPrinter.FormattedRange;
+import io.prestosql.sql.planner.planprinter.IoPlanPrinter.IoPlan;
+import io.prestosql.sql.planner.planprinter.IoPlanPrinter.IoPlan.TableColumnInfo;
 import io.prestosql.testing.MaterializedResult;
 import io.prestosql.testing.MaterializedRow;
 import io.prestosql.tests.AbstractTestIntegrationSmokeTest;
@@ -106,7 +117,7 @@ import static io.prestosql.spi.type.VarcharType.createUnboundedVarcharType;
 import static io.prestosql.spi.type.VarcharType.createVarcharType;
 import static io.prestosql.sql.analyzer.FeaturesConfig.JoinDistributionType.BROADCAST;
 import static io.prestosql.sql.planner.optimizations.PlanNodeSearcher.searchFrom;
-import static io.prestosql.sql.planner.planPrinter.PlanPrinter.textLogicalPlan;
+import static io.prestosql.sql.planner.planprinter.PlanPrinter.textLogicalPlan;
 import static io.prestosql.testing.MaterializedResult.resultBuilder;
 import static io.prestosql.testing.TestingSession.testSessionBuilder;
 import static io.prestosql.testing.assertions.Assert.assertEquals;
@@ -230,6 +241,51 @@ public class TestHiveIntegrationSmokeTest
                         Optional.of(new CatalogSchemaTableName(catalog, "tpch", "test_orders"))));
 
         assertUpdate("DROP TABLE test_orders");
+    }
+
+    @Test
+    public void testIoExplainWithPrimitiveTypes()
+    {
+        Map<Object, Type> data = new HashMap<>();
+        data.put("foo", VarcharType.createUnboundedVarcharType());
+        data.put(Byte.toString((byte) (Byte.MAX_VALUE / 2)), TinyintType.TINYINT);
+        data.put(Short.toString((short) (Short.MAX_VALUE / 2)), SmallintType.SMALLINT);
+        data.put(Integer.toString(Integer.MAX_VALUE / 2), IntegerType.INTEGER);
+        data.put(Long.toString(Long.MAX_VALUE / 2), BigintType.BIGINT);
+        data.put(Boolean.TRUE.toString(), BooleanType.BOOLEAN);
+        data.put("bar", CharType.createCharType(3));
+        data.put("1.2345678901234578E14", DoubleType.DOUBLE);
+        data.put("123456789012345678901234.567", DecimalType.createDecimalType(30, 3));
+        data.put("2019-01-01", DateType.DATE);
+        data.put("2019-01-01 23:22:21.123", TimestampType.TIMESTAMP);
+        for (Map.Entry<Object, Type> entry : data.entrySet()) {
+            @Language("SQL") String query = String.format(
+                    "CREATE TABLE test_types_table  WITH (partitioned_by = ARRAY['my_col']) AS " +
+                            "SELECT 'foo' my_non_partition_col, CAST('%s' AS %s) my_col",
+                    entry.getKey(),
+                    entry.getValue().getDisplayName());
+
+            assertUpdate(query, 1);
+            MaterializedResult result = computeActual("EXPLAIN (TYPE IO, FORMAT JSON) SELECT * FROM test_types_table");
+            assertEquals(
+                    jsonCodec(IoPlan.class).fromJson((String) getOnlyElement(result.getOnlyColumnAsSet())),
+                    new IoPlan(
+                            ImmutableSet.of(new TableColumnInfo(
+                                    new CatalogSchemaTableName(catalog, "tpch", "test_types_table"),
+                                    ImmutableSet.of(
+                                            new ColumnConstraint(
+                                                    "my_col",
+                                                    entry.getValue().getTypeSignature(),
+                                                    new FormattedDomain(
+                                                            false,
+                                                            ImmutableSet.of(
+                                                                    new FormattedRange(
+                                                                            new FormattedMarker(Optional.of(entry.getKey().toString()), EXACTLY),
+                                                                            new FormattedMarker(Optional.of(entry.getKey().toString()), EXACTLY)))))))),
+                            Optional.empty()));
+
+            assertUpdate("DROP TABLE test_types_table");
+        }
     }
 
     @Test
@@ -1976,6 +2032,72 @@ public class TestHiveIntegrationSmokeTest
     }
 
     @Test
+    public void testCommentTable()
+    {
+        String createTableSql = format("" +
+                        "CREATE TABLE %s.%s.%s (\n" +
+                        "   c1 bigint\n" +
+                        ")\n" +
+                        "WITH (\n" +
+                        "   format = 'RCBINARY'\n" +
+                        ")",
+                getSession().getCatalog().get(),
+                getSession().getSchema().get(),
+                "test_comment_table");
+
+        assertUpdate(createTableSql);
+        MaterializedResult actualResult = computeActual("SHOW CREATE TABLE test_comment_table");
+        assertEquals(getOnlyElement(actualResult.getOnlyColumnAsSet()), createTableSql);
+
+        assertUpdate("COMMENT ON TABLE test_comment_table IS 'new comment'");
+        String commentedCreateTableSql = format("" +
+                        "CREATE TABLE %s.%s.%s (\n" +
+                        "   c1 bigint\n" +
+                        ")\n" +
+                        "COMMENT 'new comment'\n" +
+                        "WITH (\n" +
+                        "   format = 'RCBINARY'\n" +
+                        ")",
+                getSession().getCatalog().get(),
+                getSession().getSchema().get(),
+                "test_comment_table");
+        actualResult = computeActual("SHOW CREATE TABLE test_comment_table");
+        assertEquals(getOnlyElement(actualResult.getOnlyColumnAsSet()), commentedCreateTableSql);
+
+        assertUpdate("COMMENT ON TABLE test_comment_table IS 'updated comment'");
+        commentedCreateTableSql = format("" +
+                        "CREATE TABLE %s.%s.%s (\n" +
+                        "   c1 bigint\n" +
+                        ")\n" +
+                        "COMMENT 'updated comment'\n" +
+                        "WITH (\n" +
+                        "   format = 'RCBINARY'\n" +
+                        ")",
+                getSession().getCatalog().get(),
+                getSession().getSchema().get(),
+                "test_comment_table");
+        actualResult = computeActual("SHOW CREATE TABLE test_comment_table");
+        assertEquals(getOnlyElement(actualResult.getOnlyColumnAsSet()), commentedCreateTableSql);
+
+        assertUpdate("COMMENT ON TABLE test_comment_table IS ''");
+        commentedCreateTableSql = format("" +
+                        "CREATE TABLE %s.%s.%s (\n" +
+                        "   c1 bigint\n" +
+                        ")\n" +
+                        "COMMENT ''\n" +
+                        "WITH (\n" +
+                        "   format = 'RCBINARY'\n" +
+                        ")",
+                getSession().getCatalog().get(),
+                getSession().getSchema().get(),
+                "test_comment_table");
+        actualResult = computeActual("SHOW CREATE TABLE test_comment_table");
+        assertEquals(getOnlyElement(actualResult.getOnlyColumnAsSet()), commentedCreateTableSql);
+
+        assertUpdate("DROP TABLE test_comment_table");
+    }
+
+    @Test
     public void testPathHiddenColumn()
     {
         testWithAllStorageFormats(this::testPathHiddenColumn);
@@ -2874,7 +2996,7 @@ public class TestHiveIntegrationSmokeTest
             if (actualRemoteExchangesCount != expectedRemoteExchangesCount) {
                 Session session = getSession();
                 Metadata metadata = ((DistributedQueryRunner) getQueryRunner()).getCoordinator().getMetadata();
-                String formattedPlan = textLogicalPlan(plan.getRoot(), plan.getTypes(), metadata.getFunctionRegistry(), StatsAndCosts.empty(), session, 0);
+                String formattedPlan = textLogicalPlan(plan.getRoot(), plan.getTypes(), metadata.getFunctionRegistry(), Optional.of(metadata), StatsAndCosts.empty(), session, 0);
                 throw new AssertionError(format(
                         "Expected [\n%s\n] remote exchanges but found [\n%s\n] remote exchanges. Actual plan is [\n\n%s\n]",
                         expectedRemoteExchangesCount,
@@ -3720,7 +3842,7 @@ public class TestHiveIntegrationSmokeTest
 
     private static ConnectorSession getConnectorSession(Session session)
     {
-        return session.toConnectorSession(new ConnectorId(session.getCatalog().get()));
+        return session.toConnectorSession(new CatalogName(session.getCatalog().get()));
     }
 
     private void testWithAllStorageFormats(BiConsumer<Session, HiveStorageFormat> test)

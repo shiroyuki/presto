@@ -15,11 +15,10 @@ package io.prestosql.split;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import io.prestosql.connector.ConnectorId;
+import io.prestosql.connector.CatalogName;
 import io.prestosql.execution.Lifespan;
 import io.prestosql.metadata.Split;
 import io.prestosql.spi.connector.ConnectorPartitionHandle;
-import io.prestosql.spi.connector.ConnectorTransactionHandle;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,15 +41,9 @@ public class BufferingSplitSource
     }
 
     @Override
-    public ConnectorId getConnectorId()
+    public CatalogName getCatalogName()
     {
-        return source.getConnectorId();
-    }
-
-    @Override
-    public ConnectorTransactionHandle getTransactionHandle()
-    {
-        return source.getTransactionHandle();
+        return source.getCatalogName();
     }
 
     @Override

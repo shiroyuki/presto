@@ -18,7 +18,8 @@ import com.google.common.collect.ImmutableMap;
 import io.airlift.units.DataSize;
 import io.prestosql.SequencePageBuilder;
 import io.prestosql.Session;
-import io.prestosql.connector.ConnectorId;
+import io.prestosql.connector.CatalogName;
+import io.prestosql.execution.Lifespan;
 import io.prestosql.metadata.Metadata;
 import io.prestosql.metadata.Split;
 import io.prestosql.operator.ScanFilterAndProjectOperator.ScanFilterAndProjectOperatorFactory;
@@ -41,7 +42,6 @@ import io.prestosql.sql.tree.Expression;
 import io.prestosql.testing.TestingMetadata.TestingColumnHandle;
 import io.prestosql.testing.TestingSession;
 import io.prestosql.testing.TestingTaskContext;
-import io.prestosql.testing.TestingTransactionHandle;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -79,6 +79,7 @@ import static io.prestosql.metadata.MetadataManager.createTestMetadataManager;
 import static io.prestosql.operator.scalar.FunctionAssertions.createExpression;
 import static io.prestosql.spi.type.BigintType.BIGINT;
 import static io.prestosql.spi.type.VarcharType.VARCHAR;
+import static io.prestosql.testing.TestingHandles.TEST_TABLE_HANDLE;
 import static io.prestosql.testing.TestingSplit.createLocalSplit;
 import static java.util.Locale.ENGLISH;
 import static java.util.concurrent.Executors.newCachedThreadPool;
@@ -168,9 +169,10 @@ public class BenchmarkScanFilterAndProjectOperator
                     0,
                     new PlanNodeId("test"),
                     new PlanNodeId("test_source"),
-                    (session, split, columns) -> new FixedPageSource(inputPages),
+                    (session, split, table, columns) -> new FixedPageSource(inputPages),
                     () -> cursorProcessor,
                     () -> pageProcessor,
+                    TEST_TABLE_HANDLE,
                     columnHandles,
                     types,
                     FILTER_AND_PROJECT_MIN_OUTPUT_PAGE_SIZE,
@@ -258,13 +260,9 @@ public class BenchmarkScanFilterAndProjectOperator
         SourceOperator operator = (SourceOperator) context.getOperatorFactory().createOperator(driverContext);
 
         ImmutableList.Builder<Page> outputPages = ImmutableList.builder();
-        operator.addSplit(new Split(new ConnectorId("test"), TestingTransactionHandle.create(), createLocalSplit()));
+        operator.addSplit(new Split(new CatalogName("test"), createLocalSplit(), Lifespan.taskWide()));
 
         for (int loops = 0; !operator.isFinished() && loops < 1_000_000; loops++) {
-            if (operator.isFinished()) {
-                break;
-            }
-
             Page outputPage = operator.getOutput();
             if (outputPage != null) {
                 outputPages.add(outputPage);

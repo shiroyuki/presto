@@ -232,6 +232,11 @@ public class Patterns
         {
             return property("subquery", LateralJoinNode::getSubquery);
         }
+
+        public static Property<LateralJoinNode, Lookup, Expression> filter()
+        {
+            return property("filter", LateralJoinNode::getFilter);
+        }
     }
 
     public static class Limit
@@ -273,6 +278,23 @@ public class Patterns
         public static Property<ValuesNode, Lookup, List<List<Expression>>> rows()
         {
             return property("rows", ValuesNode::getRows);
+        }
+    }
+
+    public static class SemiJoin
+    {
+        public static Property<SemiJoinNode, Lookup, PlanNode> getSource()
+        {
+            return property(
+                    "source",
+                    (SemiJoinNode semiJoin, Lookup lookup) -> lookup.resolve(semiJoin.getSource()));
+        }
+
+        public static Property<SemiJoinNode, Lookup, PlanNode> getFilteringSource()
+        {
+            return property(
+                    "filteringSource",
+                    (SemiJoinNode semiJoin, Lookup lookup) -> lookup.resolve(semiJoin.getFilteringSource()));
         }
     }
 }

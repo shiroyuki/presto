@@ -96,7 +96,7 @@ public interface ConnectorMetadata
             Constraint<ColumnHandle> constraint,
             Optional<Set<ColumnHandle>> desiredColumns)
     {
-        if (!usesLegacyTableLayouts()) {
+        if (usesLegacyTableLayouts()) {
             throw new IllegalStateException("Connector uses legacy Table Layout but doesn't implement getTableLayouts()");
         }
 
@@ -106,7 +106,7 @@ public interface ConnectorMetadata
     @Deprecated
     default ConnectorTableLayout getTableLayout(ConnectorSession session, ConnectorTableLayoutHandle handle)
     {
-        if (!usesLegacyTableLayouts()) {
+        if (usesLegacyTableLayouts()) {
             throw new IllegalStateException("Connector uses legacy Table Layout but doesn't implement getTableLayout()");
         }
 
@@ -246,6 +246,14 @@ public interface ConnectorMetadata
     default void renameTable(ConnectorSession session, ConnectorTableHandle tableHandle, SchemaTableName newTableName)
     {
         throw new PrestoException(NOT_SUPPORTED, "This connector does not support renaming tables");
+    }
+
+    /**
+     * Comments to the specified table
+     */
+    default void setTableComment(ConnectorSession session, ConnectorTableHandle tableHandle, Optional<String> comment)
+    {
+        throw new PrestoException(NOT_SUPPORTED, "This connector does not support setting table comments");
     }
 
     /**
@@ -599,6 +607,25 @@ public interface ConnectorMetadata
      * non-empty result with the "limit guaranteed" flag set to true.
      */
     default Optional<LimitApplicationResult<ConnectorTableHandle>> applyLimit(ConnectorTableHandle handle, long limit)
+    {
+        return Optional.empty();
+    }
+
+    /**
+     * Attempt to push down the provided constraint into the table. This method is provided as replacement to
+     * {@link ConnectorMetadata#getTableLayouts(ConnectorSession, ConnectorTableHandle, Constraint, Optional)} to ease
+     * migration for the legacy API.
+     * <p>
+     * Connectors can indicate whether they don't support predicate pushdown or that the action had no effect
+     * by returning {@link Optional#empty()}. Connectors should expect this method to be called multiple times
+     * during the optimization of a given query.
+     * <p>
+     * <b>Note</b>: it's critical for connectors to return Optional.empty() if calling this method has no effect for that
+     * invocation, even if the connector generally supports pushdown. Doing otherwise can cause the optimizer
+     * to loop indefinitely.
+     * </p>
+     */
+    default Optional<ConstraintApplicationResult<ConnectorTableHandle>> applyFilter(ConnectorTableHandle handle, Constraint<ColumnHandle> constraint)
     {
         return Optional.empty();
     }

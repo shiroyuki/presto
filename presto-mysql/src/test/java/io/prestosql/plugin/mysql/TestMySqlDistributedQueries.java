@@ -56,6 +56,12 @@ public class TestMySqlDistributedQueries
     }
 
     @Override
+    protected boolean supportsArrays()
+    {
+        return false;
+    }
+
+    @Override
     public void testShowColumns()
     {
         MaterializedResult actual = computeActual("SHOW COLUMNS FROM orders");
@@ -88,10 +94,10 @@ public class TestMySqlDistributedQueries
     }
 
     @Override
-    public void testInsert()
+    public void testCommentTable()
     {
-        // Test not supported due to lack of support for array types.
-        // See TestMySqlIntegrationSmokeTest for insertion tests.
+        // MySQL connector currently does not support comment on table
+        assertQueryFails("COMMENT ON TABLE orders IS 'hello'", "This connector does not support setting table comments");
     }
 
     @Override

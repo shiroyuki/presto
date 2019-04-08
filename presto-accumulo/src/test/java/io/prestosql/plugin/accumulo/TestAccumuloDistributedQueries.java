@@ -133,6 +133,20 @@ public class TestAccumuloDistributedQueries
         assertUpdate("DROP TABLE test_insert");
     }
 
+    @Override // Overridden because we currently do not support arrays with null elements
+    public void testInsertArray()
+    {
+        assertUpdate("CREATE TABLE test_insert_array (a ARRAY<DOUBLE>, b ARRAY<BIGINT>)");
+
+        // assertUpdate("INSERT INTO test_insert_array (a) VALUES (ARRAY[null])", 1); TODO support ARRAY with null elements
+        assertUpdate("INSERT INTO test_insert_array (a) VALUES (ARRAY[1234])", 1);
+        assertQuery("SELECT a[1] FROM test_insert_array", "VALUES (1234)");
+
+        assertQueryFails("INSERT INTO test_insert_array (b) VALUES (ARRAY[1.23E1])", "Insert query has mismatched column types: .*");
+
+        assertUpdate("DROP TABLE test_insert_array");
+    }
+
     @Test
     public void testInsertDuplicateRows()
     {
@@ -314,5 +328,12 @@ public class TestAccumuloDistributedQueries
     public void testDescribeOutputNamedAndUnnamed()
     {
         // this connector uses a non-canonical type for varchar columns in tpch
+    }
+
+    @Override
+    public void testCommentTable()
+    {
+        // Accumulo connector currently does not support comment on table
+        assertQueryFails("COMMENT ON TABLE orders IS 'hello'", "This connector does not support setting table comments");
     }
 }

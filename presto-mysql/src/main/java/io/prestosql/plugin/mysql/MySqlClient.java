@@ -42,13 +42,14 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 
+import static com.google.common.base.Verify.verify;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static com.mysql.jdbc.SQLError.SQL_STATE_ER_TABLE_EXISTS_ERROR;
 import static com.mysql.jdbc.SQLError.SQL_STATE_SYNTAX_ERROR;
 import static io.prestosql.plugin.jdbc.DriverConnectionFactory.basicConnectionProperties;
 import static io.prestosql.plugin.jdbc.JdbcErrorCode.JDBC_ERROR;
 import static io.prestosql.plugin.jdbc.StandardColumnMappings.realWriteFunction;
-import static io.prestosql.plugin.jdbc.StandardColumnMappings.timestampWriteFunction;
+import static io.prestosql.plugin.jdbc.StandardColumnMappings.timestampWriteFunctionUsingSqlTimestamp;
 import static io.prestosql.plugin.jdbc.StandardColumnMappings.varbinaryWriteFunction;
 import static io.prestosql.plugin.jdbc.StandardColumnMappings.varcharWriteFunction;
 import static io.prestosql.spi.StandardErrorCode.ALREADY_EXISTS;
@@ -89,7 +90,12 @@ public class MySqlClient
             connectionProperties.setProperty("connectTimeout", String.valueOf(mySqlConfig.getConnectionTimeout().toMillis()));
         }
 
-        return new DriverConnectionFactory(new Driver(), config.getConnectionUrl(), connectionProperties);
+        return new DriverConnectionFactory(
+                new Driver(),
+                config.getConnectionUrl(),
+                Optional.ofNullable(config.getUserCredentialName()),
+                Optional.ofNullable(config.getPasswordCredentialName()),
+                connectionProperties);
     }
 
     @Override
@@ -167,7 +173,8 @@ public class MySqlClient
             throw new PrestoException(NOT_SUPPORTED, "Unsupported column type: " + type.getDisplayName());
         }
         if (TIMESTAMP.equals(type)) {
-            return WriteMapping.longMapping("datetime", timestampWriteFunction());
+            // TODO use `timestampWriteFunction`
+            return WriteMapping.longMapping("datetime", timestampWriteFunctionUsingSqlTimestamp(session));
         }
         if (VARBINARY.equals(type)) {
             return WriteMapping.sliceMapping("mediumblob", varbinaryWriteFunction());
@@ -237,6 +244,7 @@ public class MySqlClient
     {
         // MySQL doesn't support specifying the catalog name in a rename. By setting the
         // catalogName parameter to null, it will be omitted in the ALTER TABLE statement.
-        renameTable(identity, null, handle.getSchemaName(), handle.getTableName(), newTableName);
+        verify(handle.getSchemaName() == null);
+        renameTable(identity, null, handle.getCatalogName(), handle.getTableName(), newTableName);
     }
 }

@@ -15,7 +15,7 @@ package io.prestosql.metadata;
 
 import io.airlift.slice.Slice;
 import io.prestosql.Session;
-import io.prestosql.connector.ConnectorId;
+import io.prestosql.connector.CatalogName;
 import io.prestosql.spi.block.BlockEncodingSerde;
 import io.prestosql.spi.connector.CatalogSchemaName;
 import io.prestosql.spi.connector.ColumnHandle;
@@ -24,6 +24,7 @@ import io.prestosql.spi.connector.ConnectorCapabilities;
 import io.prestosql.spi.connector.ConnectorOutputMetadata;
 import io.prestosql.spi.connector.ConnectorTableMetadata;
 import io.prestosql.spi.connector.Constraint;
+import io.prestosql.spi.connector.ConstraintApplicationResult;
 import io.prestosql.spi.connector.LimitApplicationResult;
 import io.prestosql.spi.connector.SystemTable;
 import io.prestosql.spi.predicate.TupleDomain;
@@ -212,6 +213,12 @@ public abstract class AbstractMockMetadata
     }
 
     @Override
+    public void setTableComment(Session session, TableHandle tableHandle, Optional<String> comment)
+    {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public void renameColumn(Session session, TableHandle tableHandle, ColumnHandle source, String target)
     {
         throw new UnsupportedOperationException();
@@ -278,7 +285,7 @@ public abstract class AbstractMockMetadata
     }
 
     @Override
-    public void beginQuery(Session session, Set<ConnectorId> connectors)
+    public void beginQuery(Session session, Set<CatalogName> connectors)
     {
         throw new UnsupportedOperationException();
     }
@@ -332,13 +339,13 @@ public abstract class AbstractMockMetadata
     }
 
     @Override
-    public Optional<ConnectorId> getCatalogHandle(Session session, String catalogName)
+    public Optional<CatalogName> getCatalogHandle(Session session, String catalogName)
     {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public Map<String, ConnectorId> getCatalogNames(Session session)
+    public Map<String, CatalogName> getCatalogNames(Session session)
     {
         throw new UnsupportedOperationException();
     }
@@ -512,7 +519,7 @@ public abstract class AbstractMockMetadata
     }
 
     @Override
-    public Set<ConnectorCapabilities> getConnectorCapabilities(Session session, ConnectorId catalogName)
+    public Set<ConnectorCapabilities> getConnectorCapabilities(Session session, CatalogName catalogName)
     {
         throw new UnsupportedOperationException();
     }
@@ -525,6 +532,12 @@ public abstract class AbstractMockMetadata
 
     @Override
     public Optional<LimitApplicationResult<TableHandle>> applyLimit(Session session, TableHandle table, long limit)
+    {
+        return Optional.empty();
+    }
+
+    @Override
+    public Optional<ConstraintApplicationResult<TableHandle>> applyFilter(Session session, TableHandle table, Constraint<ColumnHandle> constraint)
     {
         return Optional.empty();
     }

@@ -22,19 +22,19 @@ import io.airlift.testing.Assertions;
 import io.airlift.units.Duration;
 import io.prestosql.Session;
 import io.prestosql.Session.SessionBuilder;
-import io.prestosql.connector.ConnectorId;
+import io.prestosql.connector.CatalogName;
 import io.prestosql.cost.StatsCalculator;
 import io.prestosql.execution.QueryInfo;
 import io.prestosql.execution.QueryManager;
 import io.prestosql.execution.warnings.WarningCollector;
 import io.prestosql.metadata.AllNodes;
 import io.prestosql.metadata.Catalog;
+import io.prestosql.metadata.InternalNode;
 import io.prestosql.metadata.Metadata;
 import io.prestosql.metadata.QualifiedObjectName;
 import io.prestosql.metadata.SessionPropertyManager;
 import io.prestosql.server.BasicQueryInfo;
 import io.prestosql.server.testing.TestingPrestoServer;
-import io.prestosql.spi.Node;
 import io.prestosql.spi.Plugin;
 import io.prestosql.spi.QueryId;
 import io.prestosql.split.PageSourceManager;
@@ -176,7 +176,7 @@ public class DistributedQueryRunner
 
             SessionPropertyManager sessionPropertyManager = server.getMetadata().getSessionPropertyManager();
             sessionPropertyManager.addSystemSessionProperties(TEST_SYSTEM_PROPERTIES);
-            sessionPropertyManager.addConnectorSessionProperties(bogusTestingCatalog.getConnectorId(), TEST_CATALOG_PROPERTIES);
+            sessionPropertyManager.addConnectorSessionProperties(bogusTestingCatalog.getConnectorCatalogName(), TEST_CATALOG_PROPERTIES);
         }
     }
 
@@ -305,11 +305,11 @@ public class DistributedQueryRunner
     public void createCatalog(String catalogName, String connectorName, Map<String, String> properties)
     {
         long start = System.nanoTime();
-        Set<ConnectorId> connectorIds = new HashSet<>();
+        Set<CatalogName> catalogNames = new HashSet<>();
         for (TestingPrestoServer server : servers) {
-            connectorIds.add(server.createCatalog(catalogName, connectorName, properties));
+            catalogNames.add(server.createCatalog(catalogName, connectorName, properties));
         }
-        ConnectorId connectorId = getOnlyElement(connectorIds);
+        CatalogName connectorId = getOnlyElement(catalogNames);
         log.info("Created catalog %s (%s) in %s", catalogName, connectorId, nanosSince(start));
 
         // wait for all nodes to announce the new catalog
@@ -327,11 +327,11 @@ public class DistributedQueryRunner
         log.info("Announced catalog %s (%s) in %s", catalogName, connectorId, nanosSince(start));
     }
 
-    private boolean isConnectionVisibleToAllNodes(ConnectorId connectorId)
+    private boolean isConnectionVisibleToAllNodes(CatalogName catalogName)
     {
         for (TestingPrestoServer server : servers) {
             server.refreshNodes();
-            Set<Node> activeNodesWithConnector = server.getActiveNodesWithConnector(connectorId);
+            Set<InternalNode> activeNodesWithConnector = server.getActiveNodesWithConnector(catalogName);
             if (activeNodesWithConnector.size() != servers.size()) {
                 return false;
             }

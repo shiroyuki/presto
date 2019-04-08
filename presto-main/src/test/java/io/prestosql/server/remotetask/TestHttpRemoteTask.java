@@ -28,7 +28,7 @@ import io.airlift.json.JsonCodec;
 import io.airlift.json.JsonModule;
 import io.airlift.units.Duration;
 import io.prestosql.client.NodeVersion;
-import io.prestosql.connector.ConnectorId;
+import io.prestosql.connector.CatalogName;
 import io.prestosql.execution.Lifespan;
 import io.prestosql.execution.NodeTaskMap;
 import io.prestosql.execution.QueryManagerConfig;
@@ -44,7 +44,7 @@ import io.prestosql.execution.TestSqlTaskManager;
 import io.prestosql.execution.buffer.OutputBuffers;
 import io.prestosql.metadata.HandleJsonModule;
 import io.prestosql.metadata.HandleResolver;
-import io.prestosql.metadata.PrestoNode;
+import io.prestosql.metadata.InternalNode;
 import io.prestosql.metadata.Split;
 import io.prestosql.server.HttpRemoteTaskFactory;
 import io.prestosql.server.TaskUpdateRequest;
@@ -55,7 +55,6 @@ import io.prestosql.sql.analyzer.FeaturesConfig;
 import io.prestosql.sql.planner.plan.PlanNodeId;
 import io.prestosql.testing.TestingHandleResolver;
 import io.prestosql.testing.TestingSplit;
-import io.prestosql.testing.TestingTransactionHandle;
 import io.prestosql.type.TypeDeserializer;
 import io.prestosql.type.TypeRegistry;
 import org.testng.annotations.Test;
@@ -153,7 +152,7 @@ public class TestHttpRemoteTask
         remoteTask.start();
 
         Lifespan lifespan = Lifespan.driverGroup(3);
-        remoteTask.addSplits(ImmutableMultimap.of(TABLE_SCAN_NODE_ID, new Split(new ConnectorId("test"), TestingTransactionHandle.create(), TestingSplit.createLocalSplit(), lifespan)));
+        remoteTask.addSplits(ImmutableMultimap.of(TABLE_SCAN_NODE_ID, new Split(new CatalogName("test"), TestingSplit.createLocalSplit(), lifespan)));
         poll(() -> testingTaskResource.getTaskSource(TABLE_SCAN_NODE_ID) != null);
         poll(() -> testingTaskResource.getTaskSource(TABLE_SCAN_NODE_ID).getSplits().size() == 1);
 
@@ -208,7 +207,7 @@ public class TestHttpRemoteTask
         return httpRemoteTaskFactory.createRemoteTask(
                 TEST_SESSION,
                 new TaskId("test", 1, 2),
-                new PrestoNode("node-id", URI.create("http://fake.invalid/"), new NodeVersion("version"), false),
+                new InternalNode("node-id", URI.create("http://fake.invalid/"), new NodeVersion("version"), false),
                 TaskTestUtils.PLAN_FRAGMENT,
                 ImmutableMultimap.of(),
                 OptionalInt.empty(),

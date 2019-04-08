@@ -15,9 +15,9 @@ package io.prestosql.connector.system;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import io.prestosql.metadata.InternalNode;
 import io.prestosql.metadata.InternalNodeManager;
 import io.prestosql.spi.HostAddress;
-import io.prestosql.spi.Node;
 import io.prestosql.spi.PrestoException;
 import io.prestosql.spi.connector.ColumnHandle;
 import io.prestosql.spi.connector.ConnectorSession;
@@ -33,7 +33,7 @@ import io.prestosql.spi.predicate.TupleDomain;
 
 import java.util.Set;
 
-import static io.prestosql.spi.NodeState.ACTIVE;
+import static io.prestosql.metadata.NodeState.ACTIVE;
 import static io.prestosql.spi.StandardErrorCode.NOT_FOUND;
 import static io.prestosql.spi.connector.SystemTable.Distribution.ALL_COORDINATORS;
 import static io.prestosql.spi.connector.SystemTable.Distribution.ALL_NODES;
@@ -67,21 +67,21 @@ public class SystemSplitManager
         Distribution tableDistributionMode = systemTable.getDistribution();
         if (tableDistributionMode == SINGLE_COORDINATOR) {
             HostAddress address = nodeManager.getCurrentNode().getHostAndPort();
-            ConnectorSplit split = new SystemSplit(tableHandle.getConnectorId(), tableHandle, address, constraint);
+            ConnectorSplit split = new SystemSplit(address, constraint);
             return new FixedSplitSource(ImmutableList.of(split));
         }
 
         ImmutableList.Builder<ConnectorSplit> splits = ImmutableList.builder();
-        ImmutableSet.Builder<Node> nodes = ImmutableSet.builder();
+        ImmutableSet.Builder<InternalNode> nodes = ImmutableSet.builder();
         if (tableDistributionMode == ALL_COORDINATORS) {
             nodes.addAll(nodeManager.getCoordinators());
         }
         else if (tableDistributionMode == ALL_NODES) {
             nodes.addAll(nodeManager.getNodes(ACTIVE));
         }
-        Set<Node> nodeSet = nodes.build();
-        for (Node node : nodeSet) {
-            splits.add(new SystemSplit(tableHandle.getConnectorId(), tableHandle, node.getHostAndPort(), constraint));
+        Set<InternalNode> nodeSet = nodes.build();
+        for (InternalNode node : nodeSet) {
+            splits.add(new SystemSplit(node.getHostAndPort(), constraint));
         }
         return new FixedSplitSource(splits.build());
     }

@@ -22,12 +22,14 @@ import io.airlift.slice.Slice;
 import io.airlift.slice.Slices;
 import io.airlift.units.DataSize;
 import io.prestosql.Session;
-import io.prestosql.connector.ConnectorId;
+import io.prestosql.connector.CatalogName;
+import io.prestosql.execution.Lifespan;
 import io.prestosql.execution.warnings.WarningCollector;
 import io.prestosql.metadata.FunctionListBuilder;
 import io.prestosql.metadata.Metadata;
 import io.prestosql.metadata.Split;
 import io.prestosql.metadata.SqlFunction;
+import io.prestosql.metadata.TableHandle;
 import io.prestosql.operator.DriverContext;
 import io.prestosql.operator.DriverYieldSignal;
 import io.prestosql.operator.FilterAndProjectOperator.FilterAndProjectOperatorFactory;
@@ -79,7 +81,6 @@ import io.prestosql.sql.tree.NodeRef;
 import io.prestosql.sql.tree.SymbolReference;
 import io.prestosql.testing.LocalQueryRunner;
 import io.prestosql.testing.MaterializedResult;
-import io.prestosql.testing.TestingTransactionHandle;
 import io.prestosql.type.TypeRegistry;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
@@ -131,6 +132,7 @@ import static io.prestosql.sql.analyzer.ExpressionAnalyzer.analyzeExpressions;
 import static io.prestosql.sql.planner.iterative.rule.CanonicalizeExpressionRewriter.canonicalizeExpression;
 import static io.prestosql.sql.relational.Expressions.constant;
 import static io.prestosql.sql.relational.SqlToRowExpressionTranslator.translate;
+import static io.prestosql.testing.TestingHandles.TEST_TABLE_HANDLE;
 import static io.prestosql.testing.TestingTaskContext.createTaskContext;
 import static io.prestosql.type.UnknownType.UNKNOWN;
 import static java.lang.String.format;
@@ -190,19 +192,6 @@ public final class FunctionAssertions
             .put(new Symbol("bound_binary_literal"), 8)
             .put(new Symbol("bound_integer"), 9)
             .build();
-
-    private static final TypeProvider SYMBOL_TYPES = TypeProvider.copyOf(ImmutableMap.<Symbol, Type>builder()
-            .put(new Symbol("bound_long"), BIGINT)
-            .put(new Symbol("bound_string"), VARCHAR)
-            .put(new Symbol("bound_double"), DOUBLE)
-            .put(new Symbol("bound_boolean"), BOOLEAN)
-            .put(new Symbol("bound_timestamp"), BIGINT)
-            .put(new Symbol("bound_pattern"), VARCHAR)
-            .put(new Symbol("bound_null_string"), VARCHAR)
-            .put(new Symbol("bound_timestamp_with_timezone"), TIMESTAMP_WITH_TIME_ZONE)
-            .put(new Symbol("bound_binary_literal"), VARBINARY)
-            .put(new Symbol("bound_integer"), INTEGER)
-            .build());
 
     private static final PageSourceProvider PAGE_SOURCE_PROVIDER = new TestPageSourceProvider();
     private static final PlanNodeId SOURCE_ID = new PlanNodeId("scan");
@@ -462,7 +451,7 @@ public final class FunctionAssertions
     {
         requireNonNull(projection, "projection is null");
 
-        Expression projectionExpression = createExpression(session, projection, metadata, SYMBOL_TYPES);
+        Expression projectionExpression = createExpression(session, projection, metadata, TypeProvider.copyOf(INPUT_TYPES));
         RowExpression projectionRowExpression = toRowExpression(session, projectionExpression);
         PageProcessor processor = compiler.compilePageProcessor(Optional.empty(), ImmutableList.of(projectionRowExpression)).get();
 
@@ -577,7 +566,7 @@ public final class FunctionAssertions
     {
         requireNonNull(projection, "projection is null");
 
-        Expression projectionExpression = createExpression(session, projection, metadata, SYMBOL_TYPES);
+        Expression projectionExpression = createExpression(session, projection, metadata, TypeProvider.copyOf(INPUT_TYPES));
         RowExpression projectionRowExpression = toRowExpression(session, projectionExpression);
 
         List<Object> results = new ArrayList<>();
@@ -679,7 +668,7 @@ public final class FunctionAssertions
     {
         requireNonNull(filter, "filter is null");
 
-        Expression filterExpression = createExpression(session, filter, metadata, SYMBOL_TYPES);
+        Expression filterExpression = createExpression(session, filter, metadata, TypeProvider.copyOf(INPUT_TYPES));
         RowExpression filterRowExpression = toRowExpression(session, filterExpression);
 
         List<Boolean> results = new ArrayList<>();
@@ -863,13 +852,13 @@ public final class FunctionAssertions
 
     private Object interpret(Expression expression, Type expectedType, Session session)
     {
-        Map<NodeRef<Expression>, Type> expressionTypes = typeAnalyzer.getTypes(session, SYMBOL_TYPES, expression);
+        Map<NodeRef<Expression>, Type> expressionTypes = typeAnalyzer.getTypes(session, TypeProvider.copyOf(INPUT_TYPES), expression);
         ExpressionInterpreter evaluator = ExpressionInterpreter.expressionInterpreter(expression, metadata, session, expressionTypes);
 
         Object result = evaluator.evaluate(symbol -> {
             int position = 0;
             int channel = INPUT_MAPPING.get(symbol);
-            Type type = SYMBOL_TYPES.get(symbol);
+            Type type = INPUT_TYPES.get(symbol);
 
             Block block = SOURCE_PAGE.getBlock(channel);
 
@@ -951,6 +940,7 @@ public final class FunctionAssertions
                     PAGE_SOURCE_PROVIDER,
                     cursorProcessor,
                     pageProcessor,
+                    TEST_TABLE_HANDLE,
                     ImmutableList.of(),
                     ImmutableList.of(projection.getType()),
                     new DataSize(0, BYTE),
@@ -1026,7 +1016,7 @@ public final class FunctionAssertions
             implements PageSourceProvider
     {
         @Override
-        public ConnectorPageSource createPageSource(Session session, Split split, List<ColumnHandle> columns)
+        public ConnectorPageSource createPageSource(Session session, Split split, TableHandle table, List<ColumnHandle> columns)
         {
             assertInstanceOf(split.getConnectorSplit(), FunctionAssertions.TestSplit.class);
             FunctionAssertions.TestSplit testSplit = (FunctionAssertions.TestSplit) split.getConnectorSplit();
@@ -1054,12 +1044,12 @@ public final class FunctionAssertions
 
     private static Split createRecordSetSplit()
     {
-        return new Split(new ConnectorId("test"), TestingTransactionHandle.create(), new TestSplit(true));
+        return new Split(new CatalogName("test"), new TestSplit(true), Lifespan.taskWide());
     }
 
     private static Split createNormalSplit()
     {
-        return new Split(new ConnectorId("test"), TestingTransactionHandle.create(), new TestSplit(false));
+        return new Split(new CatalogName("test"), new TestSplit(false), Lifespan.taskWide());
     }
 
     private static class TestSplit

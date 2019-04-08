@@ -24,10 +24,9 @@ import io.prestosql.Session;
 import io.prestosql.execution.StateMachine.StateChangeListener;
 import io.prestosql.execution.buffer.OutputBuffers;
 import io.prestosql.execution.scheduler.SplitSchedulerStats;
-import io.prestosql.failureDetector.FailureDetector;
-import io.prestosql.metadata.RemoteTransactionHandle;
+import io.prestosql.failuredetector.FailureDetector;
+import io.prestosql.metadata.InternalNode;
 import io.prestosql.metadata.Split;
-import io.prestosql.spi.Node;
 import io.prestosql.spi.PrestoException;
 import io.prestosql.split.RemoteSplit;
 import io.prestosql.sql.planner.PlanFragment;
@@ -62,7 +61,7 @@ import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.Sets.newConcurrentHashSet;
 import static io.airlift.http.client.HttpUriBuilder.uriBuilderFrom;
-import static io.prestosql.failureDetector.FailureDetector.State.GONE;
+import static io.prestosql.failuredetector.FailureDetector.State.GONE;
 import static io.prestosql.operator.ExchangeOperator.REMOTE_CONNECTOR_ID;
 import static io.prestosql.spi.StandardErrorCode.GENERIC_INTERNAL_ERROR;
 import static io.prestosql.spi.StandardErrorCode.REMOTE_HOST_GONE;
@@ -80,7 +79,7 @@ public final class SqlStageExecution
 
     private final Map<PlanFragmentId, RemoteSourceNode> exchangeSources;
 
-    private final Map<Node, Set<RemoteTask>> tasks = new ConcurrentHashMap<>();
+    private final Map<InternalNode, Set<RemoteTask>> tasks = new ConcurrentHashMap<>();
 
     @GuardedBy("this")
     private final AtomicInteger nextTaskId = new AtomicInteger();
@@ -359,7 +358,7 @@ public final class SqlStageExecution
                 .collect(toImmutableList());
     }
 
-    public synchronized Optional<RemoteTask> scheduleTask(Node node, int partition, OptionalInt totalPartitions)
+    public synchronized Optional<RemoteTask> scheduleTask(InternalNode node, int partition, OptionalInt totalPartitions)
     {
         requireNonNull(node, "node is null");
 
@@ -370,7 +369,7 @@ public final class SqlStageExecution
         return Optional.of(scheduleTask(node, new TaskId(stateMachine.getStageId(), partition), ImmutableMultimap.of(), totalPartitions));
     }
 
-    public synchronized Set<RemoteTask> scheduleSplits(Node node, Multimap<PlanNodeId, Split> splits, Multimap<PlanNodeId, Lifespan> noMoreSplitsNotification)
+    public synchronized Set<RemoteTask> scheduleSplits(InternalNode node, Multimap<PlanNodeId, Split> splits, Multimap<PlanNodeId, Lifespan> noMoreSplitsNotification)
     {
         requireNonNull(node, "node is null");
         requireNonNull(splits, "splits is null");
@@ -408,7 +407,7 @@ public final class SqlStageExecution
         return newTasks.build();
     }
 
-    private synchronized RemoteTask scheduleTask(Node node, TaskId taskId, Multimap<PlanNodeId, Split> sourceSplits, OptionalInt totalPartitions)
+    private synchronized RemoteTask scheduleTask(InternalNode node, TaskId taskId, Multimap<PlanNodeId, Split> sourceSplits, OptionalInt totalPartitions)
     {
         checkArgument(!allTasks.contains(taskId), "A task with id %s already exists", taskId);
 
@@ -456,7 +455,7 @@ public final class SqlStageExecution
         return task;
     }
 
-    public Set<Node> getScheduledNodes()
+    public Set<InternalNode> getScheduledNodes()
     {
         return ImmutableSet.copyOf(tasks.keySet());
     }
@@ -470,7 +469,7 @@ public final class SqlStageExecution
     {
         // Fetch the results from the buffer assigned to the task based on id
         URI splitLocation = uriBuilderFrom(taskLocation).appendPath("results").appendPath(String.valueOf(taskId.getId())).build();
-        return new Split(REMOTE_CONNECTOR_ID, new RemoteTransactionHandle(), new RemoteSplit(splitLocation));
+        return new Split(REMOTE_CONNECTOR_ID, new RemoteSplit(splitLocation), Lifespan.taskWide());
     }
 
     private synchronized void updateTaskStatus(TaskStatus taskStatus)

@@ -75,7 +75,7 @@ import static io.prestosql.sql.planner.SystemPartitioningHandle.COORDINATOR_DIST
 import static io.prestosql.sql.planner.SystemPartitioningHandle.SINGLE_DISTRIBUTION;
 import static io.prestosql.sql.planner.SystemPartitioningHandle.SOURCE_DISTRIBUTION;
 import static io.prestosql.sql.planner.plan.ExchangeNode.Scope.REMOTE;
-import static io.prestosql.sql.planner.planPrinter.PlanPrinter.jsonFragmentPlan;
+import static io.prestosql.sql.planner.planprinter.PlanPrinter.jsonFragmentPlan;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
@@ -246,7 +246,7 @@ public class PlanFragmenter
                     properties.getPartitioningScheme(),
                     ungroupedExecution(),
                     statsAndCosts.getForSubplan(root),
-                    Optional.of(jsonFragmentPlan(root, symbols, metadata.getFunctionRegistry(), session)));
+                    Optional.of(jsonFragmentPlan(root, symbols, metadata.getFunctionRegistry(), Optional.of(metadata), session)));
 
             return new SubPlan(fragment, properties.getChildren());
         }
@@ -492,9 +492,7 @@ public class PlanFragmenter
                 return this;
             }
 
-            throw new IllegalStateException(String.format(
-                    "Cannot overwrite distribution with %s (currently set to %s)",
-                    distribution, currentPartitioning));
+            throw new IllegalStateException(format("Cannot overwrite distribution with %s (currently set to %s)", distribution, currentPartitioning));
         }
 
         public FragmentProperties addChildren(List<SubPlan> children)
@@ -777,7 +775,6 @@ public class PlanFragmenter
                     newTable,
                     node.getOutputSymbols(),
                     node.getAssignments(),
-                    node.getCurrentConstraint(),
                     node.getEnforcedConstraint());
         }
     }

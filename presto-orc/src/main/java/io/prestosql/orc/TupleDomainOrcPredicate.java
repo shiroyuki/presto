@@ -16,9 +16,9 @@ package io.prestosql.orc;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import io.airlift.slice.Slice;
+import io.prestosql.orc.metadata.statistics.BloomFilter;
 import io.prestosql.orc.metadata.statistics.BooleanStatistics;
 import io.prestosql.orc.metadata.statistics.ColumnStatistics;
-import io.prestosql.orc.metadata.statistics.HiveBloomFilter;
 import io.prestosql.orc.metadata.statistics.RangeStatistics;
 import io.prestosql.spi.predicate.Domain;
 import io.prestosql.spi.predicate.Range;
@@ -29,7 +29,6 @@ import io.prestosql.spi.type.StandardTypes;
 import io.prestosql.spi.type.Type;
 import io.prestosql.spi.type.VarbinaryType;
 import io.prestosql.spi.type.VarcharType;
-import org.apache.hive.common.util.BloomFilter;
 
 import java.util.Collection;
 import java.util.List;
@@ -127,7 +126,7 @@ public class TupleDomainOrcPredicate<C>
             return true;
         }
 
-        HiveBloomFilter bloomFilter = columnStatistics.getBloomFilter();
+        BloomFilter bloomFilter = columnStatistics.getBloomFilter();
         if (bloomFilter == null) {
             // no bloom filter so we can't exclude this section
             return true;

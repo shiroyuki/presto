@@ -17,6 +17,7 @@ import com.google.common.base.Joiner;
 import com.google.common.base.VerifyException;
 import com.google.common.collect.ImmutableList;
 import io.airlift.slice.Slice;
+import io.prestosql.spi.block.Block;
 import io.prestosql.spi.connector.ColumnHandle;
 import io.prestosql.spi.connector.ConnectorSession;
 import io.prestosql.spi.predicate.Domain;
@@ -45,7 +46,7 @@ public class QueryBuilder
     private static final String ALWAYS_TRUE = "1=1";
     private static final String ALWAYS_FALSE = "1=0";
 
-    private final String quote;
+    private final String identifierQoute;
 
     private static class TypeAndValue
     {
@@ -76,9 +77,9 @@ public class QueryBuilder
         }
     }
 
-    public QueryBuilder(String quote)
+    public QueryBuilder(String identifierQoute)
     {
-        this.quote = requireNonNull(quote, "quote is null");
+        this.identifierQoute = requireNonNull(identifierQoute, "identifierQoute is null");
     }
 
     public PreparedStatement buildSql(
@@ -151,6 +152,9 @@ public class QueryBuilder
             }
             else if (javaType == Slice.class) {
                 ((SliceWriteFunction) writeFunction).set(statement, parameterIndex, (Slice) value);
+            }
+            else if (javaType == Block.class) {
+                ((BlockWriteFunction) writeFunction).set(statement, parameterIndex, (Block) value);
             }
             else {
                 throw new VerifyException(format("Unexpected type %s with java type %s", type, javaType.getName()));
@@ -262,8 +266,7 @@ public class QueryBuilder
 
     private String quote(String name)
     {
-        name = name.replace(quote, quote + quote);
-        return quote + name + quote;
+        return identifierQoute + name.replace(identifierQoute, identifierQoute + identifierQoute) + identifierQoute;
     }
 
     private static void bindValue(Object value, JdbcColumnHandle column, List<TypeAndValue> accumulator)

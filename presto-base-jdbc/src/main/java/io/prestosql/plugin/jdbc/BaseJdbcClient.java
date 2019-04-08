@@ -229,19 +229,14 @@ public class BaseJdbcClient
     @Override
     public Optional<ColumnMapping> toPrestoType(ConnectorSession session, JdbcTypeHandle typeHandle)
     {
-        return jdbcTypeToPrestoType(typeHandle);
+        return jdbcTypeToPrestoType(session, typeHandle);
     }
 
     @Override
     public ConnectorSplitSource getSplits(JdbcIdentity identity, JdbcTableLayoutHandle layoutHandle)
     {
         JdbcTableHandle tableHandle = layoutHandle.getTable();
-        JdbcSplit jdbcSplit = new JdbcSplit(
-                tableHandle.getCatalogName(),
-                tableHandle.getSchemaName(),
-                tableHandle.getTableName(),
-                layoutHandle.getTupleDomain(),
-                Optional.empty());
+        JdbcSplit jdbcSplit = new JdbcSplit(layoutHandle.getTupleDomain(), Optional.empty());
         return new FixedSplitSource(ImmutableList.of(jdbcSplit));
     }
 
@@ -261,17 +256,17 @@ public class BaseJdbcClient
     }
 
     @Override
-    public PreparedStatement buildSql(ConnectorSession session, Connection connection, JdbcSplit split, List<JdbcColumnHandle> columnHandles)
+    public PreparedStatement buildSql(ConnectorSession session, Connection connection, JdbcSplit split, JdbcTableHandle table, List<JdbcColumnHandle> columns)
             throws SQLException
     {
         return new QueryBuilder(identifierQuote).buildSql(
                 this,
                 session,
                 connection,
-                split.getCatalogName(),
-                split.getSchemaName(),
-                split.getTableName(),
-                columnHandles,
+                table.getCatalogName(),
+                table.getSchemaName(),
+                table.getTableName(),
+                columns,
                 split.getTupleDomain(),
                 split.getAdditionalPredicate());
     }
@@ -586,15 +581,7 @@ public class BaseJdbcClient
             return WriteMapping.sliceMapping(dataType, varcharWriteFunction());
         }
         if (type instanceof CharType) {
-            CharType charType = (CharType) type;
-            String dataType;
-            if (charType.getLength() == CharType.MAX_LENGTH) {
-                dataType = "char";
-            }
-            else {
-                dataType = "char(" + charType.getLength() + ")";
-            }
-            return WriteMapping.sliceMapping(dataType, charWriteFunction());
+            return WriteMapping.sliceMapping("char(" + ((CharType) type).getLength() + ")", charWriteFunction());
         }
         if (type instanceof DecimalType) {
             DecimalType decimalType = (DecimalType) type;

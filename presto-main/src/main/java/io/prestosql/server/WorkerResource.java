@@ -16,9 +16,9 @@ package io.prestosql.server;
 import io.airlift.http.client.HttpClient;
 import io.airlift.http.client.Request;
 import io.airlift.http.client.ResponseHandler;
+import io.prestosql.metadata.InternalNode;
 import io.prestosql.metadata.InternalNodeManager;
-import io.prestosql.spi.Node;
-import io.prestosql.spi.NodeState;
+import io.prestosql.metadata.NodeState;
 
 import javax.inject.Inject;
 import javax.ws.rs.GET;
@@ -68,14 +68,14 @@ public class WorkerResource
 
     private Response proxyJsonResponse(String nodeId, String workerPath)
     {
-        Set<Node> nodes = nodeManager.getNodes(NodeState.ACTIVE);
-        Node node = nodes.stream()
+        Set<InternalNode> nodes = nodeManager.getNodes(NodeState.ACTIVE);
+        InternalNode node = nodes.stream()
                 .filter(n -> n.getNodeIdentifier().equals(nodeId))
                 .findFirst()
                 .orElseThrow(() -> new WebApplicationException(NOT_FOUND));
 
         Request request = prepareGet()
-                .setUri(uriBuilderFrom(node.getHttpUri())
+                .setUri(uriBuilderFrom(node.getInternalUri())
                         .appendPath(workerPath)
                         .build())
                 .build();

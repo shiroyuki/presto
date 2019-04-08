@@ -24,7 +24,7 @@ import io.prestosql.PagesIndexPageSorter;
 import io.prestosql.Session;
 import io.prestosql.SystemSessionProperties;
 import io.prestosql.block.BlockEncodingManager;
-import io.prestosql.connector.ConnectorId;
+import io.prestosql.connector.CatalogName;
 import io.prestosql.connector.ConnectorManager;
 import io.prestosql.connector.system.AnalyzePropertiesSystemTable;
 import io.prestosql.connector.system.CatalogSystemTable;
@@ -42,6 +42,7 @@ import io.prestosql.cost.CostComparator;
 import io.prestosql.cost.StatsCalculator;
 import io.prestosql.cost.TaskCountEstimator;
 import io.prestosql.eventlistener.EventListenerManager;
+import io.prestosql.execution.CommentTask;
 import io.prestosql.execution.CommitTask;
 import io.prestosql.execution.CreateTableTask;
 import io.prestosql.execution.CreateViewTask;
@@ -141,8 +142,9 @@ import io.prestosql.sql.planner.optimizations.PlanOptimizer;
 import io.prestosql.sql.planner.plan.PlanNode;
 import io.prestosql.sql.planner.plan.PlanNodeId;
 import io.prestosql.sql.planner.plan.TableScanNode;
-import io.prestosql.sql.planner.planPrinter.PlanPrinter;
+import io.prestosql.sql.planner.planprinter.PlanPrinter;
 import io.prestosql.sql.planner.sanity.PlanSanityChecker;
+import io.prestosql.sql.tree.Comment;
 import io.prestosql.sql.tree.Commit;
 import io.prestosql.sql.tree.CreateTable;
 import io.prestosql.sql.tree.CreateView;
@@ -407,6 +409,7 @@ public class LocalQueryRunner
                 .put(DropView.class, new DropViewTask())
                 .put(RenameColumn.class, new RenameColumnTask())
                 .put(RenameTable.class, new RenameTableTask())
+                .put(Comment.class, new CommentTask())
                 .put(ResetSession.class, new ResetSessionTask())
                 .put(SetSession.class, new SetSessionTask())
                 .put(Prepare.class, new PrepareTask(sqlParser))
@@ -533,7 +536,7 @@ public class LocalQueryRunner
 
     public void createCatalog(String catalogName, ConnectorFactory connectorFactory, Map<String, String> properties)
     {
-        nodeManager.addCurrentNodeConnector(new ConnectorId(catalogName));
+        nodeManager.addCurrentNodeConnector(new CatalogName(catalogName));
         connectorManager.addConnectorFactory(connectorFactory);
         connectorManager.createConnection(catalogName, connectorFactory.getName(), properties);
     }
@@ -686,7 +689,7 @@ public class LocalQueryRunner
     private List<Driver> createDrivers(Session session, Plan plan, OutputFactory outputFactory, TaskContext taskContext)
     {
         if (printPlan) {
-            System.out.println(PlanPrinter.textLogicalPlan(plan.getRoot(), plan.getTypes(), metadata.getFunctionRegistry(), plan.getStatsAndCosts(), session, 0, false));
+            System.out.println(PlanPrinter.textLogicalPlan(plan.getRoot(), plan.getTypes(), metadata.getFunctionRegistry(), Optional.of(metadata), plan.getStatsAndCosts(), session, 0, false));
         }
 
         SubPlan subplan = planFragmenter.createSubPlans(session, plan, true, WarningCollector.NOOP);

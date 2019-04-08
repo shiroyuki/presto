@@ -20,9 +20,8 @@ import io.prestosql.client.NodeVersion;
 import io.prestosql.cost.StatsAndCosts;
 import io.prestosql.execution.TestSqlTaskManager.MockLocationFactory;
 import io.prestosql.execution.scheduler.SplitSchedulerStats;
-import io.prestosql.failureDetector.NoOpFailureDetector;
-import io.prestosql.metadata.PrestoNode;
-import io.prestosql.spi.Node;
+import io.prestosql.failuredetector.NoOpFailureDetector;
+import io.prestosql.metadata.InternalNode;
 import io.prestosql.spi.QueryId;
 import io.prestosql.spi.type.Type;
 import io.prestosql.sql.planner.Partitioning;
@@ -126,7 +125,7 @@ public class TestSqlStageExecution
                     if (Thread.interrupted()) {
                         return;
                     }
-                    Node node = new PrestoNode(
+                    InternalNode node = new InternalNode(
                             "source" + i,
                             URI.create("http://10.0.0." + (i / 10_000) + ":" + (i % 10_000)),
                             NodeVersion.UNKNOWN,
