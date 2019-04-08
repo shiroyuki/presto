@@ -1,0 +1,88 @@
+{
+  "tableName": "accounts",
+  "schemaName": "tpch",
+  "host": "elasticsearch",
+  "port": "9300",
+  "clusterName": "elasticsearch",
+  "index": "accounts",
+  "type": "_doc",
+  "columns": [
+    {
+      "name": "account_number",
+      "type": "bigint",
+      "jsonPath": "nationkey",
+      "jsonType": "bigint",
+      "ordinalPosition": "0"
+    },
+    {
+      "name": "balance",
+      "type": "varchar",
+      "jsonPath": "name",
+      "jsonType": "varchar",
+      "ordinalPosition": "1"
+    },
+    {
+      "name": "firstname",
+      "type": "bigint",
+      "jsonPath": "regionkey",
+      "jsonType": "bigint",
+      "ordinalPosition": "2"
+    },
+    {
+      "name": "lastname",
+      "type": "varchar",
+      "jsonPath": "comment",
+      "jsonType": "varchar",
+      "ordinalPosition": "4"
+    },
+    {
+      "name": "age",
+      "type": "varchar",
+      "jsonPath": "comment",
+      "jsonType": "varchar",
+      "ordinalPosition": "5"
+    },
+    {
+      "name": "gender",
+      "type": "varchar",
+      "jsonPath": "comment",
+      "jsonType": "varchar",
+      "ordinalPosition": "6"
+    },
+    {
+      "name": "address",
+      "type": "varchar",
+      "jsonPath": "comment",
+      "jsonType": "varchar",
+      "ordinalPosition": "7"
+    },
+    {
+      "name": "employer",
+      "type": "varchar",
+      "jsonPath": "comment",
+      "jsonType": "varchar",
+      "ordinalPosition": "8"
+    },
+    {
+      "name": "email",
+      "type": "varchar",
+      "jsonPath": "comment",
+      "jsonType": "varchar",
+      "ordinalPosition": "9"
+    },
+    {
+      "name": "city",
+      "type": "varchar",
+      "jsonPath": "comment",
+      "jsonType": "varchar",
+      "ordinalPosition": "10"
+    },
+    {
+      "name": "state",
+      "type": "varchar",
+      "jsonPath": "comment",
+      "jsonType": "varchar",
+      "ordinalPosition": "11"
+    }
+  ]
+}

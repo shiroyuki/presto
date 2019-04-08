@@ -1,0 +1,14 @@
+version: '2'
+services:
+
+  elasticsearch:
+      hostname: elasticsearch
+      image: 'elasticsearch:6.7.0'
+      ports:
+        - '9200:9200'
+        - '9300:9300'
+      environment:
+          - cluster.name=elasticsearch
+          - discovery.type=single-node
+      volumes:
+        - ../../../conf/elasticsearch/singlenode-elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
