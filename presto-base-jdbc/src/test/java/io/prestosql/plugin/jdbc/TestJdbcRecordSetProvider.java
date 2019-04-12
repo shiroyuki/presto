@@ -32,6 +32,7 @@ import org.testng.annotations.Test;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalLong;
 
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static io.airlift.concurrent.MoreFutures.getFutureValue;
@@ -179,8 +180,15 @@ public class TestJdbcRecordSetProvider
 
     private RecordCursor getCursor(JdbcTableHandle jdbcTableHandle, List<JdbcColumnHandle> columns, TupleDomain<ColumnHandle> domain)
     {
-        JdbcTableLayoutHandle layoutHandle = new JdbcTableLayoutHandle(jdbcTableHandle, domain);
-        ConnectorSplitSource splits = jdbcClient.getSplits(IDENTITY, layoutHandle);
+        jdbcTableHandle = new JdbcTableHandle(
+                jdbcTableHandle.getSchemaTableName(),
+                jdbcTableHandle.getCatalogName(),
+                jdbcTableHandle.getSchemaName(),
+                jdbcTableHandle.getTableName(),
+                domain,
+                OptionalLong.empty());
+
+        ConnectorSplitSource splits = jdbcClient.getSplits(IDENTITY, jdbcTableHandle);
         JdbcSplit split = (JdbcSplit) getOnlyElement(getFutureValue(splits.getNextBatch(NOT_PARTITIONED, 1000)).getSplits());
 
         ConnectorTransactionHandle transaction = new JdbcTransactionHandle();

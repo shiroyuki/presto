@@ -11,22 +11,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.prestosql.plugin.hive;
+package io.prestosql.elasticsearch;
 
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.LocatedFileStatus;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.RemoteIterator;
-
-import java.io.IOException;
-
-public class HadoopDirectoryLister
-        implements DirectoryLister
+public enum SearchGuardCertificateFormat
 {
-    @Override
-    public RemoteIterator<LocatedFileStatus> list(FileSystem fs, Path path)
-            throws IOException
-    {
-        return fs.listLocatedStatus(path);
-    }
+    /**
+     * Use X.509 PEM certificates and PKCS #8 keys
+     */
+    PEM,
+    /**
+     * Use Keystore and Truststore files
+     */
+    JKS,
+    /**
+     * Default value
+     */
+    NONE
 }

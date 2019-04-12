@@ -61,7 +61,7 @@ public class TestQueryRunner
         server.start();
     }
 
-    @AfterMethod
+    @AfterMethod(alwaysRun = true)
     public void teardown()
             throws IOException
     {
@@ -137,6 +137,7 @@ public class TestQueryRunner
         return new QueryRunner(
                 clientSession,
                 false,
+                Optional.empty(),
                 Optional.empty(),
                 Optional.empty(),
                 Optional.empty(),

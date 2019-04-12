@@ -24,6 +24,7 @@ import io.prestosql.orc.stream.InputStreamSources;
 import io.prestosql.orc.stream.LongInputStream;
 import io.prestosql.spi.block.ArrayBlock;
 import io.prestosql.spi.block.Block;
+import io.prestosql.spi.type.ArrayType;
 import io.prestosql.spi.type.Type;
 import org.openjdk.jol.info.ClassLayout;
 
@@ -38,6 +39,9 @@ import java.util.Optional;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static io.prestosql.orc.metadata.Stream.StreamKind.LENGTH;
 import static io.prestosql.orc.metadata.Stream.StreamKind.PRESENT;
+import static io.prestosql.orc.reader.ReaderUtils.convertLengthVectorToOffsetVector;
+import static io.prestosql.orc.reader.ReaderUtils.unpackLengthNulls;
+import static io.prestosql.orc.reader.ReaderUtils.verifyStreamType;
 import static io.prestosql.orc.reader.StreamReaders.createStreamReader;
 import static io.prestosql.orc.stream.MissingInputStreamSource.missingStreamSource;
 import static java.lang.Math.toIntExact;
@@ -48,6 +52,7 @@ public class ListStreamReader
 {
     private static final int INSTANCE_SIZE = ClassLayout.parseClass(ListStreamReader.class).instanceSize();
 
+    private final Type elementType;
     private final StreamDescriptor streamDescriptor;
 
     private final StreamReader elementStreamReader;
@@ -65,10 +70,15 @@ public class ListStreamReader
 
     private boolean rowGroupOpen;
 
-    public ListStreamReader(StreamDescriptor streamDescriptor, AggregatedMemoryContext systemMemoryContext)
+    public ListStreamReader(Type type, StreamDescriptor streamDescriptor, AggregatedMemoryContext systemMemoryContext)
+            throws OrcCorruptionException
     {
+        requireNonNull(type, "type is null");
+        verifyStreamType(streamDescriptor, type, ArrayType.class::isInstance);
+        elementType = ((ArrayType) type).getElementType();
+
         this.streamDescriptor = requireNonNull(streamDescriptor, "stream is null");
-        this.elementStreamReader = createStreamReader(streamDescriptor.getNestedStreams().get(0), systemMemoryContext);
+        this.elementStreamReader = createStreamReader(elementType, streamDescriptor.getNestedStreams().get(0), systemMemoryContext);
     }
 
     @Override
@@ -79,7 +89,7 @@ public class ListStreamReader
     }
 
     @Override
-    public Block readBlock(Type type)
+    public Block readBlock()
             throws IOException
     {
         if (!rowGroupOpen) {
@@ -109,7 +119,7 @@ public class ListStreamReader
             if (lengthStream == null) {
                 throw new OrcCorruptionException(streamDescriptor.getOrcDataSourceId(), "Value is not null but data stream is not present");
             }
-            lengthStream.nextIntVector(nextBatchSize, offsetVector, 0);
+            lengthStream.next(offsetVector, nextBatchSize);
         }
         else {
             nullVector = new boolean[nextBatchSize];
@@ -118,26 +128,18 @@ public class ListStreamReader
                 if (lengthStream == null) {
                     throw new OrcCorruptionException(streamDescriptor.getOrcDataSourceId(), "Value is not null but data stream is not present");
                 }
-                lengthStream.nextIntVector(nextBatchSize, offsetVector, 0, nullVector);
+                lengthStream.next(offsetVector, nextBatchSize - nullValues);
+                unpackLengthNulls(offsetVector, nullVector, nextBatchSize - nullValues);
             }
         }
+        convertLengthVectorToOffsetVector(offsetVector);
 
-        // Convert the length values in the offsetVector to offset values in place
-        int currentLength = offsetVector[0];
-        offsetVector[0] = 0;
-        for (int i = 1; i < offsetVector.length; i++) {
-            int nextLength = offsetVector[i];
-            offsetVector[i] = offsetVector[i - 1] + currentLength;
-            currentLength = nextLength;
-        }
-
-        Type elementType = type.getTypeParameters().get(0);
         int elementCount = offsetVector[offsetVector.length - 1];
 
         Block elements;
         if (elementCount > 0) {
             elementStreamReader.prepareNextRead(elementCount);
-            elements = elementStreamReader.readBlock(elementType);
+            elements = elementStreamReader.readBlock();
         }
         else {
             elements = elementType.createBlockBuilder(null, 0).build();

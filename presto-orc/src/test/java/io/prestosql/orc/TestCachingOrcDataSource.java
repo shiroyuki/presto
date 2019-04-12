@@ -15,11 +15,14 @@ package io.prestosql.orc;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import io.airlift.slice.Slice;
+import io.airlift.slice.Slices;
 import io.airlift.units.DataSize;
 import io.airlift.units.DataSize.Unit;
 import io.prestosql.orc.OrcTester.Format;
 import io.prestosql.orc.metadata.CompressionKind;
 import io.prestosql.orc.metadata.StripeInformation;
+import io.prestosql.orc.stream.OrcDataReader;
 import io.prestosql.spi.block.Block;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.ql.exec.FileSinkOperator;
@@ -215,7 +218,7 @@ public class TestCachingOrcDataSource
             if (batchSize <= 0) {
                 break;
             }
-            Block block = orcRecordReader.readBlock(VARCHAR, 0);
+            Block block = orcRecordReader.readBlock(0);
             positionCount += block.getPositionCount();
         }
         assertEquals(positionCount, POSITION_COUNT);
@@ -281,19 +284,13 @@ public class TestCachingOrcDataSource
         }
 
         @Override
-        public void readFully(long position, byte[] buffer)
+        public Slice readFully(long position, int length)
         {
-            // do nothing
+            return Slices.allocate(length);
         }
 
         @Override
-        public void readFully(long position, byte[] buffer, int bufferOffset, int bufferLength)
-        {
-            // do nothing
-        }
-
-        @Override
-        public <K> Map<K, OrcDataSourceInput> readFully(Map<K, DiskRange> diskRanges)
+        public <K> Map<K, OrcDataReader> readFully(Map<K, DiskRange> diskRanges)
         {
             throw new UnsupportedOperationException();
         }

@@ -26,14 +26,15 @@ import io.prestosql.spi.connector.ConnectorOutputMetadata;
 import io.prestosql.spi.connector.ConnectorOutputTableHandle;
 import io.prestosql.spi.connector.ConnectorSession;
 import io.prestosql.spi.connector.ConnectorTableHandle;
-import io.prestosql.spi.connector.ConnectorTableLayout;
-import io.prestosql.spi.connector.ConnectorTableLayoutHandle;
-import io.prestosql.spi.connector.ConnectorTableLayoutResult;
 import io.prestosql.spi.connector.ConnectorTableMetadata;
+import io.prestosql.spi.connector.ConnectorTableProperties;
 import io.prestosql.spi.connector.Constraint;
+import io.prestosql.spi.connector.ConstraintApplicationResult;
+import io.prestosql.spi.connector.LimitApplicationResult;
 import io.prestosql.spi.connector.SchemaTableName;
 import io.prestosql.spi.connector.SchemaTablePrefix;
 import io.prestosql.spi.connector.TableNotFoundException;
+import io.prestosql.spi.predicate.TupleDomain;
 import io.prestosql.spi.statistics.ComputedStatistics;
 import io.prestosql.spi.statistics.TableStatistics;
 
@@ -41,7 +42,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
+import java.util.OptionalLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static com.google.common.base.Preconditions.checkState;
@@ -82,17 +83,57 @@ public class JdbcMetadata
     }
 
     @Override
-    public List<ConnectorTableLayoutResult> getTableLayouts(ConnectorSession session, ConnectorTableHandle table, Constraint<ColumnHandle> constraint, Optional<Set<ColumnHandle>> desiredColumns)
+    public Optional<ConstraintApplicationResult<ConnectorTableHandle>> applyFilter(ConnectorTableHandle table, Constraint constraint)
     {
-        JdbcTableHandle tableHandle = (JdbcTableHandle) table;
-        ConnectorTableLayout layout = new ConnectorTableLayout(new JdbcTableLayoutHandle(tableHandle, constraint.getSummary()));
-        return ImmutableList.of(new ConnectorTableLayoutResult(layout, constraint.getSummary()));
+        JdbcTableHandle handle = (JdbcTableHandle) table;
+
+        TupleDomain<ColumnHandle> oldDomain = handle.getConstraint();
+        TupleDomain<ColumnHandle> newDomain = oldDomain.intersect(constraint.getSummary());
+        if (oldDomain.equals(newDomain)) {
+            return Optional.empty();
+        }
+
+        handle = new JdbcTableHandle(
+                handle.getSchemaTableName(),
+                handle.getCatalogName(),
+                handle.getSchemaName(),
+                handle.getTableName(),
+                newDomain,
+                handle.getLimit());
+
+        return Optional.of(new ConstraintApplicationResult<>(handle, constraint.getSummary()));
     }
 
     @Override
-    public ConnectorTableLayout getTableLayout(ConnectorSession session, ConnectorTableLayoutHandle handle)
+    public Optional<LimitApplicationResult<ConnectorTableHandle>> applyLimit(ConnectorTableHandle table, long limit)
     {
-        return new ConnectorTableLayout(handle);
+        JdbcTableHandle handle = (JdbcTableHandle) table;
+
+        if (handle.getLimit().isPresent() && handle.getLimit().getAsLong() <= limit) {
+            return Optional.empty();
+        }
+
+        handle = new JdbcTableHandle(
+                handle.getSchemaTableName(),
+                handle.getCatalogName(),
+                handle.getSchemaName(),
+                handle.getTableName(),
+                handle.getConstraint(),
+                OptionalLong.of(limit));
+
+        return Optional.of(new LimitApplicationResult<>(handle, jdbcClient.isLimitGuaranteed()));
+    }
+
+    @Override
+    public boolean usesLegacyTableLayouts()
+    {
+        return false;
+    }
+
+    @Override
+    public ConnectorTableProperties getTableProperties(ConnectorSession session, ConnectorTableHandle table)
+    {
+        return new ConnectorTableProperties();
     }
 
     @Override
@@ -245,7 +286,7 @@ public class JdbcMetadata
     }
 
     @Override
-    public TableStatistics getTableStatistics(ConnectorSession session, ConnectorTableHandle tableHandle, Constraint<ColumnHandle> constraint)
+    public TableStatistics getTableStatistics(ConnectorSession session, ConnectorTableHandle tableHandle, Constraint constraint)
     {
         JdbcTableHandle handle = (JdbcTableHandle) tableHandle;
         return jdbcClient.getTableStatistics(session, handle, constraint.getSummary());

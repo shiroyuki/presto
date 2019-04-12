@@ -22,8 +22,9 @@ import io.prestosql.orc.stream.InputStreamSource;
 import io.prestosql.orc.stream.InputStreamSources;
 import io.prestosql.orc.stream.LongInputStream;
 import io.prestosql.spi.block.Block;
-import io.prestosql.spi.block.BlockBuilder;
+import io.prestosql.spi.block.LongArrayBlock;
 import io.prestosql.spi.block.RunLengthEncodedBlock;
+import io.prestosql.spi.type.TimestampType;
 import io.prestosql.spi.type.Type;
 import org.openjdk.jol.info.ClassLayout;
 
@@ -33,14 +34,16 @@ import java.io.IOException;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
-import static com.google.common.base.Verify.verify;
 import static io.airlift.slice.SizeOf.sizeOf;
 import static io.prestosql.orc.metadata.Stream.StreamKind.DATA;
 import static io.prestosql.orc.metadata.Stream.StreamKind.PRESENT;
 import static io.prestosql.orc.metadata.Stream.StreamKind.SECONDARY;
+import static io.prestosql.orc.reader.ReaderUtils.verifyStreamType;
 import static io.prestosql.orc.stream.MissingInputStreamSource.missingStreamSource;
+import static io.prestosql.spi.type.TimestampType.TIMESTAMP;
 import static java.util.Objects.requireNonNull;
 
 public class TimestampStreamReader
@@ -77,8 +80,12 @@ public class TimestampStreamReader
 
     private final LocalMemoryContext systemMemoryContext;
 
-    public TimestampStreamReader(StreamDescriptor streamDescriptor, LocalMemoryContext systemMemoryContext)
+    public TimestampStreamReader(Type type, StreamDescriptor streamDescriptor, LocalMemoryContext systemMemoryContext)
+            throws OrcCorruptionException
     {
+        requireNonNull(type, "type is null");
+        verifyStreamType(streamDescriptor, type, TimestampType.class::isInstance);
+
         this.streamDescriptor = requireNonNull(streamDescriptor, "stream is null");
         this.systemMemoryContext = requireNonNull(systemMemoryContext, "systemMemoryContext is null");
     }
@@ -91,7 +98,7 @@ public class TimestampStreamReader
     }
 
     @Override
-    public Block readBlock(Type type)
+    public Block readBlock()
             throws IOException
     {
         if (!rowGroupOpen) {
@@ -106,10 +113,10 @@ public class TimestampStreamReader
             }
             if (readOffset > 0) {
                 if (secondsStream == null) {
-                    throw new OrcCorruptionException(streamDescriptor.getOrcDataSourceId(), "Value is not null but seconds stream is not present");
+                    throw new OrcCorruptionException(streamDescriptor.getOrcDataSourceId(), "Value is not null but seconds stream is missing");
                 }
                 if (nanosStream == null) {
-                    throw new OrcCorruptionException(streamDescriptor.getOrcDataSourceId(), "Value is not null but nanos stream is not present");
+                    throw new OrcCorruptionException(streamDescriptor.getOrcDataSourceId(), "Value is not null but nanos stream is missing");
                 }
 
                 secondsStream.skip(readOffset);
@@ -117,44 +124,70 @@ public class TimestampStreamReader
             }
         }
 
-        if (secondsStream == null && nanosStream == null && presentStream != null) {
+        Block block;
+        if (secondsStream == null && nanosStream == null) {
+            if (presentStream == null) {
+                throw new OrcCorruptionException(streamDescriptor.getOrcDataSourceId(), "Value is null but present stream is missing");
+            }
             presentStream.skip(nextBatchSize);
-            Block nullValueBlock = RunLengthEncodedBlock.create(type, null, nextBatchSize);
-            readOffset = 0;
-            nextBatchSize = 0;
-            return nullValueBlock;
+            block = RunLengthEncodedBlock.create(TIMESTAMP, null, nextBatchSize);
         }
-
-        BlockBuilder builder = type.createBlockBuilder(null, nextBatchSize);
-
-        if (presentStream == null) {
-            if (secondsStream == null) {
-                throw new OrcCorruptionException(streamDescriptor.getOrcDataSourceId(), "Value is not null but seconds stream is not present");
-            }
-            if (nanosStream == null) {
-                throw new OrcCorruptionException(streamDescriptor.getOrcDataSourceId(), "Value is not null but nanos stream is not present");
-            }
-
-            for (int i = 0; i < nextBatchSize; i++) {
-                type.writeLong(builder, decodeTimestamp(secondsStream.next(), nanosStream.next(), baseTimestampInSeconds));
-            }
+        else if (presentStream == null) {
+            block = readNonNullBlock();
         }
         else {
-            verify(secondsStream != null, "Value is not null but seconds stream is not present");
-            verify(nanosStream != null, "Value is not null but nanos stream is not present");
-            for (int i = 0; i < nextBatchSize; i++) {
-                if (presentStream.nextBit()) {
-                    type.writeLong(builder, decodeTimestamp(secondsStream.next(), nanosStream.next(), baseTimestampInSeconds));
-                }
-                else {
-                    builder.appendNull();
-                }
+            boolean[] isNull = new boolean[nextBatchSize];
+            int nullCount = presentStream.getUnsetBits(nextBatchSize, isNull);
+            if (nullCount == 0) {
+                block = readNonNullBlock();
+            }
+            else if (nullCount != nextBatchSize) {
+                block = readNullBlock(isNull);
+            }
+            else {
+                block = RunLengthEncodedBlock.create(TIMESTAMP, null, nextBatchSize);
             }
         }
 
         readOffset = 0;
         nextBatchSize = 0;
-        return builder.build();
+        return block;
+    }
+
+    private Block readNonNullBlock()
+            throws IOException
+    {
+        if (secondsStream == null) {
+            throw new OrcCorruptionException(streamDescriptor.getOrcDataSourceId(), "Value is not null but seconds stream is missing");
+        }
+        if (nanosStream == null) {
+            throw new OrcCorruptionException(streamDescriptor.getOrcDataSourceId(), "Value is not null but nanos stream is missing");
+        }
+
+        long[] values = new long[nextBatchSize];
+        for (int i = 0; i < nextBatchSize; i++) {
+            values[i] = decodeTimestamp(secondsStream.next(), nanosStream.next(), baseTimestampInSeconds);
+        }
+        return new LongArrayBlock(nextBatchSize, Optional.empty(), values);
+    }
+
+    private Block readNullBlock(boolean[] isNull)
+            throws IOException
+    {
+        if (secondsStream == null) {
+            throw new OrcCorruptionException(streamDescriptor.getOrcDataSourceId(), "Value is not null but seconds stream is missing");
+        }
+        if (nanosStream == null) {
+            throw new OrcCorruptionException(streamDescriptor.getOrcDataSourceId(), "Value is not null but nanos stream is missing");
+        }
+
+        long[] values = new long[isNull.length];
+        for (int i = 0; i < isNull.length; i++) {
+            if (!isNull[i]) {
+                values[i] = decodeTimestamp(secondsStream.next(), nanosStream.next(), baseTimestampInSeconds);
+            }
+        }
+        return new LongArrayBlock(isNull.length, Optional.of(isNull), values);
     }
 
     private void openRowGroup()

@@ -49,7 +49,7 @@ public interface JdbcClient
 
     WriteMapping toWriteMapping(ConnectorSession session, Type type);
 
-    ConnectorSplitSource getSplits(JdbcIdentity identity, JdbcTableLayoutHandle layoutHandle);
+    ConnectorSplitSource getSplits(JdbcIdentity identity, JdbcTableHandle tableHandle);
 
     Connection getConnection(JdbcIdentity identity, JdbcSplit split)
             throws SQLException;
@@ -62,6 +62,8 @@ public interface JdbcClient
 
     PreparedStatement buildSql(ConnectorSession session, Connection connection, JdbcSplit split, JdbcTableHandle table, List<JdbcColumnHandle> columns)
             throws SQLException;
+
+    boolean isLimitGuaranteed();
 
     void addColumn(ConnectorSession session, JdbcTableHandle handle, ColumnMetadata column);
 

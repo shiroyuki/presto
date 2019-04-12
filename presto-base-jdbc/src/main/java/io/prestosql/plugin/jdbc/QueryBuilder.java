@@ -31,6 +31,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.base.Strings.isNullOrEmpty;
@@ -46,7 +47,7 @@ public class QueryBuilder
     private static final String ALWAYS_TRUE = "1=1";
     private static final String ALWAYS_FALSE = "1=0";
 
-    private final String identifierQoute;
+    private final String identifierQuote;
 
     private static class TypeAndValue
     {
@@ -77,9 +78,9 @@ public class QueryBuilder
         }
     }
 
-    public QueryBuilder(String identifierQoute)
+    public QueryBuilder(String identifierQuote)
     {
-        this.identifierQoute = requireNonNull(identifierQoute, "identifierQoute is null");
+        this.identifierQuote = requireNonNull(identifierQuote, "identifierQuote is null");
     }
 
     public PreparedStatement buildSql(
@@ -91,7 +92,8 @@ public class QueryBuilder
             String table,
             List<JdbcColumnHandle> columns,
             TupleDomain<ColumnHandle> tupleDomain,
-            Optional<String> additionalPredicate)
+            Optional<String> additionalPredicate,
+            Function<String, String> sqlFunction)
             throws SQLException
     {
         StringBuilder sql = new StringBuilder();
@@ -130,7 +132,8 @@ public class QueryBuilder
                     .append(Joiner.on(" AND ").join(clauses));
         }
 
-        PreparedStatement statement = client.getPreparedStatement(connection, sql.toString());
+        String query = sqlFunction.apply(sql.toString());
+        PreparedStatement statement = client.getPreparedStatement(connection, query);
 
         for (int i = 0; i < accumulator.size(); i++) {
             TypeAndValue typeAndValue = accumulator.get(i);
@@ -173,6 +176,9 @@ public class QueryBuilder
 
     private List<String> toConjuncts(JdbcClient client, ConnectorSession session, List<JdbcColumnHandle> columns, TupleDomain<ColumnHandle> tupleDomain, List<TypeAndValue> accumulator)
     {
+        if (tupleDomain.isNone()) {
+            return ImmutableList.of(ALWAYS_FALSE);
+        }
         ImmutableList.Builder<String> builder = ImmutableList.builder();
         for (JdbcColumnHandle column : columns) {
             Domain domain = tupleDomain.getDomains().get().get(column);
@@ -266,7 +272,7 @@ public class QueryBuilder
 
     private String quote(String name)
     {
-        return identifierQoute + name.replace(identifierQoute, identifierQoute + identifierQoute) + identifierQoute;
+        return identifierQuote + name.replace(identifierQuote, identifierQuote + identifierQuote) + identifierQuote;
     }
 
     private static void bindValue(Object value, JdbcColumnHandle column, List<TypeAndValue> accumulator)

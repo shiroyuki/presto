@@ -45,6 +45,7 @@ import static java.lang.Double.doubleToLongBits;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 import static org.testng.Assert.assertEquals;
 
+@Test(singleThreaded = true)
 public class TestFileSingleStreamSpiller
 {
     private static final List<Type> TYPES = ImmutableList.of(BIGINT, DOUBLE, VARBINARY);
@@ -52,7 +53,7 @@ public class TestFileSingleStreamSpiller
     private final ListeningExecutorService executor = listeningDecorator(newCachedThreadPool());
     private final File spillPath = Files.createTempDir();
 
-    @AfterMethod
+    @AfterMethod(alwaysRun = true)
     public void tearDown()
             throws Exception
     {

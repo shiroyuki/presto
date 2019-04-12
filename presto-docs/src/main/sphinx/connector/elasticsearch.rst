@@ -27,10 +27,10 @@ replacing the properties as appropriate:
 .. code-block:: none
 
     connector.name=elasticsearch
-    elasticsearch.default-schema=default
+    elasticsearch.default-schema-name=default
     elasticsearch.table-description-directory=etc/elasticsearch/
     elasticsearch.scroll-size=1000
-    elasticsearch.scroll-timeout=60000
+    elasticsearch.scroll-timeout=1m
     elasticsearch.request-timeout=2s
     elasticsearch.max-request-retries=5
     elasticsearch.max-request-retry-time=10s
@@ -43,18 +43,18 @@ The following configuration properties are available:
 ============================================= ==============================================================================
 Property Name                                 Description
 ============================================= ==============================================================================
-``elasticsearch.default-schema``              Default schema name for tables.
+``elasticsearch.default-schema-name``         Default schema name for tables.
 ``elasticsearch.table-description-directory`` Directory containing JSON table description files.
 ``elasticsearch.scroll-size``                 Maximum number of hits to be returned with each Elasticsearch scroll request.
-``elasticsearch.scroll-timeout``              Amount of time (ms) Elasticsearch will keep the search context alive for scroll requests.
+``elasticsearch.scroll-timeout``              Timeout for keeping the search context alive for scroll requests.
 ``elasticsearch.max-hits``                    Maximum number of hits a single Elasticsearch request can fetch.
 ``elasticsearch.request-timeout``             Timeout for Elasticsearch requests.
 ``elasticsearch.max-request-retries``         Maximum number of Elasticsearch request retries.
 ``elasticsearch.max-request-retry-time``      Use exponential backoff starting at 1s up to the value specified by this configuration when retrying failed requests.
 ============================================= ==============================================================================
 
-``elasticsearch.default-schema``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+``elasticsearch.default-schema-name``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Defines the schema that will contain all tables defined without
 a qualifying schema name.
@@ -82,7 +82,7 @@ This property is optional; the default is ``1000``.
 
 This property defines the amount of time (ms) Elasticsearch will keep the `search context alive`_ for scroll requests
 
-This property is optional; the default is ``20s``.
+This property is optional; the default is ``1s``.
 
 .. _search context alive: https://www.elastic.co/guide/en/elasticsearch/reference/current/search-request-scroll.html#scroll-search-context
 
@@ -91,7 +91,7 @@ This property is optional; the default is ``20s``.
 
 This property defines the maximum number of `hits`_ an Elasticsearch request can fetch.
 
-This property is optional; the default is ``1000000``.
+This property is optional; the default is ``1000``.
 
 .. _hits: https://www.elastic.co/guide/en/elasticsearch/reference/current/search.html
 
@@ -100,7 +100,7 @@ This property is optional; the default is ``1000000``.
 
 This property defines the timeout value for all Elasticsearch requests.
 
-This property is optional; the default is ``10s``.
+This property is optional; the default is ``100ms``.
 
 ``elasticsearch.max-request-retries``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -115,6 +115,99 @@ This property is optional; the default is ``5``.
 Use exponential backoff starting at 1s up to the value specified by this configuration when retrying failed requests.
 
 This property is optional; the default is ``10s``.
+
+Search Guard Authentication
+---------------------------
+
+The Elasticsearch connector provides additional security options to support Elasticsearch clusters that have been configured to use Search Guard.
+
+You can configure the certificate format by setting the ``searchguard.ssl.certificate_format`` config property in the Elasticsearch catalog properties file. The allowed values for this configuration are:
+
+========================== ========================================================
+Property Value	           Description
+========================== ========================================================
+``NONE`` (default)         Do not use Search Guard Authentication.
+``PEM``                    Use X.509 PEM certificates and PKCS #8 keys.
+``JKS``                    Use Keystore and Truststore files.
+========================== ========================================================
+
+If you use X.509 PEM certificates and PKCS #8 keys, the following properties must be set:
+
+===================================================== ==============================================================================
+Property Name                                         Description
+===================================================== ==============================================================================
+``searchguard.ssl.pemcert-filepath``                  Path to the X.509 node certificate chain.
+``searchguard.ssl.pemkey-filepath``                   Path to the certificates key file.
+``searchguard.ssl.pemkey-password``                   Key password. Omit this setting if the key has no password.
+``searchguard.ssl.pemtrustedcas-filepath``            Path to the root CA(s) (PEM format).
+===================================================== ==============================================================================
+
+If you use Keystore and Truststore files, the following properties must be set:
+
+===================================================== ==============================================================================
+Property Name                                         Description
+===================================================== ==============================================================================
+``searchguard.ssl.keystore-filepath``                 Path to the keystore file.
+``searchguard.ssl.keystore-password``                 Keystore password.
+``searchguard.ssl.truststore-filepath``               Path to the truststore file.
+``searchguard.ssl.truststore-password``               Truststore password.
+===================================================== ==============================================================================
+
+``searchguard.ssl.pemcert-filepath``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The path to the X.509 node certificate chain. This file must be readable by the operating system user running Presto.
+
+This property is optional; the default is ``etc/elasticsearch/esnode.pem``.
+
+``searchguard.ssl.pemkey-filepath``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The path to the certificates key file. This file must be readable by the operating system user running Presto.
+
+This property is optional; the default is ``etc/elasticsearch/esnode-key.pem``.
+
+``searchguard.ssl.pemkey-password``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The key password for the key file specified by ``searchguard.ssl.pemkey-filepath``.
+
+This property is optional; the default is empty string.
+
+``searchguard.ssl.pemtrustedcas-filepath``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The path to the root CA(s) (PEM format). This file must be readable by the operating system user running Presto.
+
+This property is optional; the default is ``etc/elasticsearch/root-ca.pem``.
+
+``searchguard.ssl.keystore-filepath``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The path to the keystore file. This file must be readable by the operating system user running Presto.
+
+This property is optional; the default is ``etc/elasticsearch/keystore.jks``.
+
+``searchguard.ssl.keystore-password``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The keystore password for the keystore file specified by ``searchguard.ssl.keystore-filepath``
+
+This property is optional; the default is empty string.
+
+``searchguard.ssl.truststore-filepath``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The path to the truststore file. This file must be readable by the operating system user running Presto.
+
+This property is optional; the default is ``etc/elasticsearch/truststore.jks``.
+
+``searchguard.ssl.truststore-password``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The truststore password for the truststore file specified by ``searchguard.ssl.truststore-password``
+
+This property is optional; the default is empty string.
 
 Table Definition Files
 ----------------------

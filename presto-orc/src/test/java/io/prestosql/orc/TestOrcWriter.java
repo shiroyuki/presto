@@ -15,6 +15,7 @@ package io.prestosql.orc;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import io.airlift.slice.Slice;
 import io.airlift.slice.Slices;
 import io.airlift.units.DataSize;
 import io.prestosql.orc.OrcWriteValidation.OrcWriteValidationMode;
@@ -23,6 +24,7 @@ import io.prestosql.orc.metadata.OrcMetadataReader;
 import io.prestosql.orc.metadata.Stream;
 import io.prestosql.orc.metadata.StripeFooter;
 import io.prestosql.orc.metadata.StripeInformation;
+import io.prestosql.orc.stream.OrcChunkLoader;
 import io.prestosql.orc.stream.OrcInputStream;
 import io.prestosql.spi.Page;
 import io.prestosql.spi.block.Block;
@@ -99,9 +101,8 @@ public class TestOrcWriter
 
             for (StripeInformation stripe : footer.getStripes()) {
                 // read the footer
-                byte[] tailBuffer = new byte[toIntExact(stripe.getFooterLength())];
-                orcDataSource.readFully(stripe.getOffset() + stripe.getIndexLength() + stripe.getDataLength(), tailBuffer);
-                try (InputStream inputStream = new OrcInputStream(orcDataSource.getId(), Slices.wrappedBuffer(tailBuffer).getInput(), Optional.empty(), newSimpleAggregatedMemoryContext(), tailBuffer.length)) {
+                Slice tailBuffer = orcDataSource.readFully(stripe.getOffset() + stripe.getIndexLength() + stripe.getDataLength(), toIntExact(stripe.getFooterLength()));
+                try (InputStream inputStream = new OrcInputStream(OrcChunkLoader.create(orcDataSource.getId(), tailBuffer, Optional.empty(), newSimpleAggregatedMemoryContext()))) {
                     StripeFooter stripeFooter = new OrcMetadataReader().readStripeFooter(footer.getTypes(), inputStream);
 
                     int size = 0;
