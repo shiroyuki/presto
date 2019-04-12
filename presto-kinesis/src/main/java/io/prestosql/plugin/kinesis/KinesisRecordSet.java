@@ -45,6 +45,13 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static io.prestosql.decoder.FieldValueProviders.booleanValueProvider;
 import static io.prestosql.decoder.FieldValueProviders.bytesValueProvider;
 import static io.prestosql.decoder.FieldValueProviders.longValueProvider;
+import static io.prestosql.plugin.kinesis.KinesisSessionProperties.getBatchSize;
+import static io.prestosql.plugin.kinesis.KinesisSessionProperties.getCheckpointLogicalName;
+import static io.prestosql.plugin.kinesis.KinesisSessionProperties.getIterOffsetSeconds;
+import static io.prestosql.plugin.kinesis.KinesisSessionProperties.getIterStartTimestamp;
+import static io.prestosql.plugin.kinesis.KinesisSessionProperties.getIterationNumber;
+import static io.prestosql.plugin.kinesis.KinesisSessionProperties.getMaxBatches;
+import static io.prestosql.plugin.kinesis.KinesisSessionProperties.isIterFromTimestamp;
 import static java.util.Objects.requireNonNull;
 
 public class KinesisRecordSet
@@ -62,7 +69,7 @@ public class KinesisRecordSet
     private final KinesisSplit split;
     private final ConnectorSession session;
     private final KinesisClientProvider clientManager;
-    private final KinesisConnectorConfig kinesisConnectorConfig;
+    private final KinesisConfig kinesisConfig;
 
     private final RowDecoder messageDecoder;
 
@@ -84,11 +91,11 @@ public class KinesisRecordSet
             KinesisClientProvider clientManager,
             List<KinesisColumnHandle> columnHandles,
             RowDecoder messageDecoder,
-            KinesisConnectorConfig kinesisConnectorConfig)
+            KinesisConfig kinesisConfig)
     {
         this.split = requireNonNull(split, "split is null");
         this.session = requireNonNull(session, "session is null");
-        this.kinesisConnectorConfig = requireNonNull(kinesisConnectorConfig, "KinesisConnectorConfig is null");
+        this.kinesisConfig = requireNonNull(kinesisConfig, "KinesisConfig is null");
 
         this.clientManager = requireNonNull(clientManager, "clientManager is null");
 
@@ -104,13 +111,13 @@ public class KinesisRecordSet
         this.columnTypes = typeBuilder.build();
 
         // Note: these default to what is in the configuration if not given in the session
-        this.batchSize = SessionVariables.getBatchSize(this.session);
-        this.maxBatches = SessionVariables.getMaxBatches(this.session);
+        this.batchSize = getBatchSize(session);
+        this.maxBatches = getMaxBatches(this.session);
 
-        this.fetchAttempts = kinesisConnectorConfig.getFetchAttempts();
-        this.sleepTime = kinesisConnectorConfig.getSleepTime().toMillis();
+        this.fetchAttempts = kinesisConfig.getFetchAttempts();
+        this.sleepTime = kinesisConfig.getSleepTime().toMillis();
 
-        this.checkpointEnabled = kinesisConnectorConfig.isCheckpointEnabled();
+        this.checkpointEnabled = kinesisConfig.isCheckpointEnabled();
         this.lastReadSeqNo = null;
         this.kinesisShardCheckpointer = null;
         checkpoint();
@@ -121,19 +128,13 @@ public class KinesisRecordSet
         if (checkpointEnabled) {
             if (kinesisShardCheckpointer == null) {
                 AmazonDynamoDBClient dynamoDBClient = clientManager.getDynamoDBClient();
-                long dynamoReadCapacity = kinesisConnectorConfig.getDynamoReadCapacity();
-                long dynamoWriteCapacity = kinesisConnectorConfig.getDynamoWriteCapacity();
-                long checkpointIntervalMs = kinesisConnectorConfig.getCheckpointInterval().toMillis();
-                String logicalProcessName = kinesisConnectorConfig.getLogicalProcessName();
+                long dynamoReadCapacity = kinesisConfig.getDynamoReadCapacity();
+                long dynamoWriteCapacity = kinesisConfig.getDynamoWriteCapacity();
+                long checkpointIntervalMs = kinesisConfig.getCheckpointInterval().toMillis();
+                String logicalProcessName = kinesisConfig.getLogicalProcessName();
                 String dynamoDBTable = split.getStreamName();
-                int curIterationNumber = kinesisConnectorConfig.getIterationNumber();
-
-                String sessionIterationNo = SessionVariables.getSessionProperty(this.session, SessionVariables.ITERATION_NUMBER);
-                String sessionLogicalName = SessionVariables.getSessionProperty(this.session, SessionVariables.CHECKPOINT_LOGICAL_NAME);
-
-                if (sessionIterationNo != null) {
-                    curIterationNumber = Integer.parseInt(sessionIterationNo);
-                }
+                int curIterationNumber = getIterationNumber(session);
+                String sessionLogicalName = getCheckpointLogicalName(session);
 
                 if (sessionLogicalName != null) {
                     logicalProcessName = sessionLogicalName;
@@ -276,7 +277,7 @@ public class KinesisRecordSet
 
                 shardIterator = getRecordsResult.getNextShardIterator();
                 kinesisRecords = getRecordsResult.getRecords();
-                if (kinesisConnectorConfig.isLogBatches()) {
+                if (kinesisConfig.isLogBatches()) {
                     log.info("Fetched %d records from Kinesis.  MillisBehindLatest=%d", kinesisRecords.size(), getRecordsResult.getMillisBehindLatest());
                 }
 
@@ -466,12 +467,11 @@ public class KinesisRecordSet
             // If starting at a timestamp, sue the session variable ITER_START_TIMESTAMP when given, otherwise
             // fallback on starting at ITER_OFFSET_SECONDS from timestamp.
             if (lastReadSeqNo == null) {
-                // Important: shard iterator type AT_TIMESTAMP requires 1.11.x or above of the AWS SDK.
-                if (SessionVariables.getIterFromTimestamp(session)) {
+                if (isIterFromTimestamp(session)) {
                     getShardIteratorRequest.setShardIteratorType("AT_TIMESTAMP");
-                    long iterStartTs = SessionVariables.getIterStartTimestamp(session);
+                    long iterStartTs = getIterStartTimestamp(session);
                     if (iterStartTs == 0) {
-                        long startTs = System.currentTimeMillis() - (SessionVariables.getIterOffsetSeconds(session) * 1000);
+                        long startTs = System.currentTimeMillis() - (getIterOffsetSeconds(session) * 1000);
                         getShardIteratorRequest.setTimestamp(new Date(startTs));
                     }
                     else {

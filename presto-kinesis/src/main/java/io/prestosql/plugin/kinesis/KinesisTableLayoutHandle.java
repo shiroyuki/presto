@@ -19,31 +19,15 @@ import io.prestosql.spi.connector.ConnectorTableLayoutHandle;
 
 import java.util.Objects;
 
-import static java.util.Objects.requireNonNull;
-
-/**
- * Table layout handle introduced more recently in the API.
- * <p>
- * Created by derekbennett on 6/17/16.
- */
 public class KinesisTableLayoutHandle
         implements ConnectorTableLayoutHandle
 {
-    private final String connectorId;
     private final KinesisTableHandle tableHandle;
 
     @JsonCreator
-    public KinesisTableLayoutHandle(@JsonProperty("connectorId") String connectorId,
-            @JsonProperty("table") KinesisTableHandle table)
+    public KinesisTableLayoutHandle(@JsonProperty("table") KinesisTableHandle table)
     {
-        this.connectorId = requireNonNull(connectorId, "connectorId is null");
         this.tableHandle = table;
-    }
-
-    @JsonProperty
-    public String getConnectorId()
-    {
-        return connectorId;
     }
 
     @JsonProperty

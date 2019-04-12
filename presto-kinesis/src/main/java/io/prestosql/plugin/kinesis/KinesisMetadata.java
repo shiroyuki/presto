@@ -18,7 +18,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.inject.Inject;
-import com.google.inject.name.Named;
 import io.airlift.log.Logger;
 import io.prestosql.decoder.dummy.DummyRowDecoder;
 import io.prestosql.spi.connector.ColumnHandle;
@@ -48,25 +47,23 @@ public class KinesisMetadata
 {
     private static final Logger log = Logger.get(KinesisMetadata.class);
 
-    private final String connectorId;
-    private final KinesisConnectorConfig kinesisConnectorConfig;
+    private final KinesisConfig kinesisConfig;
     private final KinesisHandleResolver handleResolver;
 
     private final Supplier<Map<SchemaTableName, KinesisStreamDescription>> kinesisTableDescriptionSupplier;
     private final Set<KinesisInternalFieldDescription> internalFieldDescriptions;
 
     @Inject
-    KinesisMetadata(@Named("connectorId") String connectorId,
-            KinesisConnectorConfig kinesisConnectorConfig,
+    KinesisMetadata(
+            KinesisConfig kinesisConfig,
             KinesisHandleResolver handleResolver,
             Supplier<Map<SchemaTableName, KinesisStreamDescription>> kinesisTableDescriptionSupplier,
             Set<KinesisInternalFieldDescription> internalFieldDescriptions)
     {
-        this.connectorId = requireNonNull(connectorId, "connectorId is null");
-        this.kinesisConnectorConfig = requireNonNull(kinesisConnectorConfig, "kinesisConfig is null");
+        this.kinesisConfig = requireNonNull(kinesisConfig, "kinesisConfig is null");
         this.handleResolver = requireNonNull(handleResolver, "handleResolver is null");
 
-        log.debug("Loading kinesis table definitions from %s", kinesisConnectorConfig.getTableDescriptionLoc());
+        log.debug("Loading kinesis table definitions from %s", kinesisConfig.getTableDescriptionLoc());
 
         this.kinesisTableDescriptionSupplier = kinesisTableDescriptionSupplier;
         this.internalFieldDescriptions = requireNonNull(internalFieldDescriptions, "internalFieldDescriptions is null");
@@ -75,9 +72,9 @@ public class KinesisMetadata
     /**
      * Expose configuration to related internal classes that may need it.
      */
-    public KinesisConnectorConfig getConnectorConfig()
+    public KinesisConfig getConnectorConfig()
     {
-        return this.kinesisConnectorConfig;
+        return this.kinesisConfig;
     }
 
     @Override
@@ -98,7 +95,7 @@ public class KinesisMetadata
             throw new TableNotFoundException(schemaTableName);
         }
 
-        return new KinesisTableHandle(connectorId,
+        return new KinesisTableHandle(
                 schemaTableName.getSchemaName(),
                 schemaTableName.getTableName(),
                 table.getStreamName(),
@@ -110,7 +107,7 @@ public class KinesisMetadata
             Constraint<ColumnHandle> constraint, Optional<Set<ColumnHandle>> optional)
     {
         KinesisTableHandle tblHandle = handleResolver.convertTableHandle(table);
-        ConnectorTableLayout layout = new ConnectorTableLayout(new KinesisTableLayoutHandle(connectorId, tblHandle));
+        ConnectorTableLayout layout = new ConnectorTableLayout(new KinesisTableLayoutHandle(tblHandle));
         return ImmutableList.of(new ConnectorTableLayoutResult(layout, constraint.getSummary()));
     }
 
@@ -160,13 +157,13 @@ public class KinesisMetadata
             List<KinesisStreamFieldDescription> fields = message.getFields();
             if (fields != null) {
                 for (KinesisStreamFieldDescription kinesisStreamFieldDescription : fields) {
-                    columnHandles.put(kinesisStreamFieldDescription.getName(), kinesisStreamFieldDescription.getColumnHandle(connectorId, index++));
+                    columnHandles.put(kinesisStreamFieldDescription.getName(), kinesisStreamFieldDescription.getColumnHandle(index++));
                 }
             }
         }
 
         for (KinesisInternalFieldDescription kinesisInternalFieldDescription : internalFieldDescriptions) {
-            columnHandles.put(kinesisInternalFieldDescription.getColumnName(), kinesisInternalFieldDescription.getColumnHandle(connectorId, index++, kinesisConnectorConfig.isHideInternalColumns()));
+            columnHandles.put(kinesisInternalFieldDescription.getColumnName(), kinesisInternalFieldDescription.getColumnHandle(index++, kinesisConfig.isHideInternalColumns()));
         }
 
         return columnHandles.build();
@@ -238,7 +235,7 @@ public class KinesisMetadata
         }
 
         for (KinesisInternalFieldDescription fieldDescription : internalFieldDescriptions) {
-            builder.add(fieldDescription.getColumnMetadata(kinesisConnectorConfig.isHideInternalColumns()));
+            builder.add(fieldDescription.getColumnMetadata(kinesisConfig.isHideInternalColumns()));
         }
 
         return new ConnectorTableMetadata(schemaTableName, builder.build());

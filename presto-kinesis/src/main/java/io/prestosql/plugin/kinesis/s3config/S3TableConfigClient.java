@@ -26,11 +26,12 @@ import com.google.common.collect.ImmutableMap;
 import com.google.inject.Inject;
 import io.airlift.json.JsonCodec;
 import io.airlift.log.Logger;
-import io.prestosql.plugin.kinesis.ConnectorShutdown;
 import io.prestosql.plugin.kinesis.KinesisClientProvider;
-import io.prestosql.plugin.kinesis.KinesisConnectorConfig;
+import io.prestosql.plugin.kinesis.KinesisConfig;
 import io.prestosql.plugin.kinesis.KinesisStreamDescription;
 import io.prestosql.spi.connector.SchemaTableName;
+
+import javax.annotation.PostConstruct;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -58,11 +59,11 @@ import static java.util.Objects.requireNonNull;
  * This makes calls to Amazon AWS using the S3 client.
  */
 public class S3TableConfigClient
-        implements ConnectorShutdown
+        implements Runnable
 {
     private static final Logger log = Logger.get(S3TableConfigClient.class);
 
-    public final KinesisConnectorConfig kinesisConnectorConfig;
+    public final KinesisConfig kinesisConfig;
     private final KinesisClientProvider clientManager;
     private final JsonCodec<KinesisStreamDescription> streamDescriptionCodec;
 
@@ -74,24 +75,20 @@ public class S3TableConfigClient
             Collections.synchronizedMap(new HashMap<String, KinesisStreamDescription>());
 
     @Inject
-    public S3TableConfigClient(KinesisConnectorConfig aConnectorConfig,
-            KinesisClientProvider aClientManager,
+    public S3TableConfigClient(KinesisConfig connectorConfig,
+            KinesisClientProvider clientManager,
             JsonCodec<KinesisStreamDescription> jsonCodec)
     {
-        this.kinesisConnectorConfig = requireNonNull(aConnectorConfig, "connector configuration object is null");
-        this.clientManager = requireNonNull(aClientManager, "client manager object is null");
+        this.kinesisConfig = requireNonNull(connectorConfig, "connector configuration object is null");
+        this.clientManager = requireNonNull(clientManager, "client manager object is null");
         this.streamDescriptionCodec = requireNonNull(jsonCodec, "JSON codec object is null");
 
         // If using S3 start thread that periodically looks for updates
-        if (kinesisConnectorConfig.getTableDescriptionLoc().startsWith("s3://")) {
-            this.bucketUrl = Optional.of(kinesisConnectorConfig.getTableDescriptionLoc());
+        if (kinesisConfig.getTableDescriptionLoc().startsWith("s3://")) {
+            this.bucketUrl = Optional.of(kinesisConfig.getTableDescriptionLoc());
         }
         else {
             this.bucketUrl = Optional.empty();
-        }
-
-        if (this.bucketUrl.isPresent()) {
-            startS3Updates();
         }
     }
 
@@ -100,7 +97,7 @@ public class S3TableConfigClient
      */
     public boolean isUsingS3()
     {
-        return this.bucketUrl.isPresent();
+        return bucketUrl.isPresent() && bucketUrl.get().startsWith("s3://");
     }
 
     /**
@@ -125,7 +122,7 @@ public class S3TableConfigClient
      * Shutdown any periodic update jobs.
      */
     @Override
-    public void shutdown()
+    public void run()
     {
         if (isUsingS3() && updateTaskHandle != null) {
             updateTaskHandle.cancel(true);
@@ -133,12 +130,14 @@ public class S3TableConfigClient
         return;
     }
 
+    @PostConstruct
     protected void startS3Updates()
     {
-        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
-        this.updateTaskHandle =
-                scheduler.scheduleAtFixedRate(() -> updateTablesFromS3(), 5, 600, TimeUnit.SECONDS);
-        return;
+        if (this.bucketUrl.isPresent()) {
+            ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+            this.updateTaskHandle =
+                    scheduler.scheduleAtFixedRate(() -> updateTablesFromS3(), 5, 600, TimeUnit.SECONDS);
+        }
     }
 
     /**
@@ -153,7 +152,7 @@ public class S3TableConfigClient
         AmazonS3Client s3client = this.clientManager.getS3Client();
         AmazonS3URI directoryURI = new AmazonS3URI(this.bucketUrl.get());
 
-        ArrayList<S3ObjectSummary> returnList = new ArrayList<S3ObjectSummary>();
+        List<S3ObjectSummary> returnList = new ArrayList<S3ObjectSummary>();
         try {
             log.info("Getting the listing of objects in the S3 table config directory: bucket %s prefix %s :", directoryURI.getBucket(), directoryURI.getKey());
             ListObjectsRequest req = new ListObjectsRequest().withBucketName(directoryURI.getBucket())

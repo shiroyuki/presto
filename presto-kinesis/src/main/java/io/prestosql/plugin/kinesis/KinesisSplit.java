@@ -31,7 +31,6 @@ import static java.util.Objects.requireNonNull;
 public class KinesisSplit
         implements ConnectorSplit
 {
-    private final String connectorId;
     private final String streamName;
     private final String messageDataFormat;
     private final String shardId;
@@ -40,25 +39,17 @@ public class KinesisSplit
 
     @JsonCreator
     public KinesisSplit(
-            @JsonProperty("connectorId") String connectorId,
             @JsonProperty("streamName") String streamName,
             @JsonProperty("messageDataFormat") String messageDataFormat,
             @JsonProperty("shardId") String shardId,
             @JsonProperty("start") String start,
             @JsonProperty("end") String end)
     {
-        this.connectorId = requireNonNull(connectorId, "connector id is null");
         this.streamName = requireNonNull(streamName, "streamName is null");
         this.messageDataFormat = requireNonNull(messageDataFormat, "messageDataFormat is null");
         this.shardId = shardId;
         this.start = start;
         this.end = end;
-    }
-
-    @JsonProperty
-    public String getConnectorId()
-    {
-        return connectorId;
     }
 
     @JsonProperty
@@ -113,7 +104,6 @@ public class KinesisSplit
     public String toString()
     {
         return toStringHelper(this)
-                .add("connectorId", connectorId)
                 .add("streamName", streamName)
                 .add("messageDataFormat", messageDataFormat)
                 .add("shardId", shardId)

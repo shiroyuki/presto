@@ -27,13 +27,13 @@ import io.prestosql.spi.connector.ConnectorTableLayoutHandle;
 import io.prestosql.spi.connector.ConnectorTransactionHandle;
 import io.prestosql.spi.connector.FixedSplitSource;
 
-import javax.inject.Named;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static java.util.Objects.requireNonNull;
 
 /**
  * Split data chunk from kinesis Stream to multiple small chunks for parallelization and distribution to multiple Presto workers.
@@ -47,7 +47,6 @@ public class KinesisSplitManager
      */
     public static final long MAX_CACHE_AGE_MILLIS = 24 * 3600 * 1000;
 
-    private final String connectorId;
     private final KinesisHandleResolver handleResolver;
     private final KinesisClientProvider clientManager;
 
@@ -59,19 +58,19 @@ public class KinesisSplitManager
      */
     public static class InternalStreamDescription
     {
-        private String streamName = "";
+        private final String streamName;
         private List<Shard> shards = new ArrayList<>();
-        private long createTimeStamp;
+        private final long createTimeStamp;
 
-        public InternalStreamDescription(String aName)
+        public InternalStreamDescription(String streamName)
         {
-            this.streamName = aName;
+            this.streamName = requireNonNull(streamName);
             this.createTimeStamp = System.currentTimeMillis();
         }
 
         public long getCreateTimeStamp()
         {
-            return this.createTimeStamp;
+            return createTimeStamp;
         }
 
         public String getStreamName()
@@ -84,9 +83,9 @@ public class KinesisSplitManager
             return shards;
         }
 
-        public void addShard(Shard s)
+        public void addShard(Shard shard)
         {
-            this.shards.add(s);
+            this.shards.add(shard);
         }
 
         public void addAllShards(List<Shard> shards)
@@ -96,11 +95,10 @@ public class KinesisSplitManager
     }
 
     @Inject
-    public KinesisSplitManager(@Named("connectorId") String connectorId,
+    public KinesisSplitManager(
             KinesisHandleResolver handleResolver,
             KinesisClientProvider clientManager)
     {
-        this.connectorId = connectorId;
         this.handleResolver = handleResolver;
         this.clientManager = clientManager;
     }
@@ -115,7 +113,7 @@ public class KinesisSplitManager
 
         ImmutableList.Builder<ConnectorSplit> builder = ImmutableList.builder();
         for (Shard shard : desc.getShards()) {
-            KinesisSplit split = new KinesisSplit(connectorId,
+            KinesisSplit split = new KinesisSplit(
                     kinesisTableHandle.getStreamName(),
                     kinesisTableHandle.getMessageDataFormat(),
                     shard.getShardId(),
@@ -137,9 +135,9 @@ public class KinesisSplitManager
      */
     protected InternalStreamDescription getStreamDescription(String streamName)
     {
-        InternalStreamDescription desc = this.streamMap.get(streamName);
-        if (desc == null || System.currentTimeMillis() - desc.getCreateTimeStamp() >= MAX_CACHE_AGE_MILLIS) {
-            desc = new InternalStreamDescription(streamName);
+        InternalStreamDescription internalStreamDescription = this.streamMap.get(streamName);
+        if (internalStreamDescription == null || System.currentTimeMillis() - internalStreamDescription.getCreateTimeStamp() >= MAX_CACHE_AGE_MILLIS) {
+            internalStreamDescription = new InternalStreamDescription(streamName);
 
             DescribeStreamRequest describeStreamRequest = clientManager.getDescribeStreamRequest();
             describeStreamRequest.setStreamName(streamName);
@@ -156,7 +154,7 @@ public class KinesisSplitManager
                     throw new ResourceNotFoundException("Stream not Active");
                 }
 
-                desc.addAllShards(describeStreamResult.getStreamDescription().getShards());
+                internalStreamDescription.addAllShards(describeStreamResult.getStreamDescription().getShards());
 
                 if (describeStreamResult.getStreamDescription().getHasMoreShards() && (shards.size() > 0)) {
                     exclusiveStartShardId = shards.get(shards.size() - 1).getShardId();
@@ -167,9 +165,9 @@ public class KinesisSplitManager
             }
             while (exclusiveStartShardId != null);
 
-            this.streamMap.put(streamName, desc);
+            this.streamMap.put(streamName, internalStreamDescription);
         }
 
-        return desc;
+        return internalStreamDescription;
     }
 }

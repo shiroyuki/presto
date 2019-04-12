@@ -35,19 +35,19 @@ public class KinesisRecordSetProvider
 {
     private final KinesisHandleResolver handleResolver;
     private final KinesisClientProvider clientManager;
-    private final KinesisConnectorConfig kinesisConnectorConfig;
+    private final KinesisConfig kinesisConfig;
     private DispatchingRowDecoderFactory decoderFactory;
 
     @Inject
     public KinesisRecordSetProvider(DispatchingRowDecoderFactory decoderFactory,
             KinesisHandleResolver handleResolver,
             KinesisClientProvider clientManager,
-            KinesisConnectorConfig kinesisConnectorConfig)
+            KinesisConfig kinesisConfig)
     {
         this.decoderFactory = requireNonNull(decoderFactory, "decoderFactory is null");
         this.handleResolver = requireNonNull(handleResolver, "handleResolver is null");
         this.clientManager = requireNonNull(clientManager, "clientManager is null");
-        this.kinesisConnectorConfig = requireNonNull(kinesisConnectorConfig, "kinesisConnectorConfig is null");
+        this.kinesisConfig = requireNonNull(kinesisConfig, "kinesisConfig is null");
     }
 
     @Override
@@ -74,6 +74,6 @@ public class KinesisRecordSetProvider
         }
 
         ImmutableList<KinesisColumnHandle> handles = handleBuilder.build();
-        return new KinesisRecordSet(kinesisSplit, session, clientManager, handles, messageDecoder, kinesisConnectorConfig);
+        return new KinesisRecordSet(kinesisSplit, session, clientManager, handles, messageDecoder, kinesisConfig);
     }
 }

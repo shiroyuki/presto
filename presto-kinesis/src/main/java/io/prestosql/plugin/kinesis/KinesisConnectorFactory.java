@@ -19,7 +19,6 @@ import com.google.inject.Injector;
 import com.google.inject.Key;
 import com.google.inject.Scopes;
 import com.google.inject.TypeLiteral;
-import com.google.inject.name.Names;
 import io.airlift.bootstrap.Bootstrap;
 import io.airlift.json.JsonModule;
 import io.airlift.log.Logger;
@@ -87,23 +86,21 @@ public class KinesisConnectorFactory
     @Override
     public Connector create(String connectorId, Map<String, String> config, ConnectorContext context)
     {
-        log.info("In connector factory create method.  Connector id: " + connectorId);
         requireNonNull(connectorId, "connectorId is null");
         requireNonNull(config, "config is null");
 
         try {
             Bootstrap app = new Bootstrap(
                     new JsonModule(),
-                    new KinesisConnectorModule(),
+                    new KinesisModule(),
                     binder -> {
-                        binder.bindConstant().annotatedWith(Names.named("connectorId")).to(connectorId);
                         binder.bind(KinesisConnectorId.class).toInstance(new KinesisConnectorId(connectorId));
                         binder.bind(TypeManager.class).toInstance(context.getTypeManager());
                         binder.bind(NodeManager.class).toInstance(context.getNodeManager());
-                        // Note: moved creation from KinesisConnectorModule because connector manager accesses it earlier!
+                        // Note: moved creation from KinesisModule because connector manager accesses it earlier!
                         binder.bind(KinesisHandleResolver.class).toInstance(new KinesisHandleResolver(connectorName));
 
-                        // Moved creation here from KinesisConnectorModule to make it easier to parameterize
+                        // Moved creation here from KinesisModule to make it easier to parameterize
                         if (altProviderClass.isPresent()) {
                             binder.bind(KinesisClientProvider.class).to(altProviderClass.get()).in(Scopes.SINGLETON);
                         }
@@ -111,12 +108,12 @@ public class KinesisConnectorFactory
                             binder.bind(KinesisClientProvider.class).to(KinesisClientManager.class).in(Scopes.SINGLETON);
                         }
 
-                        if (tableDescriptionSupplier.isPresent()) {
+                        /*if (tableDescriptionSupplier.isPresent()) {
                             binder.bind(new TypeLiteral<Supplier<Map<SchemaTableName, KinesisStreamDescription>>>() {}).toInstance(tableDescriptionSupplier.get());
                         }
-                        else {
-                            binder.bind(new TypeLiteral<Supplier<Map<SchemaTableName, KinesisStreamDescription>>>() {}).to(KinesisTableDescriptionSupplier.class).in(Scopes.SINGLETON);
-                        }
+                        else {*/
+                        binder.bind(new TypeLiteral<Supplier<Map<SchemaTableName, KinesisStreamDescription>>>() {}).to(KinesisTableDescriptionSupplier.class).in(Scopes.SINGLETON);
+                        /*}*/
                     });
 
             this.injector = app.strictConfig()

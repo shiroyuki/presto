@@ -46,16 +46,16 @@ public class KinesisTableDescriptionSupplier
 {
     private static final Logger log = Logger.get(KinesisTableDescriptionSupplier.class);
 
-    private final KinesisConnectorConfig kinesisConnectorConfig;
+    private final KinesisConfig kinesisConfig;
     private final JsonCodec<KinesisStreamDescription> streamDescriptionCodec;
     private final S3TableConfigClient s3TableConfigClient;
 
     @Inject
-    KinesisTableDescriptionSupplier(KinesisConnectorConfig kinesisConnectorConfig,
+    KinesisTableDescriptionSupplier(KinesisConfig kinesisConfig,
             JsonCodec<KinesisStreamDescription> streamDescriptionCodec,
             S3TableConfigClient anS3Client)
     {
-        this.kinesisConnectorConfig = requireNonNull(kinesisConnectorConfig, "kinesisConnectorConfig is null");
+        this.kinesisConfig = requireNonNull(kinesisConfig, "kinesisConfig is null");
         this.streamDescriptionCodec = requireNonNull(streamDescriptionCodec, "streamDescriptionCodec is null");
         this.s3TableConfigClient = requireNonNull(anS3Client, "S3 table config client is null");
     }
@@ -75,10 +75,10 @@ public class KinesisTableDescriptionSupplier
     {
         ImmutableMap.Builder<SchemaTableName, KinesisStreamDescription> builder = ImmutableMap.builder();
         try {
-            for (Path file : listFiles(Paths.get(kinesisConnectorConfig.getTableDescriptionLoc()))) {
+            for (Path file : listFiles(Paths.get(kinesisConfig.getTableDescriptionLoc()))) {
                 if (Files.isRegularFile(file) && file.getFileName().toString().endsWith("json")) {
                     KinesisStreamDescription table = streamDescriptionCodec.fromJson(Files.readAllBytes(file));
-                    String schemaName = firstNonNull(table.getSchemaName(), kinesisConnectorConfig.getDefaultSchema());
+                    String schemaName = firstNonNull(table.getSchemaName(), kinesisConfig.getDefaultSchema());
                     log.debug("Kinesis table %s %s %s", schemaName, table.getTableName(), table);
                     builder.put(new SchemaTableName(schemaName, table.getTableName()), table);
                 }
@@ -101,7 +101,7 @@ public class KinesisTableDescriptionSupplier
     @PreDestroy
     public void shutdown()
     {
-        this.s3TableConfigClient.shutdown();
+        this.s3TableConfigClient.run();
         return;
     }
 

@@ -33,7 +33,7 @@ import static io.airlift.json.JsonCodecBinder.jsonCodecBinder;
 import static io.prestosql.spi.type.TypeSignature.parseTypeSignature;
 import static java.util.Objects.requireNonNull;
 
-public class KinesisConnectorModule
+public class KinesisModule
         implements Module
 {
     @Override
@@ -46,8 +46,9 @@ public class KinesisConnectorModule
         binder.bind(KinesisSplitManager.class).in(Scopes.SINGLETON);
         binder.bind(KinesisRecordSetProvider.class).in(Scopes.SINGLETON);
         binder.bind(S3TableConfigClient.class).in(Scopes.SINGLETON);
+        binder.bind(KinesisSessionProperties.class).in(Scopes.SINGLETON);
 
-        configBinder(binder).bindConfig(KinesisConnectorConfig.class);
+        configBinder(binder).bindConfig(KinesisConfig.class);
 
         jsonBinder(binder).addDeserializerBinding(Type.class).to(TypeDeserializer.class);
         jsonCodecBinder(binder).bindJsonCodec(KinesisStreamDescription.class);

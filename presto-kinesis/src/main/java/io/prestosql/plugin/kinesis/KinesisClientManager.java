@@ -37,11 +37,11 @@ public class KinesisClientManager
     private final AmazonDynamoDBClient dynamoDBClient;              // for Checkpointing
 
     @Inject
-    KinesisClientManager(KinesisConnectorConfig kinesisConnectorConfig)
+    KinesisClientManager(KinesisConfig kinesisConfig)
     {
         log.info("Creating new client for Consumer");
-        if (nonEmpty(kinesisConnectorConfig.getAccessKey()) && nonEmpty(kinesisConnectorConfig.getSecretKey())) {
-            this.kinesisAwsCredentials = new KinesisAwsCredentials(kinesisConnectorConfig.getAccessKey(), kinesisConnectorConfig.getSecretKey());
+        if (nonEmpty(kinesisConfig.getAccessKey()) && nonEmpty(kinesisConfig.getSecretKey())) {
+            this.kinesisAwsCredentials = new KinesisAwsCredentials(kinesisConfig.getAccessKey(), kinesisConfig.getSecretKey());
             this.client = new AmazonKinesisClient(this.kinesisAwsCredentials);
             this.amazonS3Client = new AmazonS3Client(this.kinesisAwsCredentials);
             this.dynamoDBClient = new AmazonDynamoDBClient(this.kinesisAwsCredentials);
@@ -54,8 +54,8 @@ public class KinesisClientManager
             this.dynamoDBClient = new AmazonDynamoDBClient(defaultChain);
         }
 
-        this.client.setEndpoint("kinesis." + kinesisConnectorConfig.getAwsRegion() + ".amazonaws.com");
-        this.dynamoDBClient.setEndpoint("dynamodb." + kinesisConnectorConfig.getAwsRegion() + ".amazonaws.com");
+        this.client.setEndpoint("kinesis." + kinesisConfig.getAwsRegion() + ".amazonaws.com");
+        this.dynamoDBClient.setEndpoint("dynamodb." + kinesisConfig.getAwsRegion() + ".amazonaws.com");
     }
 
     @Override

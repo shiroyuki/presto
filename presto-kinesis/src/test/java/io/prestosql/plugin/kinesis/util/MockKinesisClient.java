@@ -45,6 +45,7 @@ import com.amazonaws.services.kinesis.model.StreamDescription;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 /**
  * Mock kinesis client for testing that is primarily used for reading from the
@@ -54,21 +55,20 @@ import java.util.Date;
  * issues that arise without incurring AWS load and charges.  It is far from a complete
  * implementation of Kinesis.
  * <p>
- * Created by derekbennett on 6/20/16.
  */
 public class MockKinesisClient
         extends AmazonKinesisClient
 {
     private String endpoint = "";
     private Region region;
-    ArrayList<InternalStream> streams = new ArrayList<>();
+    List<InternalStream> streams = new ArrayList();
 
     //// Support classes
 
     public static class InternalShard
             extends Shard
     {
-        private ArrayList<Record> recs = new ArrayList<>();
+        private List<Record> recs = new ArrayList<>();
         private String streamName = "";
         private int index;
 
@@ -80,14 +80,14 @@ public class MockKinesisClient
             this.setShardId(this.streamName + "_" + this.index);
         }
 
-        public ArrayList<Record> getRecords()
+        public List<Record> getRecords()
         {
             return recs;
         }
 
-        public ArrayList<Record> getRecordsFrom(ShardIterator iter)
+        public List<Record> getRecordsFrom(ShardIterator iter)
         {
-            ArrayList<Record> returnRecords = new ArrayList<Record>();
+            List<Record> returnRecords = new ArrayList();
 
             for (Record record : this.recs) {
                 if (Integer.valueOf(record.getSequenceNumber()) >= iter.recordIndex) {
@@ -125,7 +125,7 @@ public class MockKinesisClient
         private String streamARN = "";
         private String streamStatus = "CREATING";
         private int retentionPeriodHours = 24;
-        private ArrayList<InternalShard> shards = new ArrayList<InternalShard>();
+        private List<InternalShard> shards = new ArrayList();
         private int sequenceNo = 100;
         private int nextShard;
 
@@ -164,16 +164,16 @@ public class MockKinesisClient
             return retentionPeriodHours;
         }
 
-        public ArrayList<InternalShard> getShards()
+        public List<InternalShard> getShards()
         {
             return shards;
         }
 
-        public ArrayList<InternalShard> getShardsFrom(String afterShardId)
+        public List<InternalShard> getShardsFrom(String afterShardId)
         {
             String[] comps = afterShardId.split("_");
             if (comps.length == 2) {
-                ArrayList<InternalShard> returnArray = new ArrayList<InternalShard>();
+                List<InternalShard> returnArray = new ArrayList();
                 int afterIndex = Integer.parseInt(comps[1]);
                 if (shards.size() > afterIndex + 1) {
                     for (InternalShard shard : shards) {
@@ -186,7 +186,7 @@ public class MockKinesisClient
                 return returnArray;
             }
             else {
-                return new ArrayList<InternalShard>();
+                return new ArrayList();
             }
         }
 
@@ -288,9 +288,9 @@ public class MockKinesisClient
         return foundStream;
     }
 
-    protected ArrayList<Shard> getShards(InternalStream theStream)
+    protected List<Shard> getShards(InternalStream theStream)
     {
-        ArrayList<Shard> externalList = new ArrayList<Shard>();
+        List<Shard> externalList = new ArrayList();
         for (InternalShard intshard : theStream.getShards()) {
             externalList.add(intshard);
         }
@@ -298,9 +298,9 @@ public class MockKinesisClient
         return externalList;
     }
 
-    protected ArrayList<Shard> getShards(InternalStream theStream, String fromShardId)
+    protected List<Shard> getShards(InternalStream theStream, String fromShardId)
     {
-        ArrayList<Shard> externalList = new ArrayList<Shard>();
+        List<Shard> externalList = new ArrayList();
         for (InternalShard intshard : theStream.getShardsFrom(fromShardId)) {
             externalList.add(intshard);
         }
@@ -357,7 +357,7 @@ public class MockKinesisClient
 
     @Override
     public CreateStreamResult createStream(CreateStreamRequest createStreamRequest)
-            throws AmazonServiceException, AmazonClientException
+            throws AmazonClientException
     {
         // Setup method to create a new stream:
         InternalStream stream = new InternalStream(createStreamRequest.getStreamName(), createStreamRequest.getShardCount(), true);
@@ -367,20 +367,20 @@ public class MockKinesisClient
 
     @Override
     public CreateStreamResult createStream(String s, Integer integer)
-            throws AmazonServiceException, AmazonClientException
+            throws AmazonClientException
     {
         return this.createStream((new CreateStreamRequest()).withStreamName(s).withShardCount(integer));
     }
 
     @Override
     public PutRecordsResult putRecords(PutRecordsRequest putRecordsRequest)
-            throws AmazonServiceException, AmazonClientException
+            throws AmazonClientException
     {
         // Setup method to add a batch of new records:
         InternalStream theStream = this.getStream(putRecordsRequest.getStreamName());
         if (theStream != null) {
             PutRecordsResult result = new PutRecordsResult();
-            ArrayList<PutRecordsResultEntry> resultList = new ArrayList<PutRecordsResultEntry>();
+            List<PutRecordsResultEntry> resultList = new ArrayList();
             for (PutRecordsRequestEntry entry : putRecordsRequest.getRecords()) {
                 PutRecordResult putResult = theStream.putRecord(entry.getData(), entry.getPartitionKey());
                 resultList.add((new PutRecordsResultEntry()).withShardId(putResult.getShardId()).withSequenceNumber(putResult.getSequenceNumber()));
@@ -396,7 +396,7 @@ public class MockKinesisClient
 
     @Override
     public DescribeStreamResult describeStream(DescribeStreamRequest describeStreamRequest)
-            throws AmazonServiceException, AmazonClientException
+            throws AmazonClientException
     {
         InternalStream theStream = this.getStream(describeStreamRequest.getStreamName());
         if (theStream != null) {
@@ -425,7 +425,7 @@ public class MockKinesisClient
 
     @Override
     public GetShardIteratorResult getShardIterator(GetShardIteratorRequest getShardIteratorRequest)
-            throws AmazonServiceException, AmazonClientException
+            throws AmazonClientException
     {
         ShardIterator iter = ShardIterator.fromStreamAndShard(getShardIteratorRequest.getStreamName(), getShardIteratorRequest.getShardId());
         if (iter != null) {
@@ -454,7 +454,7 @@ public class MockKinesisClient
 
     @Override
     public GetRecordsResult getRecords(GetRecordsRequest getRecordsRequest)
-            throws AmazonServiceException, AmazonClientException
+            throws AmazonClientException
     {
         ShardIterator iter = ShardIterator.fromString(getRecordsRequest.getShardIterator());
         if (iter == null) {
@@ -469,14 +469,14 @@ public class MockKinesisClient
 
             if (iter.recordIndex == 100) {
                 result = new GetRecordsResult();
-                ArrayList<Record> recs = shard.getRecords();
+                List<Record> recs = shard.getRecords();
                 result.setRecords(recs); // NOTE: getting all for now
                 result.setNextShardIterator(getNextShardIterator(iter, recs).makeString());
                 result.setMillisBehindLatest(100L);
             }
             else {
                 result = new GetRecordsResult();
-                ArrayList<Record> recs = shard.getRecordsFrom(iter);
+                List<Record> recs = shard.getRecordsFrom(iter);
                 result.setRecords(recs); // may be empty
                 result.setNextShardIterator(getNextShardIterator(iter, recs).makeString());
                 result.setMillisBehindLatest(100L);
@@ -489,7 +489,7 @@ public class MockKinesisClient
         return result;
     }
 
-    protected ShardIterator getNextShardIterator(ShardIterator previousIter, ArrayList<Record> records)
+    protected ShardIterator getNextShardIterator(ShardIterator previousIter, List<Record> records)
     {
         ShardIterator newIter = null;
         if (records.size() == 0) {
@@ -508,14 +508,14 @@ public class MockKinesisClient
 
     @Override
     public ListTagsForStreamResult listTagsForStream(ListTagsForStreamRequest listTagsForStreamRequest)
-            throws AmazonServiceException, AmazonClientException
+            throws AmazonClientException
     {
         return null;
     }
 
     @Override
     public ListStreamsResult listStreams(ListStreamsRequest listStreamsRequest)
-            throws AmazonServiceException, AmazonClientException
+            throws AmazonClientException
     {
         return null;
     }

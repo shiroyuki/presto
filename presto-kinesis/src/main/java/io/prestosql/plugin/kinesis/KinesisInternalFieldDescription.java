@@ -109,10 +109,9 @@ public enum KinesisInternalFieldDescription
         return type;
     }
 
-    KinesisColumnHandle getColumnHandle(String connectorId, int index, boolean hidden)
+    KinesisColumnHandle getColumnHandle(int index, boolean hidden)
     {
-        return new KinesisColumnHandle(connectorId,
-                index,
+        return new KinesisColumnHandle(index,
                 getColumnName(),
                 getType(),
                 null,

@@ -21,12 +21,12 @@ import org.testng.annotations.Test;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-public class TestKinesisConnectorConfig
+public class TestKinesisConfig
 {
     @Test
     public void testDefaults()
     {
-        ConfigAssertions.assertRecordedDefaults(ConfigAssertions.recordDefaults(KinesisConnectorConfig.class)
+        ConfigAssertions.assertRecordedDefaults(ConfigAssertions.recordDefaults(KinesisConfig.class)
                 .setDefaultSchema("default")
                 .setHideInternalColumns(true)
                 .setTableDescriptionLoc("etc/kinesis/")
@@ -73,7 +73,7 @@ public class TestKinesisConnectorConfig
                 .put("kinesis.iteration-number", "1")
                 .build();
 
-        KinesisConnectorConfig expected = new KinesisConnectorConfig()
+        KinesisConfig expected = new KinesisConfig()
                 .setTableDescriptionLoc("/var/lib/kinesis")
                 .setDefaultSchema("kinesis")
                 .setHideInternalColumns(false)

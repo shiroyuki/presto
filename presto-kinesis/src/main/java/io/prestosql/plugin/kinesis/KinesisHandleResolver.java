@@ -73,8 +73,6 @@ public class KinesisHandleResolver
         requireNonNull(tableHandle, "tableHandle is null");
         checkArgument(tableHandle instanceof KinesisTableHandle, "tableHandle is not an instance of KinesisTableHandle");
         KinesisTableHandle kinesisTableHandle = (KinesisTableHandle) tableHandle;
-        checkArgument(kinesisTableHandle.getConnectorId().equals(connectorId), "tableHandle is not for this connector");
-
         return kinesisTableHandle;
     }
 
@@ -91,7 +89,6 @@ public class KinesisHandleResolver
         requireNonNull(split, "split is null");
         checkArgument(split instanceof KinesisSplit, "split is not an instance of KinesisSplit");
         KinesisSplit kinesisSplit = (KinesisSplit) split;
-        checkArgument(kinesisSplit.getConnectorId().equals(connectorId), "split is not for this connector");
         return kinesisSplit;
     }
 
@@ -100,7 +97,6 @@ public class KinesisHandleResolver
         requireNonNull(layout, "layout is null");
         checkArgument(layout instanceof KinesisTableLayoutHandle, "layout is not an instance of KinesisTableLayoutHandle");
         KinesisTableLayoutHandle kinesisLayout = (KinesisTableLayoutHandle) layout;
-        checkArgument(kinesisLayout.getConnectorId().equals(connectorId), "split is not for this connector");
         return kinesisLayout;
     }
 }

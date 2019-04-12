@@ -30,13 +30,8 @@ public class KinesisTableHandle
         implements ConnectorTableHandle
 {
     /**
-     * connector id
-     */
-    private final String connectorId;
-
-    /**
      * The schema name for this table. Is set through configuration and read
-     * using {@link KinesisConnectorConfig#getDefaultSchema()}. Usually 'default'.
+     * using {@link KinesisConfig#getDefaultSchema()}. Usually 'default'.
      */
     private final String schemaName;
 
@@ -54,23 +49,15 @@ public class KinesisTableHandle
 
     @JsonCreator
     public KinesisTableHandle(
-            @JsonProperty("connectorId") String connectorId,
             @JsonProperty("schemaName") String schemaName,
             @JsonProperty("tableName") String tableName,
             @JsonProperty("streamName") String streamName,
             @JsonProperty("messageDataFormat") String messageDataFormat)
     {
-        this.connectorId = requireNonNull(connectorId, "connectorId is null");
         this.schemaName = requireNonNull(schemaName, "schemaName is null");
         this.tableName = requireNonNull(tableName, "tableName is null");
         this.streamName = requireNonNull(streamName, "topicName is null");
         this.messageDataFormat = requireNonNull(messageDataFormat, "messageDataFormat is null");
-    }
-
-    @JsonProperty
-    public String getConnectorId()
-    {
-        return connectorId;
     }
 
     @JsonProperty
@@ -105,7 +92,7 @@ public class KinesisTableHandle
     @Override
     public int hashCode()
     {
-        return Objects.hash(connectorId, schemaName, tableName, streamName, messageDataFormat);
+        return Objects.hash(schemaName, tableName, streamName, messageDataFormat);
     }
 
     @Override
@@ -119,8 +106,7 @@ public class KinesisTableHandle
         }
 
         KinesisTableHandle other = (KinesisTableHandle) obj;
-        return Objects.equals(this.connectorId, other.connectorId)
-                && Objects.equals(this.schemaName, other.schemaName)
+        return Objects.equals(this.schemaName, other.schemaName)
                 && Objects.equals(this.tableName, other.tableName)
                 && Objects.equals(this.streamName, other.streamName)
                 && Objects.equals(this.messageDataFormat, other.messageDataFormat);
@@ -130,7 +116,6 @@ public class KinesisTableHandle
     public String toString()
     {
         return toStringHelper(this)
-                .add("connectorId", connectorId)
                 .add("schemaName", schemaName)
                 .add("tableName", tableName)
                 .add("streamName", streamName)

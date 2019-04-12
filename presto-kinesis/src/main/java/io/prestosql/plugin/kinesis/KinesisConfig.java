@@ -20,10 +20,7 @@ import javax.validation.constraints.NotNull;
 
 import java.util.concurrent.TimeUnit;
 
-/**
- * This Class handles all the configuration settings that is stored in /etc/catalog/kinesis.properties file
- */
-public class KinesisConnectorConfig
+public class KinesisConfig
 {
     /**
      * The schema name to use in the connector.
@@ -103,7 +100,7 @@ public class KinesisConnectorConfig
     }
 
     @Config("kinesis.table-description-loc")
-    public KinesisConnectorConfig setTableDescriptionLoc(String tableDescriptionLoc)
+    public KinesisConfig setTableDescriptionLoc(String tableDescriptionLoc)
     {
         this.tableDescriptionLoc = tableDescriptionLoc;
         return this;
@@ -115,7 +112,7 @@ public class KinesisConnectorConfig
     }
 
     @Config("kinesis.hide-internal-columns")
-    public KinesisConnectorConfig setHideInternalColumns(boolean hideInternalColumns)
+    public KinesisConfig setHideInternalColumns(boolean hideInternalColumns)
     {
         this.hideInternalColumns = hideInternalColumns;
         return this;
@@ -128,7 +125,7 @@ public class KinesisConnectorConfig
     }
 
     @Config("kinesis.default-schema")
-    public KinesisConnectorConfig setDefaultSchema(String defaultSchema)
+    public KinesisConfig setDefaultSchema(String defaultSchema)
     {
         this.defaultSchema = defaultSchema;
         return this;
@@ -140,7 +137,7 @@ public class KinesisConnectorConfig
     }
 
     @Config("kinesis.access-key")
-    public KinesisConnectorConfig setAccessKey(String accessKey)
+    public KinesisConfig setAccessKey(String accessKey)
     {
         this.accessKey = accessKey;
         return this;
@@ -152,7 +149,7 @@ public class KinesisConnectorConfig
     }
 
     @Config("kinesis.secret-key")
-    public KinesisConnectorConfig setSecretKey(String secretKey)
+    public KinesisConfig setSecretKey(String secretKey)
     {
         this.secretKey = secretKey;
         return this;
@@ -164,7 +161,7 @@ public class KinesisConnectorConfig
     }
 
     @Config("kinesis.aws-region")
-    public KinesisConnectorConfig setAwsRegion(String awsRegion)
+    public KinesisConfig setAwsRegion(String awsRegion)
     {
         this.awsRegion = awsRegion;
         return this;
@@ -176,7 +173,7 @@ public class KinesisConnectorConfig
     }
 
     @Config("kinesis.batch-size")
-    public KinesisConnectorConfig setBatchSize(int batchSize)
+    public KinesisConfig setBatchSize(int batchSize)
     {
         this.batchSize = batchSize;
         return this;
@@ -188,7 +185,7 @@ public class KinesisConnectorConfig
     }
 
     @Config("kinesis.max-batches")
-    public KinesisConnectorConfig setMaxBatches(int maxBatches)
+    public KinesisConfig setMaxBatches(int maxBatches)
     {
         this.maxBatches = maxBatches;
         return this;
@@ -200,7 +197,7 @@ public class KinesisConnectorConfig
     }
 
     @Config("kinesis.fetch-attempts")
-    public KinesisConnectorConfig setFetchAttempts(int fetchAttempts)
+    public KinesisConfig setFetchAttempts(int fetchAttempts)
     {
         this.fetchAttempts = fetchAttempts;
         return this;
@@ -212,7 +209,7 @@ public class KinesisConnectorConfig
     }
 
     @Config("kinesis.sleep-time")
-    public KinesisConnectorConfig setSleepTime(Duration sleepTime)
+    public KinesisConfig setSleepTime(Duration sleepTime)
     {
         this.sleepTime = sleepTime;
         return this;
@@ -224,7 +221,7 @@ public class KinesisConnectorConfig
     }
 
     @Config("kinesis.log-batches")
-    public KinesisConnectorConfig setLogBatches(boolean logBatches)
+    public KinesisConfig setLogBatches(boolean logBatches)
     {
         this.logKinesisBatches = logBatches;
         return this;
@@ -236,7 +233,7 @@ public class KinesisConnectorConfig
     }
 
     @Config("kinesis.iter-from-timestamp")
-    public KinesisConnectorConfig setIterFromTimestamp(boolean iterFromTimestamp)
+    public KinesisConfig setIterFromTimestamp(boolean iterFromTimestamp)
     {
         this.iterFromTimestamp = iterFromTimestamp;
         return this;
@@ -248,7 +245,7 @@ public class KinesisConnectorConfig
     }
 
     @Config("kinesis.iter-offset-seconds")
-    public KinesisConnectorConfig setIterOffsetSeconds(long iterOffsetSeconds)
+    public KinesisConfig setIterOffsetSeconds(long iterOffsetSeconds)
     {
         this.iterOffsetSeconds = iterOffsetSeconds;
         return this;
@@ -260,7 +257,7 @@ public class KinesisConnectorConfig
     }
 
     @Config("kinesis.checkpoint-enabled")
-    public KinesisConnectorConfig setCheckpointEnabled(boolean checkpointEnabled)
+    public KinesisConfig setCheckpointEnabled(boolean checkpointEnabled)
     {
         this.checkpointEnabled = checkpointEnabled;
         return this;
@@ -272,7 +269,7 @@ public class KinesisConnectorConfig
     }
 
     @Config("kinesis.dynamo-read-capacity")
-    public KinesisConnectorConfig setDynamoReadCapacity(long dynamoReadCapacity)
+    public KinesisConfig setDynamoReadCapacity(long dynamoReadCapacity)
     {
         this.dynamoReadCapacity = dynamoReadCapacity;
         return this;
@@ -284,7 +281,7 @@ public class KinesisConnectorConfig
     }
 
     @Config("kinesis.dynamo-write-capacity")
-    public KinesisConnectorConfig setDynamoWriteCapacity(long dynamoWriteCapacity)
+    public KinesisConfig setDynamoWriteCapacity(long dynamoWriteCapacity)
     {
         this.dynamoWriteCapacity = dynamoWriteCapacity;
         return this;
@@ -296,7 +293,7 @@ public class KinesisConnectorConfig
     }
 
     @Config("kinesis.checkpoint-interval")
-    public KinesisConnectorConfig setCheckpointInterval(Duration checkpointInterval)
+    public KinesisConfig setCheckpointInterval(Duration checkpointInterval)
     {
         this.checkpointInterval = checkpointInterval;
         return this;
@@ -308,7 +305,7 @@ public class KinesisConnectorConfig
     }
 
     @Config("kinesis.checkpoint-logical-name")
-    public KinesisConnectorConfig setLogicalProcessName(String logicalPrcessName)
+    public KinesisConfig setLogicalProcessName(String logicalPrcessName)
     {
         this.logicalProcessName = logicalPrcessName;
         return this;
@@ -320,7 +317,7 @@ public class KinesisConnectorConfig
     }
 
     @Config("kinesis.iteration-number")
-    public KinesisConnectorConfig setIterationNumber(int iterationNumber)
+    public KinesisConfig setIterationNumber(int iterationNumber)
     {
         this.iterationNumber = iterationNumber;
         return this;

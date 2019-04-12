@@ -97,9 +97,9 @@ public class KinesisStreamFieldDescription
         return hidden;
     }
 
-    KinesisColumnHandle getColumnHandle(String connectorId, int index)
+    KinesisColumnHandle getColumnHandle(int index)
     {
-        return new KinesisColumnHandle(connectorId,
+        return new KinesisColumnHandle(
                 index,
                 getName(),
                 getType(),

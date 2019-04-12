@@ -45,24 +45,22 @@ public class KinesisConnector
     private final KinesisSplitManager splitManager;
     private final KinesisRecordSetProvider recordSetProvider;
 
-    private final ArrayList<PropertyMetadata<?>> propertyList;
+    private final List<PropertyMetadata<?>> propertyList;
 
-    private ArrayList<ConnectorShutdown> shutdownObjects;
+    private List<ConnectorShutdown> shutdownObjects;
 
     @Inject
     public KinesisConnector(
             KinesisMetadata metadata,
             KinesisSplitManager splitManager,
-            KinesisRecordSetProvider recordSetProvider)
+            KinesisRecordSetProvider recordSetProvider,
+            KinesisSessionProperties sessionProperties)
     {
         this.metadata = requireNonNull(metadata, "metadata is null");
         this.splitManager = requireNonNull(splitManager, "splitManager is null");
         this.recordSetProvider = requireNonNull(recordSetProvider, "recordSetProvider is null");
-
-        this.propertyList = new ArrayList<PropertyMetadata<?>>();
-        buildPropertyList();
-
-        this.shutdownObjects = new ArrayList<ConnectorShutdown>();
+        this.propertyList = sessionProperties.getSessionProperties();
+        this.shutdownObjects = new ArrayList();
     }
 
     @Override
@@ -99,33 +97,6 @@ public class KinesisConnector
     public List<PropertyMetadata<?>> getSessionProperties()
     {
         return this.propertyList;
-    }
-
-    /**
-     * Build the list of session properties we support to supply them to Presto.
-     */
-    protected void buildPropertyList()
-    {
-        KinesisConnectorConfig cfg = this.metadata.getConnectorConfig();
-
-        this.propertyList.add(PropertyMetadata.booleanProperty(
-                SessionVariables.CHECKPOINT_ENABLED, "Are checkpoints used in this session?", cfg.isCheckpointEnabled(), false));
-        this.propertyList.add(PropertyMetadata.integerProperty(
-                SessionVariables.ITERATION_NUMBER, "checkpoint iteration number", cfg.getIterationNumber(), false));
-        this.propertyList.add(PropertyMetadata.stringProperty(
-                SessionVariables.CHECKPOINT_LOGICAL_NAME, "checkpoint logical name", cfg.getLogicalProcessName(), false));
-
-        this.propertyList.add(PropertyMetadata.integerProperty(
-                SessionVariables.MAX_BATCHES, "max number of calls to Kinesis per query", cfg.getMaxBatches(), false));
-        this.propertyList.add(PropertyMetadata.integerProperty(
-                SessionVariables.BATCH_SIZE, "Record limit in calls to Kinesis", cfg.getBatchSize(), false));
-        this.propertyList.add(PropertyMetadata.booleanProperty(
-                SessionVariables.ITER_FROM_TIMESTAMP, "Start from timestamp not trim horizon", cfg.isIterFromTimestamp(), false));
-        this.propertyList.add(PropertyMetadata.longProperty(
-                SessionVariables.ITER_OFFSET_SECONDS, "Seconds before current time to start iterator", cfg.getIterOffsetSeconds(), false));
-        // This does not have a corresponding configuration setting, since when not set we can use ITER_OFFSET_SECONDS
-        this.propertyList.add(PropertyMetadata.stringProperty(
-                SessionVariables.ITER_START_TIMESTAMP, "Timestamp in Presto format to start iterator", SessionVariables.UNSET_TIMESTAMP, false));
     }
 
     public void registerShutdownObject(ConnectorShutdown obj)

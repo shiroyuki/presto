@@ -19,6 +19,8 @@ import io.prestosql.decoder.DecoderColumnHandle;
 import io.prestosql.spi.connector.ColumnMetadata;
 import io.prestosql.spi.type.Type;
 
+import javax.annotation.Nullable;
+
 import java.util.Objects;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
@@ -31,47 +33,18 @@ import static java.util.Objects.requireNonNull;
 public class KinesisColumnHandle
         implements DecoderColumnHandle, Comparable<KinesisColumnHandle>
 {
-    private String connectorId;
     private final int ordinalPosition;
-
-    /**
-     * Column Name
-     */
     private final String name;
-
-    /**
-     * Column type
-     */
     private final Type type;
-
-    /**
-     * Mapping hint for the decoder. Can be null.
-     */
     private final String mapping;
 
-    /**
-     * Data format to use (selects the decoder). Can be null.
-     */
-    private final String dataFormat;
-
-    /**
-     * Additional format hint for the selected decoder. Selects a decoder subtype (e.g. which timestamp decoder).
-     */
-    private final String formatHint;
-
-    /**
-     * True if the column should be hidden.
-     */
+    private final String dataFormat; // Data format to use (selects the decoder). Can be null.
+    private final String formatHint; // Additional format hint for the selected decoder. Selects a decoder subtype (e.g. which timestamp decoder).
     private final boolean hidden;
-
-    /**
-     * True if the column is internal to the connector and not defined by a topic definition.
-     */
     private final boolean internal;
 
     @JsonCreator
     public KinesisColumnHandle(
-            @JsonProperty("connectorId") String connectorId,
             @JsonProperty("ordinalPosition") int ordinalPosition,
             @JsonProperty("name") String name,
             @JsonProperty("type") Type type,
@@ -81,7 +54,6 @@ public class KinesisColumnHandle
             @JsonProperty("hidden") boolean hidden,
             @JsonProperty("internal") boolean internal)
     {
-        this.connectorId = requireNonNull(connectorId, "connectorId is null");
         this.ordinalPosition = ordinalPosition;
         this.name = requireNonNull(name, "name is null");
         this.type = requireNonNull(type, "type is null");
@@ -90,12 +62,6 @@ public class KinesisColumnHandle
         this.formatHint = formatHint;
         this.hidden = hidden;
         this.internal = internal;
-    }
-
-    @JsonProperty
-    public String getConnectorId()
-    {
-        return connectorId;
     }
 
     @JsonProperty
@@ -122,6 +88,7 @@ public class KinesisColumnHandle
         return mapping;
     }
 
+    @Nullable
     @JsonProperty
     public String getDataFormat()
     {
@@ -154,7 +121,7 @@ public class KinesisColumnHandle
     @Override
     public int hashCode()
     {
-        return Objects.hash(connectorId, ordinalPosition, name, type, mapping, dataFormat, formatHint, hidden, internal);
+        return Objects.hash(ordinalPosition, name, type, mapping, dataFormat, formatHint, hidden, internal);
     }
 
     @Override
@@ -168,8 +135,7 @@ public class KinesisColumnHandle
         }
 
         KinesisColumnHandle other = (KinesisColumnHandle) obj;
-        return Objects.equals(this.connectorId, other.connectorId) &&
-                Objects.equals(this.ordinalPosition, other.ordinalPosition) &&
+        return Objects.equals(this.ordinalPosition, other.ordinalPosition) &&
                 Objects.equals(this.name, other.name) &&
                 Objects.equals(this.type, other.type) &&
                 Objects.equals(this.mapping, other.mapping) &&
@@ -189,7 +155,6 @@ public class KinesisColumnHandle
     public String toString()
     {
         return toStringHelper(this)
-                .add("connectorId", connectorId)
                 .add("ordinalPosition", ordinalPosition)
                 .add("name", name)
                 .add("type", type)

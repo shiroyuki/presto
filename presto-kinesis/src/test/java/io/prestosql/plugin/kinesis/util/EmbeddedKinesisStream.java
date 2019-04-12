@@ -23,6 +23,7 @@ import io.prestosql.plugin.kinesis.KinesisAwsCredentials;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -31,7 +32,7 @@ public class EmbeddedKinesisStream
 {
     private KinesisAwsCredentials awsCredentials;
     private AmazonKinesisClient amazonKinesisClient;
-    private ArrayList<String> streamsCreated = new ArrayList<String>();
+    private List<String> streamsCreated = new ArrayList();
 
     public EmbeddedKinesisStream(String accessKey, String secretKey)
     {
