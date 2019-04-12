@@ -69,6 +69,9 @@ public class KinesisConnectorFactory
         this.altProviderClass = requireNonNull(altProviderClass, "altProviderClass is null");
 
         this.handleResolver = new KinesisHandleResolver(connectorName);
+        // Explanation: aws-sdk-core throws following exception without this
+        //Unable to marshall request to JSON: Jackson jackson-core/jackson-dataformat-cbor incompatible library version detected.
+        System.setProperty("com.amazonaws.sdk.disableCbor", "true");
     }
 
     @Override
