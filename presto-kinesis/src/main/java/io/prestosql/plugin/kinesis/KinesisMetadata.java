@@ -104,7 +104,7 @@ public class KinesisMetadata
 
     @Override
     public List<ConnectorTableLayoutResult> getTableLayouts(ConnectorSession connectorSession, ConnectorTableHandle table,
-            Constraint<ColumnHandle> constraint, Optional<Set<ColumnHandle>> optional)
+            Constraint constraint, Optional<Set<ColumnHandle>> optional)
     {
         KinesisTableHandle tblHandle = handleResolver.convertTableHandle(table);
         ConnectorTableLayout layout = new ConnectorTableLayout(new KinesisTableLayoutHandle(tblHandle));
