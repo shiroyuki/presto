@@ -352,14 +352,16 @@ public class MemoryMetadata
     }
 
     @Override
-    public Optional<LimitApplicationResult<ConnectorTableHandle>> applyLimit(ConnectorTableHandle handle, long limit)
+    public Optional<LimitApplicationResult<ConnectorTableHandle>> applyLimit(ConnectorSession session, ConnectorTableHandle handle, long limit)
     {
         MemoryTableHandle table = (MemoryTableHandle) handle;
 
-        if (!table.getLimit().isPresent() || limit < table.getLimit().getAsLong()) {
-            table = new MemoryTableHandle(table.getId(), OptionalLong.of(limit));
+        if (table.getLimit().isPresent() && table.getLimit().getAsLong() <= limit) {
+            return Optional.empty();
         }
 
-        return Optional.of(new LimitApplicationResult<>(table, true));
+        return Optional.of(new LimitApplicationResult<>(
+                new MemoryTableHandle(table.getId(), OptionalLong.of(limit)),
+                true));
     }
 }
