@@ -116,7 +116,8 @@ public class TestUtils
         Map<String, String> kinesisConfig = ImmutableMap.of(
                 "kinesis.default-schema", "default",
                 "kinesis.access-key", "",
-                "kinesis.secret-key", "");
+                "kinesis.secret-key", "",
+                "kinesis.table-description-loc", "testloc");
         queryRunner.createCatalog("kinesis", "kinesis", kinesisConfig);
 
         return kinesisPlugin;

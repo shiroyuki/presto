@@ -111,12 +111,12 @@ public class KinesisConnectorFactory
                             binder.bind(KinesisClientProvider.class).to(KinesisClientManager.class).in(Scopes.SINGLETON);
                         }
 
-                        /*if (tableDescriptionSupplier.isPresent()) {
+                        if (tableDescriptionSupplier.isPresent()) {
                             binder.bind(new TypeLiteral<Supplier<Map<SchemaTableName, KinesisStreamDescription>>>() {}).toInstance(tableDescriptionSupplier.get());
                         }
-                        else {*/
-                        binder.bind(new TypeLiteral<Supplier<Map<SchemaTableName, KinesisStreamDescription>>>() {}).to(KinesisTableDescriptionSupplier.class).in(Scopes.SINGLETON);
-                        /*}*/
+                        else {
+                            binder.bind(new TypeLiteral<Supplier<Map<SchemaTableName, KinesisStreamDescription>>>() {}).to(KinesisTableDescriptionSupplier.class).in(Scopes.SINGLETON);
+                        }
                     });
 
             this.injector = app.strictConfig()
