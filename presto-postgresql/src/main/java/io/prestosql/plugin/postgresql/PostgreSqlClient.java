@@ -118,6 +118,18 @@ public class PostgreSqlClient
     }
 
     @Override
+    public void createView(ConnectorSession session, SchemaTableName viewName, String viewData)
+    {
+        try {
+            createView(session, viewName.getSchemaName(), viewName.getTableName(), viewData);
+        }
+        catch (SQLException e) {
+            boolean exists = DUPLICATE_TABLE_SQLSTATE.equals(e.getSQLState());
+            throw new PrestoException(exists ? ALREADY_EXISTS : JDBC_ERROR, e);
+        }
+    }
+
+    @Override
     protected void renameTable(JdbcIdentity identity, String catalogName, String schemaName, String tableName, SchemaTableName newTable)
     {
         if (!schemaName.equals(newTable.getSchemaName())) {

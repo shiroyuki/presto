@@ -77,6 +77,8 @@ public interface JdbcClient
 
     void createTable(ConnectorSession session, ConnectorTableMetadata tableMetadata);
 
+    void createView(ConnectorSession session, SchemaTableName viewName, String viewData);
+
     JdbcOutputTableHandle beginCreateTable(ConnectorSession session, ConnectorTableMetadata tableMetadata);
 
     void commitCreateTable(JdbcIdentity identity, JdbcOutputTableHandle handle);

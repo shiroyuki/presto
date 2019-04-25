@@ -26,6 +26,7 @@ import io.prestosql.spi.connector.ColumnMetadata;
 import io.prestosql.spi.connector.ConnectorSession;
 import io.prestosql.spi.connector.ConnectorSplitSource;
 import io.prestosql.spi.connector.ConnectorTableMetadata;
+import io.prestosql.spi.connector.ConnectorViewDefinition;
 import io.prestosql.spi.connector.FixedSplitSource;
 import io.prestosql.spi.connector.SchemaTableName;
 import io.prestosql.spi.connector.TableNotFoundException;
@@ -309,6 +310,17 @@ public class BaseJdbcClient
     }
 
     @Override
+    public void createView(ConnectorSession session, SchemaTableName viewName, String viewData)
+    {
+        try {
+            createView(session, viewName.getSchemaName(), viewName.getTableName(), viewData);
+        }
+        catch (SQLException e) {
+            throw new PrestoException(JDBC_ERROR, e);
+        }
+    }
+
+    @Override
     public JdbcOutputTableHandle beginCreateTable(ConnectorSession session, ConnectorTableMetadata tableMetadata)
     {
         return beginWriteTable(session, tableMetadata);
@@ -376,6 +388,33 @@ public class BaseJdbcClient
                     columnNames.build(),
                     columnTypes.build(),
                     tableName);
+        }
+    }
+
+    protected void createView(ConnectorSession session, String schemaName, String viewName, String viewData)
+            throws SQLException
+    {
+        JdbcIdentity identity = JdbcIdentity.from(session);
+        if (!getSchemaNames(identity).contains(schemaName)) {
+            throw new PrestoException(NOT_FOUND, "Schema not found: " + schemaName);
+        }
+
+        try (Connection connection = connectionFactory.openConnection(identity)) {
+            boolean uppercase = connection.getMetaData().storesUpperCaseIdentifiers();
+            String remoteSchema = toRemoteSchemaName(identity, connection, schemaName);
+            String remoteTable = toRemoteTableName(identity, connection, remoteSchema, viewName);
+            if (uppercase) {
+                viewName = viewName.toUpperCase(ENGLISH);
+            }
+            String catalog = connection.getCatalog();
+            SchemaTableName schemaTableName = new SchemaTableName(schemaName, viewName);
+            ConnectorViewDefinition viewDefinition = new ConnectorViewDefinition(schemaTableName, Optional.empty(), viewData);
+
+            String sql = format(
+                    "CREATE VIEW %s AS %s",
+                    quoted(catalog, remoteSchema, viewName),
+                    viewData);
+            execute(connection, sql);
         }
     }
 

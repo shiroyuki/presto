@@ -220,6 +220,12 @@ public class JdbcMetadata
     }
 
     @Override
+    public void createView(ConnectorSession session, SchemaTableName viewName, String viewData, boolean replace)
+    {
+        jdbcClient.createView(session, viewName, viewData);
+    }
+
+    @Override
     public Optional<ConnectorOutputMetadata> finishCreateTable(ConnectorSession session, ConnectorOutputTableHandle tableHandle, Collection<Slice> fragments, Collection<ComputedStatistics> computedStatistics)
     {
         JdbcOutputTableHandle handle = (JdbcOutputTableHandle) tableHandle;
