@@ -18,17 +18,22 @@ import com.mysql.jdbc.Driver;
 import com.mysql.jdbc.Statement;
 import io.prestosql.plugin.jdbc.BaseJdbcClient;
 import io.prestosql.plugin.jdbc.BaseJdbcConfig;
+import io.prestosql.plugin.jdbc.ColumnMapping;
 import io.prestosql.plugin.jdbc.ConnectionFactory;
 import io.prestosql.plugin.jdbc.DriverConnectionFactory;
 import io.prestosql.plugin.jdbc.JdbcColumnHandle;
 import io.prestosql.plugin.jdbc.JdbcIdentity;
 import io.prestosql.plugin.jdbc.JdbcTableHandle;
+import io.prestosql.plugin.jdbc.JdbcTypeHandle;
 import io.prestosql.plugin.jdbc.WriteMapping;
 import io.prestosql.spi.PrestoException;
 import io.prestosql.spi.connector.ConnectorSession;
 import io.prestosql.spi.connector.ConnectorTableMetadata;
 import io.prestosql.spi.connector.SchemaTableName;
+import io.prestosql.spi.type.StandardTypes;
 import io.prestosql.spi.type.Type;
+import io.prestosql.spi.type.TypeManager;
+import io.prestosql.spi.type.TypeSignature;
 import io.prestosql.spi.type.VarcharType;
 
 import javax.inject.Inject;
@@ -47,6 +52,8 @@ import static com.google.common.base.Verify.verify;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static com.mysql.jdbc.SQLError.SQL_STATE_ER_TABLE_EXISTS_ERROR;
 import static com.mysql.jdbc.SQLError.SQL_STATE_SYNTAX_ERROR;
+import static io.airlift.slice.Slices.utf8Slice;
+import static io.prestosql.plugin.jdbc.ColumnMapping.DISABLE_PUSHDOWN;
 import static io.prestosql.plugin.jdbc.DriverConnectionFactory.basicConnectionProperties;
 import static io.prestosql.plugin.jdbc.JdbcErrorCode.JDBC_ERROR;
 import static io.prestosql.plugin.jdbc.StandardColumnMappings.realWriteFunction;
@@ -67,11 +74,14 @@ import static java.util.Locale.ENGLISH;
 public class MySqlClient
         extends BaseJdbcClient
 {
+    private final Type jsonType;
+
     @Inject
-    public MySqlClient(BaseJdbcConfig config, MySqlConfig mySqlConfig)
+    public MySqlClient(BaseJdbcConfig config, MySqlConfig mySqlConfig, TypeManager typeManager)
             throws SQLException
     {
         super(config, "`", connectionFactory(config, mySqlConfig));
+        this.jsonType = typeManager.getType(new TypeSignature(StandardTypes.JSON));
     }
 
     private static ConnectionFactory connectionFactory(BaseJdbcConfig config, MySqlConfig mySqlConfig)
@@ -162,6 +172,18 @@ public class MySqlClient
     }
 
     @Override
+    public Optional<ColumnMapping> toPrestoType(ConnectorSession session, JdbcTypeHandle typeHandle)
+    {
+        String jdbcTypeName = typeHandle.getJdbcTypeName()
+                .orElseThrow(() -> new PrestoException(JDBC_ERROR, "Type name is missing: " + typeHandle));
+
+        if (jdbcTypeName.equalsIgnoreCase("json")) {
+            return Optional.of(jsonColumnMapping());
+        }
+        return super.toPrestoType(session, typeHandle);
+    }
+
+    @Override
     public WriteMapping toWriteMapping(ConnectorSession session, Type type)
     {
         if (REAL.equals(type)) {
@@ -196,6 +218,9 @@ public class MySqlClient
                 dataType = "longtext";
             }
             return WriteMapping.sliceMapping(dataType, varcharWriteFunction());
+        }
+        if (type.getTypeSignature().getBase().equals(StandardTypes.JSON)) {
+            return WriteMapping.sliceMapping("json", varcharWriteFunction());
         }
 
         return super.toWriteMapping(session, type);
@@ -256,5 +281,14 @@ public class MySqlClient
     public boolean isLimitGuaranteed()
     {
         return true;
+    }
+
+    private ColumnMapping jsonColumnMapping()
+    {
+        return ColumnMapping.sliceMapping(
+                jsonType,
+                (resultSet, columnIndex) -> jsonParse(utf8Slice(resultSet.getString(columnIndex))),
+                varcharWriteFunction(),
+                DISABLE_PUSHDOWN);
     }
 }
