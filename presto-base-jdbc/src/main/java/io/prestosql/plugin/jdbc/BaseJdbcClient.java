@@ -13,13 +13,20 @@
  */
 package io.prestosql.plugin.jdbc;
 
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.CharMatcher;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import io.airlift.json.ObjectMapperProvider;
 import io.airlift.log.Logger;
+import io.airlift.slice.DynamicSliceOutput;
+import io.airlift.slice.Slice;
+import io.airlift.slice.SliceOutput;
 import io.prestosql.spi.PrestoException;
 import io.prestosql.spi.connector.ColumnHandle;
 import io.prestosql.spi.connector.ColumnMetadata;
@@ -38,6 +45,9 @@ import io.prestosql.spi.type.VarcharType;
 
 import javax.annotation.PreDestroy;
 
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
@@ -55,6 +65,8 @@ import java.util.UUID;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
+import static com.fasterxml.jackson.core.JsonFactory.Feature.CANONICALIZE_FIELD_NAMES;
+import static com.fasterxml.jackson.databind.SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS;
 import static com.google.common.base.MoreObjects.firstNonNull;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Strings.isNullOrEmpty;
@@ -77,6 +89,7 @@ import static io.prestosql.plugin.jdbc.StandardColumnMappings.smallintWriteFunct
 import static io.prestosql.plugin.jdbc.StandardColumnMappings.tinyintWriteFunction;
 import static io.prestosql.plugin.jdbc.StandardColumnMappings.varbinaryWriteFunction;
 import static io.prestosql.plugin.jdbc.StandardColumnMappings.varcharWriteFunction;
+import static io.prestosql.spi.StandardErrorCode.INVALID_FUNCTION_ARGUMENT;
 import static io.prestosql.spi.StandardErrorCode.NOT_FOUND;
 import static io.prestosql.spi.StandardErrorCode.NOT_SUPPORTED;
 import static io.prestosql.spi.type.BigintType.BIGINT;
@@ -91,6 +104,7 @@ import static io.prestosql.spi.type.VarbinaryType.VARBINARY;
 import static io.prestosql.spi.type.Varchars.isVarcharType;
 import static java.lang.String.format;
 import static java.lang.String.join;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.sql.DatabaseMetaData.columnNoNulls;
 import static java.util.Collections.nCopies;
 import static java.util.Locale.ENGLISH;
@@ -113,6 +127,11 @@ public class BaseJdbcClient
             .put(VARBINARY, WriteMapping.sliceMapping("varbinary", varbinaryWriteFunction()))
             .put(DATE, WriteMapping.longMapping("date", dateWriteFunction()))
             .build();
+
+    private static final JsonFactory JSON_FACTORY = new JsonFactory()
+            .disable(CANONICALIZE_FIELD_NAMES);
+
+    private static final ObjectMapper SORTED_MAPPER = new ObjectMapperProvider().get().configure(ORDER_MAP_ENTRIES_BY_KEYS, true);
 
     protected final ConnectionFactory connectionFactory;
     protected final String identifierQuote;
@@ -718,6 +737,30 @@ public class BaseJdbcClient
             return writeMapping;
         }
         throw new PrestoException(NOT_SUPPORTED, "Unsupported column type: " + type.getDisplayName());
+    }
+
+    public static Slice jsonParse(Slice slice)
+    {
+        try (JsonParser parser = createJsonParser(slice)) {
+            byte[] in = slice.getBytes();
+            SliceOutput dynamicSliceOutput = new DynamicSliceOutput(in.length);
+            SORTED_MAPPER.writeValue((OutputStream) dynamicSliceOutput, SORTED_MAPPER.readValue(parser, Object.class));
+            // nextToken() returns null if the input is parsed correctly,
+            // but will throw an exception if there are trailing characters.
+            parser.nextToken();
+            return dynamicSliceOutput.slice();
+        }
+        catch (Exception e) {
+            throw new PrestoException(INVALID_FUNCTION_ARGUMENT, format("Cannot convert '%s' to JSON", slice.toStringUtf8()));
+        }
+    }
+
+    private static JsonParser createJsonParser(Slice json)
+            throws IOException
+    {
+        // Jackson tries to detect the character encoding automatically when using InputStream
+        // so we pass an InputStreamReader instead.
+        return JSON_FACTORY.createParser(new InputStreamReader(json.getInput(), UTF_8));
     }
 
     private Function<String, String> tryApplyLimit(OptionalLong limit)
