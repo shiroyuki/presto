@@ -88,11 +88,6 @@ public class KinesisConnector
         return this.propertyList;
     }
 
-    public void registerShutdownObject(ConnectorShutdown obj)
-    {
-        this.shutdownObjects.add(obj);
-    }
-
     @Override
     public final void shutdown()
     {
