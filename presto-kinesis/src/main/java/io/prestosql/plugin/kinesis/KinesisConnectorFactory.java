@@ -127,13 +127,6 @@ public class KinesisConnectorFactory
 
             KinesisConnector connector = this.injector.getInstance(KinesisConnector.class);
 
-   /*         // Register objects for shutdown, at the moment only KinesisTableDescriptionSupplier
-            if (!tableDescriptionSupplier.isPresent()) {
-                // This will shutdown related dependent objects as well:
-                KinesisTableDescriptionSupplier supp = getTableDescSupplier(this.injector);
-                connector.registerShutdownObject(supp);
-            }*/
-
             log.info("Done with injector.  Returning the connector itself.");
             return connector;
         }
@@ -142,13 +135,7 @@ public class KinesisConnectorFactory
         }
     }
 
-    /**
-     * Convenience method to get the table description supplier.
-     *
-     * @param inj
-     * @return
-     */
-    protected KinesisTableDescriptionSupplier getTableDescSupplier(Injector inj)
+    protected KinesisTableDescriptionSupplier getTableDescriptionSupplier(Injector inj)
     {
         requireNonNull(inj, "Injector is missing in getTableDescSupplier");
         Supplier<Map<SchemaTableName, KinesisStreamDescription>> supplier =

@@ -75,7 +75,7 @@ public class KinesisTableDescriptionSupplier
     {
         ImmutableMap.Builder<SchemaTableName, KinesisStreamDescription> builder = ImmutableMap.builder();
         try {
-            for (Path file : listFiles(Paths.get(kinesisConfig.getTableDescriptionLoc()))) {
+            for (Path file : listFiles(Paths.get(kinesisConfig.getTableDescriptionLocation()))) {
                 if (Files.isRegularFile(file) && file.getFileName().toString().endsWith("json")) {
                     KinesisStreamDescription table = streamDescriptionCodec.fromJson(Files.readAllBytes(file));
                     String schemaName = firstNonNull(table.getSchemaName(), kinesisConfig.getDefaultSchema());

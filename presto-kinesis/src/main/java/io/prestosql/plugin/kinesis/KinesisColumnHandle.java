@@ -26,12 +26,8 @@ import java.util.Objects;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
-/**
- * Kinesis version of ConnectoColumnHandle. Keeps all the data of the columns of table formed from data received
- * from kinesis.
- */
 public class KinesisColumnHandle
-        implements DecoderColumnHandle, Comparable<KinesisColumnHandle>
+        implements DecoderColumnHandle
 {
     private final int ordinalPosition;
     private final String name;
@@ -143,12 +139,6 @@ public class KinesisColumnHandle
                 Objects.equals(this.formatHint, other.formatHint) &&
                 Objects.equals(this.hidden, other.hidden) &&
                 Objects.equals(this.internal, other.internal);
-    }
-
-    @Override
-    public int compareTo(KinesisColumnHandle otherHandle)
-    {
-        return Integer.compare(this.getOrdinalPosition(), otherHandle.getOrdinalPosition());
     }
 
     @Override

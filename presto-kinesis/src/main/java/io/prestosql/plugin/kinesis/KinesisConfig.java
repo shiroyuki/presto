@@ -22,58 +22,37 @@ import java.util.concurrent.TimeUnit;
 
 public class KinesisConfig
 {
-    /**
-     * The schema name to use in the connector.
-     */
     private String defaultSchema = "default";
 
     /**
      * Folder holding the JSON description files for Kinesis streams.
      */
-    private String tableDescriptionLoc = "etc/kinesis/";
+    private String tableDescriptionLocation = "etc/kinesis/";
 
-    /**
-     * Whether internal columns are shown in table metadata or not. Default is no.
-     */
     private boolean hideInternalColumns = true;
 
-    /**
-     * Region to be used to read stream from.
-     */
     private String awsRegion = "us-east-1";
 
-    /**
-     * Defines maximum number of records to return in one call
-     */
     private int batchSize = 10000;
 
-    /**
-     * Defines the maximum number of batches read from Kinesis in one query.
-     */
     private int maxBatches = 600;
 
-    /**
-     * Defines number of attempts to fetch records from a stream until received non-empty on the first batch.
-     */
     private int fetchAttempts = 2;
 
-    /**
-     * Defines sleep time (in milliseconds) for the thread which is trying to fetch the records from kinesis streams
-     */
     private Duration sleepTime = new Duration(1000, TimeUnit.MILLISECONDS);
 
     /**
-     * Use an initial shard iterator type of AT_TIMESTAMP starting iterOffsetSeconds before the current time.
+     * Use an initial shard iterator type of AT_TIMESTAMP starting iteratorOffsetSeconds before the current time.
      * <p>
      * When false, an initial shard iterator type of TRIM_HORIZON will be used.
      */
-    private boolean iterFromTimestamp = true;
+    private boolean iteratorFromTimestamp = true;
 
     /**
-     * When iterFromTimestamp is true, the shard iterator will start at iterOffsetSeconds before
+     * When iteratorFromTimestamp is true, the shard iterator will start at iteratorOffsetSeconds before
      * the current time.
      */
-    private long iterOffsetSeconds = 86400;
+    private long iteratorOffsetSeconds = 86400;
 
     private String accessKey;
 
@@ -91,18 +70,18 @@ public class KinesisConfig
 
     private String logicalProcessName = "process1";
 
-    private int iterationNumber;
+    private int iteratorNumber;
 
     @NotNull
-    public String getTableDescriptionLoc()
+    public String getTableDescriptionLocation()
     {
-        return tableDescriptionLoc;
+        return tableDescriptionLocation;
     }
 
-    @Config("kinesis.table-description-loc")
-    public KinesisConfig setTableDescriptionLoc(String tableDescriptionLoc)
+    @Config("kinesis.table-description-location")
+    public KinesisConfig setTableDescriptionLocation(String tableDescriptionLocation)
     {
-        this.tableDescriptionLoc = tableDescriptionLoc;
+        this.tableDescriptionLocation = tableDescriptionLocation;
         return this;
     }
 
@@ -227,27 +206,27 @@ public class KinesisConfig
         return this;
     }
 
-    public boolean isIterFromTimestamp()
+    public boolean isIteratorFromTimestamp()
     {
-        return iterFromTimestamp;
+        return iteratorFromTimestamp;
     }
 
     @Config("kinesis.iter-from-timestamp")
-    public KinesisConfig setIterFromTimestamp(boolean iterFromTimestamp)
+    public KinesisConfig setIteratorFromTimestamp(boolean iteratorFromTimestamp)
     {
-        this.iterFromTimestamp = iterFromTimestamp;
+        this.iteratorFromTimestamp = iteratorFromTimestamp;
         return this;
     }
 
-    public long getIterOffsetSeconds()
+    public long getIteratorOffsetSeconds()
     {
-        return iterOffsetSeconds;
+        return iteratorOffsetSeconds;
     }
 
     @Config("kinesis.iter-offset-seconds")
-    public KinesisConfig setIterOffsetSeconds(long iterOffsetSeconds)
+    public KinesisConfig setIteratorOffsetSeconds(long iteratorOffsetSeconds)
     {
-        this.iterOffsetSeconds = iterOffsetSeconds;
+        this.iteratorOffsetSeconds = iteratorOffsetSeconds;
         return this;
     }
 
@@ -311,15 +290,15 @@ public class KinesisConfig
         return this;
     }
 
-    public int getIterationNumber()
+    public int getIteratorNumber()
     {
-        return iterationNumber;
+        return iteratorNumber;
     }
 
     @Config("kinesis.iteration-number")
-    public KinesisConfig setIterationNumber(int iterationNumber)
+    public KinesisConfig setIteratorNumber(int iteratorNumber)
     {
-        this.iterationNumber = iterationNumber;
+        this.iteratorNumber = iteratorNumber;
         return this;
     }
 }

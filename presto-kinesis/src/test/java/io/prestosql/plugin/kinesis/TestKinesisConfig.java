@@ -29,7 +29,7 @@ public class TestKinesisConfig
         ConfigAssertions.assertRecordedDefaults(ConfigAssertions.recordDefaults(KinesisConfig.class)
                 .setDefaultSchema("default")
                 .setHideInternalColumns(true)
-                .setTableDescriptionLoc("etc/kinesis/")
+                .setTableDescriptionLocation("etc/kinesis/")
                 .setAccessKey(null)
                 .setSecretKey(null)
                 .setAwsRegion("us-east-1")
@@ -38,21 +38,21 @@ public class TestKinesisConfig
                 .setMaxBatches(600)
                 .setBatchSize(10000)
                 .setLogBatches(true)
-                .setIterFromTimestamp(true)
-                .setIterOffsetSeconds(86400)
+                .setIteratorFromTimestamp(true)
+                .setIteratorOffsetSeconds(86400)
                 .setCheckpointEnabled(false)
                 .setDynamoReadCapacity(50)
                 .setDynamoWriteCapacity(10)
                 .setCheckpointInterval(new Duration(60000, TimeUnit.MILLISECONDS))
                 .setLogicalProcessName("process1")
-                .setIterationNumber(0));
+                .setIteratorNumber(0));
     }
 
     @Test
     public void testExplicitPropertyMappings(/*String accessKey, String secretKey*/)
     {
         Map<String, String> properties = new ImmutableMap.Builder<String, String>()
-                .put("kinesis.table-description-loc", "/var/lib/kinesis")
+                .put("kinesis.table-description-location", "/var/lib/kinesis")
                 .put("kinesis.default-schema", "kinesis")
                 .put("kinesis.hide-internal-columns", "false")
                 .put("kinesis.access-key", "kinesis.accessKey")
@@ -74,7 +74,7 @@ public class TestKinesisConfig
                 .build();
 
         KinesisConfig expected = new KinesisConfig()
-                .setTableDescriptionLoc("/var/lib/kinesis")
+                .setTableDescriptionLocation("/var/lib/kinesis")
                 .setDefaultSchema("kinesis")
                 .setHideInternalColumns(false)
                 .setAccessKey("kinesis.accessKey")
@@ -85,14 +85,14 @@ public class TestKinesisConfig
                 .setSleepTime(new Duration(100, TimeUnit.MILLISECONDS))
                 .setBatchSize(9000)
                 .setLogBatches(false)
-                .setIterFromTimestamp(false)
-                .setIterOffsetSeconds(36000)
+                .setIteratorFromTimestamp(false)
+                .setIteratorOffsetSeconds(36000)
                 .setCheckpointEnabled(true)
                 .setDynamoReadCapacity(100)
                 .setDynamoWriteCapacity(20)
                 .setCheckpointInterval(new Duration(50000, TimeUnit.MILLISECONDS))
                 .setLogicalProcessName("process")
-                .setIterationNumber(1);
+                .setIteratorNumber(1);
 
         ConfigAssertions.assertFullMapping(properties, expected);
     }

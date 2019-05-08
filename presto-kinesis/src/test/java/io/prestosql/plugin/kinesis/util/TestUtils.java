@@ -117,7 +117,7 @@ public class TestUtils
                 "kinesis.default-schema", "default",
                 "kinesis.access-key", "",
                 "kinesis.secret-key", "",
-                "kinesis.table-description-loc", "testloc");
+                "kinesis.table-description-location", "testloc");
         queryRunner.createCatalog("kinesis", "kinesis", kinesisConfig);
 
         return kinesisPlugin;

@@ -56,7 +56,7 @@ public final class KinesisSessionProperties
                 .add(integerProperty(
                         ITERATION_NUMBER,
                         "Checkpoint iteration number",
-                        config.getIterationNumber(),
+                        config.getIteratorNumber(),
                         false))
                 .add(stringProperty(
                         CHECKPOINT_LOGICAL_NAME,
@@ -76,12 +76,12 @@ public final class KinesisSessionProperties
                 .add(PropertyMetadata.booleanProperty(
                         ITER_FROM_TIMESTAMP,
                         "Start from timestamp not trim horizon",
-                        config.isIterFromTimestamp(),
+                        config.isIteratorFromTimestamp(),
                         false))
                 .add(PropertyMetadata.longProperty(
                         ITER_OFFSET_SECONDS,
                         "Seconds before current time to start iterator",
-                        config.getIterOffsetSeconds(),
+                        config.getIteratorOffsetSeconds(),
                         false))
                 .add(PropertyMetadata.stringProperty(
                         ITER_START_TIMESTAMP,

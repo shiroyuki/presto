@@ -19,7 +19,6 @@ import com.amazonaws.services.kinesis.AmazonKinesisClient;
 import com.amazonaws.services.kinesis.model.DescribeStreamRequest;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.google.inject.Inject;
-import io.airlift.log.Logger;
 
 /**
  * Creates and manages AWS clients for this connector.
@@ -30,7 +29,6 @@ import io.airlift.log.Logger;
 public class KinesisClientManager
         implements KinesisClientProvider
 {
-    private static final Logger log = Logger.get(KinesisClientManager.class);
     private final AmazonKinesisClient client;
     private final KinesisAwsCredentials kinesisAwsCredentials;
     private final AmazonS3Client amazonS3Client;
@@ -39,7 +37,6 @@ public class KinesisClientManager
     @Inject
     KinesisClientManager(KinesisConfig kinesisConfig)
     {
-        log.info("Creating new client for Consumer");
         if (nonEmpty(kinesisConfig.getAccessKey()) && nonEmpty(kinesisConfig.getSecretKey())) {
             this.kinesisAwsCredentials = new KinesisAwsCredentials(kinesisConfig.getAccessKey(), kinesisConfig.getSecretKey());
             this.client = new AmazonKinesisClient(this.kinesisAwsCredentials);

@@ -84,8 +84,8 @@ public class S3TableConfigClient
         this.streamDescriptionCodec = requireNonNull(jsonCodec, "JSON codec object is null");
 
         // If using S3 start thread that periodically looks for updates
-        if (kinesisConfig.getTableDescriptionLoc().startsWith("s3://")) {
-            this.bucketUrl = Optional.of(kinesisConfig.getTableDescriptionLoc());
+        if (kinesisConfig.getTableDescriptionLocation().startsWith("s3://")) {
+            this.bucketUrl = Optional.of(kinesisConfig.getTableDescriptionLocation());
         }
         else {
             this.bucketUrl = Optional.empty();

@@ -30,12 +30,6 @@ import static io.prestosql.spi.transaction.IsolationLevel.READ_COMMITTED;
 import static io.prestosql.spi.transaction.IsolationLevel.checkConnectorSupports;
 import static java.util.Objects.requireNonNull;
 
-/**
- * Kinesis connector implementation that includes a record set provider.
- * <p>
- * The first 3 methods are mandatory, the remaining Connector methods have defaults.
- * Here a ConnectorRecordSetProvider is applicable.
- */
 public class KinesisConnector
         implements Connector
 {
@@ -88,11 +82,6 @@ public class KinesisConnector
         return recordSetProvider;
     }
 
-    /**
-     * Return the session properties.
-     *
-     * @return the system properties for this connector
-     */
     @Override
     public List<PropertyMetadata<?>> getSessionProperties()
     {
