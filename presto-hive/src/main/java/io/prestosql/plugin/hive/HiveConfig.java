@@ -150,7 +150,7 @@ public class HiveConfig
 
     private String recordingPath;
     private boolean replay;
-    private Duration recordingDuration = new Duration(0, MINUTES);
+    private Duration recordingDuration = new Duration(10, MINUTES);
     private boolean s3SelectPushdownEnabled;
     private int s3SelectPushdownMaxConnections = 500;
 
@@ -1211,7 +1211,7 @@ public class HiveConfig
         return replay;
     }
 
-    @Config("hive.metastore-recoding-duration")
+    @Config("hive.metastore-recording-duration")
     public HiveConfig setRecordingDuration(Duration recordingDuration)
     {
         this.recordingDuration = recordingDuration;

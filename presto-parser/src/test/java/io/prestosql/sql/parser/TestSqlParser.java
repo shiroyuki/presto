@@ -60,6 +60,7 @@ import io.prestosql.sql.tree.Explain;
 import io.prestosql.sql.tree.ExplainFormat;
 import io.prestosql.sql.tree.ExplainType;
 import io.prestosql.sql.tree.Expression;
+import io.prestosql.sql.tree.FetchFirst;
 import io.prestosql.sql.tree.FunctionCall;
 import io.prestosql.sql.tree.GenericLiteral;
 import io.prestosql.sql.tree.Grant;
@@ -82,6 +83,7 @@ import io.prestosql.sql.tree.LambdaArgumentDeclaration;
 import io.prestosql.sql.tree.LambdaExpression;
 import io.prestosql.sql.tree.Lateral;
 import io.prestosql.sql.tree.LikeClause;
+import io.prestosql.sql.tree.Limit;
 import io.prestosql.sql.tree.LogicalBinaryExpression;
 import io.prestosql.sql.tree.LongLiteral;
 import io.prestosql.sql.tree.NaturalJoin;
@@ -89,6 +91,7 @@ import io.prestosql.sql.tree.Node;
 import io.prestosql.sql.tree.NotExpression;
 import io.prestosql.sql.tree.NullIfExpression;
 import io.prestosql.sql.tree.NullLiteral;
+import io.prestosql.sql.tree.Offset;
 import io.prestosql.sql.tree.OrderBy;
 import io.prestosql.sql.tree.Parameter;
 import io.prestosql.sql.tree.PathElement;
@@ -471,6 +474,7 @@ public class TestSqlParser
                                 createSelect123()
                         ), false),
                         Optional.empty(),
+                        Optional.empty(),
                         Optional.empty()));
     }
 
@@ -485,6 +489,7 @@ public class TestSqlParser
                                 createSelect123()
                         ), false),
                         Optional.empty(),
+                        Optional.empty(),
                         Optional.empty()));
     }
 
@@ -492,6 +497,7 @@ public class TestSqlParser
     {
         return new QuerySpecification(
                 selectList(new LongLiteral("123")),
+                Optional.empty(),
                 Optional.empty(),
                 Optional.empty(),
                 Optional.empty(),
@@ -531,8 +537,40 @@ public class TestSqlParser
     }
 
     @Test
-    public void testLimitAll()
+    public void testSelectWithLimit()
     {
+        assertStatement("SELECT * FROM table1 LIMIT 2",
+                new Query(
+                        Optional.empty(),
+                        new QuerySpecification(
+                                selectList(new AllColumns()),
+                                Optional.of(new Table(QualifiedName.of("table1"))),
+                                Optional.empty(),
+                                Optional.empty(),
+                                Optional.empty(),
+                                Optional.empty(),
+                                Optional.empty(),
+                                Optional.of(new Limit("2"))),
+                        Optional.empty(),
+                        Optional.empty(),
+                        Optional.empty()));
+
+        assertStatement("SELECT * FROM table1 LIMIT ALL",
+                new Query(
+                        Optional.empty(),
+                        new QuerySpecification(
+                                selectList(new AllColumns()),
+                                Optional.of(new Table(QualifiedName.of("table1"))),
+                                Optional.empty(),
+                                Optional.empty(),
+                                Optional.empty(),
+                                Optional.empty(),
+                                Optional.empty(),
+                                Optional.of(new Limit("ALL"))),
+                        Optional.empty(),
+                        Optional.empty(),
+                        Optional.empty()));
+
         Query valuesQuery = query(values(
                 row(new LongLiteral("1"), new StringLiteral("1")),
                 row(new LongLiteral("2"), new StringLiteral("2"))));
@@ -544,7 +582,8 @@ public class TestSqlParser
                         Optional.empty(),
                         Optional.empty(),
                         Optional.empty(),
-                        Optional.of("ALL")));
+                        Optional.empty(),
+                        Optional.of(new Limit("ALL"))));
     }
 
     @Test
@@ -744,7 +783,9 @@ public class TestSqlParser
                                 Optional.empty(),
                                 Optional.empty(),
                                 Optional.empty(),
+                                Optional.empty(),
                                 Optional.empty()),
+                        Optional.empty(),
                         Optional.empty(),
                         Optional.empty()));
 
@@ -758,7 +799,9 @@ public class TestSqlParser
                                 Optional.empty(),
                                 Optional.empty(),
                                 Optional.empty(),
+                                Optional.empty(),
                                 Optional.empty()),
+                        Optional.empty(),
                         Optional.empty(),
                         Optional.empty()));
     }
@@ -777,7 +820,9 @@ public class TestSqlParser
                                 Optional.empty(),
                                 Optional.empty(),
                                 Optional.empty(),
+                                Optional.empty(),
                                 Optional.empty()),
+                        Optional.empty(),
                         Optional.empty(),
                         Optional.empty()));
 
@@ -791,7 +836,9 @@ public class TestSqlParser
                                 Optional.empty(),
                                 Optional.empty(),
                                 Optional.empty(),
+                                Optional.empty(),
                                 Optional.empty()),
+                        Optional.empty(),
                         Optional.empty(),
                         Optional.empty()));
     }
@@ -813,7 +860,9 @@ public class TestSqlParser
                                 Optional.empty(),
                                 Optional.empty(),
                                 Optional.empty(),
+                                Optional.empty(),
                                 Optional.empty()),
+                        Optional.empty(),
                         Optional.empty(),
                         Optional.empty()));
 
@@ -831,7 +880,9 @@ public class TestSqlParser
                                 Optional.empty(),
                                 Optional.empty(),
                                 Optional.empty(),
+                                Optional.empty(),
                                 Optional.empty()),
+                        Optional.empty(),
                         Optional.empty(),
                         Optional.empty()));
 
@@ -846,7 +897,9 @@ public class TestSqlParser
                                 Optional.empty(),
                                 Optional.empty(),
                                 Optional.empty(),
+                                Optional.empty(),
                                 Optional.empty()),
+                        Optional.empty(),
                         Optional.empty(),
                         Optional.empty()));
     }
@@ -867,9 +920,95 @@ public class TestSqlParser
                                         new Identifier("a"),
                                         ASCENDING,
                                         UNDEFINED)))),
+                                Optional.empty(),
                                 Optional.empty()),
                         Optional.empty(),
+                        Optional.empty(),
                         Optional.empty()));
+    }
+
+    @Test
+    public void testSelectWithOffset()
+    {
+        assertStatement("SELECT * FROM table1 OFFSET 2 ROWS",
+                new Query(
+                        Optional.empty(),
+                        new QuerySpecification(
+                                selectList(new AllColumns()),
+                                Optional.of(new Table(QualifiedName.of("table1"))),
+                                Optional.empty(),
+                                Optional.empty(),
+                                Optional.empty(),
+                                Optional.empty(),
+                                Optional.of(new Offset("2")),
+                                Optional.empty()),
+                        Optional.empty(),
+                        Optional.empty(),
+                        Optional.empty()));
+
+        Query valuesQuery = query(values(
+                row(new LongLiteral("1"), new StringLiteral("1")),
+                row(new LongLiteral("2"), new StringLiteral("2"))));
+
+        assertStatement("SELECT * FROM (VALUES (1, '1'), (2, '2')) OFFSET 2 ROWS",
+                simpleQuery(selectList(new AllColumns()),
+                        subquery(valuesQuery),
+                        Optional.empty(),
+                        Optional.empty(),
+                        Optional.empty(),
+                        Optional.empty(),
+                        Optional.of(new Offset("2")),
+                        Optional.empty()));
+    }
+
+    @Test
+    public void testSelectWithFetch()
+    {
+        assertStatement("SELECT * FROM table1 FETCH FIRST 2 ROWS ONLY",
+                new Query(
+                        Optional.empty(),
+                        new QuerySpecification(
+                                selectList(new AllColumns()),
+                                Optional.of(new Table(QualifiedName.of("table1"))),
+                                Optional.empty(),
+                                Optional.empty(),
+                                Optional.empty(),
+                                Optional.empty(),
+                                Optional.empty(),
+                                Optional.of(new FetchFirst("2"))),
+                        Optional.empty(),
+                        Optional.empty(),
+                        Optional.empty()));
+
+        assertStatement("SELECT * FROM table1 FETCH NEXT ROW ONLY",
+                new Query(
+                        Optional.empty(),
+                        new QuerySpecification(
+                                selectList(new AllColumns()),
+                                Optional.of(new Table(QualifiedName.of("table1"))),
+                                Optional.empty(),
+                                Optional.empty(),
+                                Optional.empty(),
+                                Optional.empty(),
+                                Optional.empty(),
+                                Optional.of(new FetchFirst(Optional.empty()))),
+                        Optional.empty(),
+                        Optional.empty(),
+                        Optional.empty()));
+
+        Query valuesQuery = query(values(
+                row(new LongLiteral("1"), new StringLiteral("1")),
+                row(new LongLiteral("2"), new StringLiteral("2"))));
+
+        assertStatement("SELECT * FROM (VALUES (1, '1'), (2, '2')) FETCH FIRST ROW ONLY",
+                simpleQuery(selectList(new AllColumns()),
+                        subquery(valuesQuery),
+                        Optional.empty(),
+                        Optional.empty(),
+                        Optional.empty(),
+                        Optional.empty(),
+                        Optional.empty(),
+                        Optional.of(new FetchFirst(Optional.empty()))));
     }
 
     @Test
@@ -885,7 +1024,9 @@ public class TestSqlParser
                                 Optional.of(new GroupBy(false, ImmutableList.of(new SimpleGroupBy(ImmutableList.of(new Identifier("a")))))),
                                 Optional.empty(),
                                 Optional.empty(),
+                                Optional.empty(),
                                 Optional.empty()),
+                        Optional.empty(),
                         Optional.empty(),
                         Optional.empty()));
 
@@ -901,7 +1042,9 @@ public class TestSqlParser
                                         new SimpleGroupBy(ImmutableList.of(new Identifier("b")))))),
                                 Optional.empty(),
                                 Optional.empty(),
+                                Optional.empty(),
                                 Optional.empty()),
+                        Optional.empty(),
                         Optional.empty(),
                         Optional.empty()));
 
@@ -915,7 +1058,9 @@ public class TestSqlParser
                                 Optional.of(new GroupBy(false, ImmutableList.of(new SimpleGroupBy(ImmutableList.of())))),
                                 Optional.empty(),
                                 Optional.empty(),
+                                Optional.empty(),
                                 Optional.empty()),
+                        Optional.empty(),
                         Optional.empty(),
                         Optional.empty()));
 
@@ -929,7 +1074,9 @@ public class TestSqlParser
                                 Optional.of(new GroupBy(false, ImmutableList.of(new GroupingSets(ImmutableList.of(ImmutableList.of(new Identifier("a"))))))),
                                 Optional.empty(),
                                 Optional.empty(),
+                                Optional.empty(),
                                 Optional.empty()),
+                        Optional.empty(),
                         Optional.empty(),
                         Optional.empty()));
 
@@ -948,7 +1095,9 @@ public class TestSqlParser
                                 Optional.of(new GroupBy(false, ImmutableList.of(new GroupingSets(ImmutableList.of(ImmutableList.of(new Identifier("a")), ImmutableList.of(new Identifier("b"))))))),
                                 Optional.empty(),
                                 Optional.empty(),
+                                Optional.empty(),
                                 Optional.empty()),
+                        Optional.empty(),
                         Optional.empty(),
                         Optional.empty()));
 
@@ -968,7 +1117,9 @@ public class TestSqlParser
                                         new Rollup(ImmutableList.of(new Identifier("d")))))),
                                 Optional.empty(),
                                 Optional.empty(),
+                                Optional.empty(),
                                 Optional.empty()),
+                        Optional.empty(),
                         Optional.empty(),
                         Optional.empty()));
 
@@ -988,7 +1139,9 @@ public class TestSqlParser
                                         new Rollup(ImmutableList.of(new Identifier("d")))))),
                                 Optional.empty(),
                                 Optional.empty(),
+                                Optional.empty(),
                                 Optional.empty()),
+                        Optional.empty(),
                         Optional.empty(),
                         Optional.empty()));
     }
@@ -1317,6 +1470,7 @@ public class TestSqlParser
                         Optional.of(ImmutableList.of(identifier("x"))))))),
                 new Table(QualifiedName.of("t")),
                 Optional.empty(),
+                Optional.empty(),
                 Optional.empty());
         assertStatement(queryParenthesizedWith, new CreateTableAsSelect(table, query, false, ImmutableList.of(), false, Optional.empty(), Optional.empty()));
         assertStatement(queryUnparenthesizedWith, new CreateTableAsSelect(table, query, false, ImmutableList.of(), false, Optional.empty(), Optional.empty()));
@@ -1589,12 +1743,14 @@ public class TestSqlParser
                         new WithQuery(identifier("b"), simpleQuery(selectList(new AllColumns()), table(QualifiedName.of("y"))), Optional.empty())))),
                         new Table(QualifiedName.of("z")),
                         Optional.empty(),
+                        Optional.empty(),
                         Optional.empty()));
 
         assertStatement("WITH RECURSIVE a AS (SELECT * FROM x) TABLE y",
                 new Query(Optional.of(new With(true, ImmutableList.of(
                         new WithQuery(identifier("a"), simpleQuery(selectList(new AllColumns()), table(QualifiedName.of("x"))), Optional.empty())))),
                         new Table(QualifiedName.of("y")),
+                        Optional.empty(),
                         Optional.empty(),
                         Optional.empty()));
     }
@@ -1746,6 +1902,7 @@ public class TestSqlParser
                 Optional.empty(),
                 new Values(ImmutableList.of(new LongLiteral("1"))),
                 Optional.empty(),
+                Optional.empty(),
                 Optional.empty()));
 
         assertStatement("SELECT * FROM t, LATERAL (VALUES 1) a(x)",
@@ -1841,7 +1998,9 @@ public class TestSqlParser
                                 Optional.empty(),
                                 Optional.empty(),
                                 Optional.empty(),
+                                Optional.empty(),
                                 Optional.empty()),
+                        Optional.empty(),
                         Optional.empty(),
                         Optional.empty()));
     }
@@ -2072,7 +2231,9 @@ public class TestSqlParser
                                 Optional.empty(),
                                 Optional.empty(),
                                 Optional.empty(),
+                                Optional.empty(),
                                 Optional.empty()),
+                        Optional.empty(),
                         Optional.empty(),
                         Optional.empty()));
     }
@@ -2128,7 +2289,9 @@ public class TestSqlParser
                                 Optional.empty(),
                                 Optional.empty(),
                                 Optional.empty(),
+                                Optional.empty(),
                                 Optional.empty()),
+                        Optional.empty(),
                         Optional.empty(),
                         Optional.empty()));
     }
