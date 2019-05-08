@@ -666,6 +666,29 @@ public class TestHiveIntegrationSmokeTest
         assertFalse(getQueryRunner().tableExists(session, "test_create_partitioned_table_as"));
     }
 
+    @Test
+    public void testPropertiesTable()
+    {
+        @Language("SQL") String createTable = "" +
+                "CREATE TABLE test_show_properties" +
+                " WITH (" +
+                "format = 'orc', " +
+                "partitioned_by = ARRAY['ship_priority', 'order_status']," +
+                "orc_bloom_filter_columns = ARRAY['ship_priority', 'order_status']," +
+                "orc_bloom_filter_fpp = 0.5" +
+                ") " +
+                "AS " +
+                "SELECT orderkey AS order_key, shippriority AS ship_priority, orderstatus AS order_status " +
+                "FROM tpch.tiny.orders";
+
+        assertUpdate(createTable, "SELECT count(*) FROM orders");
+        String queryId = (String) computeScalar("SELECT query_id FROM system.runtime.queries WHERE query LIKE 'CREATE TABLE test_show_properties%'");
+        String nodeVersion = (String) computeScalar("SELECT node_version FROM system.runtime.nodes WHERE coordinator");
+        assertQuery("SELECT * FROM \"test_show_properties$properties\"",
+                "SELECT '" + "ship_priority,order_status" + "','" + "0.5" + "','" + queryId + "','" + nodeVersion + "'");
+        assertUpdate("DROP TABLE test_show_properties");
+    }
+
     @Test(expectedExceptions = RuntimeException.class, expectedExceptionsMessageRegExp = "Partition keys must be the last columns in the table and in the same order as the table properties.*")
     public void testCreatePartitionedTableInvalidColumnOrdering()
     {
@@ -3814,6 +3837,28 @@ public class TestHiveIntegrationSmokeTest
                     metadata.finishInsert(transactionSession, insertTableHandle, ImmutableList.of(), ImmutableList.of());
                     return hiveInsertTableHandle;
                 });
+    }
+
+    @Test
+    public void testSelectWithNoColumns()
+    {
+        testWithAllStorageFormats(this::testSelectWithNoColumns);
+    }
+
+    private void testSelectWithNoColumns(Session session, HiveStorageFormat storageFormat)
+    {
+        String tableName = "test_select_with_no_columns";
+        @Language("SQL") String createTable = format(
+                "CREATE TABLE %s (col0) WITH (format = '%s') AS VALUES 5, 6, 7",
+                tableName,
+                storageFormat);
+        assertUpdate(session, createTable, 3);
+        assertTrue(getQueryRunner().tableExists(getSession(), tableName));
+
+        assertQuery("SELECT 1 FROM " + tableName, "VALUES 1, 1, 1");
+        assertQuery("SELECT count(*) FROM " + tableName, "SELECT 3");
+
+        assertUpdate("DROP TABLE " + tableName);
     }
 
     private Session getParallelWriteSession()

@@ -4,7 +4,7 @@
     <parent>
         <groupId>io.prestosql</groupId>
         <artifactId>presto-root</artifactId>
-        <version>309-SNAPSHOT</version>
+        <version>310-SNAPSHOT</version>
     </parent>
 
     <artifactId>presto-cassandra</artifactId>
@@ -21,6 +21,11 @@
         <dependency>
             <groupId>io.prestosql.cassandra</groupId>
             <artifactId>cassandra-driver</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>io.prestosql</groupId>
+            <artifactId>presto-plugin-toolkit</artifactId>
         </dependency>
 
         <dependency>

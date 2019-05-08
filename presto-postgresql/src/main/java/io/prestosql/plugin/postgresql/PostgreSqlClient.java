@@ -46,6 +46,7 @@ import io.prestosql.spi.type.TypeManager;
 import io.prestosql.spi.type.TypeSignature;
 import io.prestosql.spi.type.VarcharType;
 import org.postgresql.Driver;
+import org.postgresql.core.TypeInfo;
 import org.postgresql.jdbc.PgConnection;
 import org.postgresql.util.PGobject;
 
@@ -66,10 +67,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.BiFunction;
 
 import static com.fasterxml.jackson.core.JsonFactory.Feature.CANONICALIZE_FIELD_NAMES;
 import static com.fasterxml.jackson.databind.SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS;
-import static com.google.common.base.Preconditions.checkArgument;
 import static io.airlift.slice.Slices.utf8Slice;
 import static io.prestosql.plugin.jdbc.ColumnMapping.DISABLE_PUSHDOWN;
 import static io.prestosql.plugin.jdbc.JdbcErrorCode.JDBC_ERROR;
@@ -95,7 +96,7 @@ public class PostgreSqlClient
 {
     private static final String DUPLICATE_TABLE_SQLSTATE = "42P07";
 
-    protected final Type jsonType;
+    private final Type jsonType;
 
     @Inject
     public PostgreSqlClient(BaseJdbcConfig config, TypeManager typeManager)
@@ -170,7 +171,7 @@ public class PostgreSqlClient
                     String columnName = resultSet.getString("COLUMN_NAME");
                     JdbcTypeHandle typeHandle = new JdbcTypeHandle(
                             resultSet.getInt("DATA_TYPE"),
-                            resultSet.getString("TYPE_NAME"),
+                            Optional.of(resultSet.getString("TYPE_NAME")),
                             resultSet.getInt("COLUMN_SIZE"),
                             resultSet.getInt("DECIMAL_DIGITS"),
                             Optional.ofNullable(arrayColumnDimensions.get(columnName)));
@@ -221,20 +222,28 @@ public class PostgreSqlClient
     @Override
     public Optional<ColumnMapping> toPrestoType(ConnectorSession session, JdbcTypeHandle typeHandle)
     {
-        switch (typeHandle.getJdbcTypeName()) {
+        String jdbcTypeName = typeHandle.getJdbcTypeName()
+                .orElseThrow(() -> new PrestoException(JDBC_ERROR, "Type name is missing: " + typeHandle));
+
+        switch (jdbcTypeName) {
             case "jsonb":
             case "json":
                 return Optional.of(jsonColumnMapping());
         }
-        if (typeHandle.getJdbcType() == Types.VARCHAR && !typeHandle.getJdbcTypeName().equals("varchar")) {
+        if (typeHandle.getJdbcType() == Types.VARCHAR && !jdbcTypeName.equals("varchar")) {
             // This can be e.g. an ENUM
-            return Optional.of(typedVarcharColumnMapping(typeHandle.getJdbcTypeName()));
+            return Optional.of(typedVarcharColumnMapping(jdbcTypeName));
         }
         if (typeHandle.getJdbcType() == Types.TIMESTAMP) {
             return Optional.of(timestampColumnMapping(session));
         }
         if (typeHandle.getJdbcType() == Types.ARRAY) {
+            if (!typeHandle.getArrayDimensions().isPresent()) {
+                return Optional.empty();
+            }
             JdbcTypeHandle elementTypeHandle = getArrayElementTypeHandle(session, typeHandle);
+            String elementTypeName = typeHandle.getJdbcTypeName()
+                    .orElseThrow(() -> new PrestoException(JDBC_ERROR, "Element type name is missing: " + elementTypeHandle));
             if (elementTypeHandle.getJdbcType() == Types.VARBINARY) {
                 // PostgreSQL jdbc driver doesn't currently support array of varbinary (bytea[])
                 // https://github.com/pgjdbc/pgjdbc/pull/1184
@@ -243,12 +252,11 @@ public class PostgreSqlClient
             return toPrestoType(session, elementTypeHandle)
                     .map(elementMapping -> {
                         ArrayType prestoArrayType = new ArrayType(elementMapping.getType());
-                        int arrayDimensions = typeHandle.getArrayDimensions()
-                                .orElseThrow(() -> new PrestoException(JDBC_ERROR, "No array dimensions for ARRAY type: " + typeHandle));
+                        int arrayDimensions = typeHandle.getArrayDimensions().get();
                         for (int i = 1; i < arrayDimensions; i++) {
                             prestoArrayType = new ArrayType(prestoArrayType);
                         }
-                        return arrayColumnMapping(session, prestoArrayType, elementTypeHandle.getJdbcTypeName());
+                        return arrayColumnMapping(session, prestoArrayType, elementTypeName);
                     });
         }
         // TODO support PostgreSQL's TIMESTAMP WITH TIME ZONE and TIME WITH TIME ZONE explicitly, otherwise predicate pushdown for these types may be incorrect
@@ -279,9 +287,9 @@ public class PostgreSqlClient
     }
 
     @Override
-    protected String applyLimit(String sql, long limit)
+    protected Optional<BiFunction<String, Long, String>> limitFunction()
     {
-        return sql + " LIMIT " + limit;
+        return Optional.of((sql, limit) -> sql + " LIMIT " + limit);
     }
 
     @Override
@@ -316,14 +324,14 @@ public class PostgreSqlClient
 
     private JdbcTypeHandle getArrayElementTypeHandle(ConnectorSession session, JdbcTypeHandle arrayTypeHandle)
     {
-        // PostgreSql array type names are the base element type prepended with "_"
-        checkArgument(arrayTypeHandle.getJdbcTypeName().startsWith("_"), "array type must start with '_'");
-        String elementPgTypeName = arrayTypeHandle.getJdbcTypeName().substring(1);
+        String jdbcTypeName = arrayTypeHandle.getJdbcTypeName()
+                .orElseThrow(() -> new PrestoException(JDBC_ERROR, "Type name is missing: " + arrayTypeHandle));
         try (Connection connection = connectionFactory.openConnection(JdbcIdentity.from(session))) {
-            int elementJdbcType = connection.unwrap(PgConnection.class).getTypeInfo().getSQLType(elementPgTypeName);
+            TypeInfo typeInfo = connection.unwrap(PgConnection.class).getTypeInfo();
+            int pgElementOid = typeInfo.getPGArrayElement(typeInfo.getPGType(jdbcTypeName));
             return new JdbcTypeHandle(
-                    elementJdbcType,
-                    elementPgTypeName,
+                    typeInfo.getSQLType(pgElementOid),
+                    Optional.of(typeInfo.getPGType(pgElementOid)),
                     arrayTypeHandle.getColumnSize(),
                     arrayTypeHandle.getDecimalDigits(),
                     arrayTypeHandle.getArrayDimensions());
@@ -365,9 +373,9 @@ public class PostgreSqlClient
 
     private static final ObjectMapper SORTED_MAPPER = new ObjectMapperProvider().get().configure(ORDER_MAP_ENTRIES_BY_KEYS, true);
 
-    public static Slice jsonParse(Slice slice)
+    private static Slice jsonParse(Slice slice)
     {
-        try (JsonParser parser = createJsonParser(JSON_FACTORY, slice)) {
+        try (JsonParser parser = createJsonParser(slice)) {
             byte[] in = slice.getBytes();
             SliceOutput dynamicSliceOutput = new DynamicSliceOutput(in.length);
             SORTED_MAPPER.writeValue((OutputStream) dynamicSliceOutput, SORTED_MAPPER.readValue(parser, Object.class));
@@ -381,11 +389,11 @@ public class PostgreSqlClient
         }
     }
 
-    public static JsonParser createJsonParser(JsonFactory factory, Slice json)
+    private static JsonParser createJsonParser(Slice json)
             throws IOException
     {
         // Jackson tries to detect the character encoding automatically when using InputStream
         // so we pass an InputStreamReader instead.
-        return factory.createParser(new InputStreamReader(json.getInput(), UTF_8));
+        return JSON_FACTORY.createParser(new InputStreamReader(json.getInput(), UTF_8));
     }
 }

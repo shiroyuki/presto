@@ -5,7 +5,7 @@
     <parent>
         <groupId>io.prestosql</groupId>
         <artifactId>presto-root</artifactId>
-        <version>309-SNAPSHOT</version>
+        <version>310-SNAPSHOT</version>
     </parent>
 
     <artifactId>presto-jdbc</artifactId>
@@ -20,11 +20,6 @@
         <dependency>
             <groupId>io.prestosql</groupId>
             <artifactId>presto-client</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>io.prestosql</groupId>
-            <artifactId>presto-spi</artifactId>
         </dependency>
 
         <dependency>
@@ -76,6 +71,12 @@
         </dependency>
 
         <!-- for testing -->
+        <dependency>
+            <groupId>io.prestosql</groupId>
+            <artifactId>presto-spi</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <dependency>
             <groupId>io.prestosql</groupId>
             <artifactId>presto-main</artifactId>

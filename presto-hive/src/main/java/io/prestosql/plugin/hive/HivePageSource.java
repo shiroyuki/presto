@@ -15,11 +15,15 @@ package io.prestosql.plugin.hive;
 
 import io.prestosql.plugin.hive.HivePageSourceProvider.BucketAdaptation;
 import io.prestosql.plugin.hive.HivePageSourceProvider.ColumnMapping;
+import io.prestosql.plugin.hive.coercions.DoubleToFloatCoercer;
+import io.prestosql.plugin.hive.coercions.FloatToDoubleCoercer;
+import io.prestosql.plugin.hive.coercions.IntegerNumberToVarcharCoercer;
+import io.prestosql.plugin.hive.coercions.IntegerNumberUpscaleCoercer;
+import io.prestosql.plugin.hive.coercions.VarcharToIntegerNumberCoercer;
 import io.prestosql.spi.Page;
 import io.prestosql.spi.PrestoException;
 import io.prestosql.spi.block.ArrayBlock;
 import io.prestosql.spi.block.Block;
-import io.prestosql.spi.block.BlockBuilder;
 import io.prestosql.spi.block.ColumnarArray;
 import io.prestosql.spi.block.ColumnarMap;
 import io.prestosql.spi.block.ColumnarRow;
@@ -48,7 +52,6 @@ import java.util.Optional;
 import java.util.function.Function;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
-import static io.airlift.slice.Slices.utf8Slice;
 import static io.prestosql.plugin.hive.HiveBucketing.getHiveBucket;
 import static io.prestosql.plugin.hive.HiveErrorCode.HIVE_CURSOR_ERROR;
 import static io.prestosql.plugin.hive.HiveErrorCode.HIVE_INVALID_BUCKET_FILES;
@@ -77,6 +80,11 @@ import static io.prestosql.plugin.hive.HiveUtil.smallintPartitionKey;
 import static io.prestosql.plugin.hive.HiveUtil.timestampPartitionKey;
 import static io.prestosql.plugin.hive.HiveUtil.tinyintPartitionKey;
 import static io.prestosql.plugin.hive.HiveUtil.varcharPartitionKey;
+import static io.prestosql.plugin.hive.coercions.DecimalCoercers.createDecimalToDecimalCoercer;
+import static io.prestosql.plugin.hive.coercions.DecimalCoercers.createDecimalToDoubleCoercer;
+import static io.prestosql.plugin.hive.coercions.DecimalCoercers.createDecimalToRealCoercer;
+import static io.prestosql.plugin.hive.coercions.DecimalCoercers.createDoubleToDecimalCoercer;
+import static io.prestosql.plugin.hive.coercions.DecimalCoercers.createRealToDecimalCoercer;
 import static io.prestosql.spi.StandardErrorCode.NOT_SUPPORTED;
 import static io.prestosql.spi.block.ColumnarArray.toColumnarArray;
 import static io.prestosql.spi.block.ColumnarMap.toColumnarMap;
@@ -94,7 +102,6 @@ import static io.prestosql.spi.type.SmallintType.SMALLINT;
 import static io.prestosql.spi.type.TimestampType.TIMESTAMP;
 import static io.prestosql.spi.type.TinyintType.TINYINT;
 import static io.prestosql.spi.type.Varchars.isVarcharType;
-import static java.lang.Float.intBitsToFloat;
 import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
@@ -339,6 +346,24 @@ public class HivePageSource
         if (fromHiveType.equals(HIVE_FLOAT) && toHiveType.equals(HIVE_DOUBLE)) {
             return new FloatToDoubleCoercer();
         }
+        if (fromHiveType.equals(HIVE_DOUBLE) && toHiveType.equals(HIVE_FLOAT)) {
+            return new DoubleToFloatCoercer();
+        }
+        if (fromType instanceof DecimalType && toType instanceof DecimalType) {
+            return createDecimalToDecimalCoercer((DecimalType) fromType, (DecimalType) toType);
+        }
+        if (fromType instanceof DecimalType && toType == DOUBLE) {
+            return createDecimalToDoubleCoercer((DecimalType) fromType);
+        }
+        if (fromType instanceof DecimalType && toType == REAL) {
+            return createDecimalToRealCoercer((DecimalType) fromType);
+        }
+        if (fromType == DOUBLE && toType instanceof DecimalType) {
+            return createDoubleToDecimalCoercer((DecimalType) toType);
+        }
+        if (fromType == REAL && toType instanceof DecimalType) {
+            return createRealToDecimalCoercer((DecimalType) toType);
+        }
         if (isArrayType(fromType) && isArrayType(toType)) {
             return new ListCoercer(typeManager, fromHiveType, toHiveType);
         }
@@ -350,139 +375,6 @@ public class HivePageSource
         }
 
         throw new PrestoException(NOT_SUPPORTED, format("Unsupported coercion from %s to %s", fromHiveType, toHiveType));
-    }
-
-    private static class IntegerNumberUpscaleCoercer
-            implements Function<Block, Block>
-    {
-        private final Type fromType;
-        private final Type toType;
-
-        public IntegerNumberUpscaleCoercer(Type fromType, Type toType)
-        {
-            this.fromType = requireNonNull(fromType, "fromType is null");
-            this.toType = requireNonNull(toType, "toType is null");
-        }
-
-        @Override
-        public Block apply(Block block)
-        {
-            BlockBuilder blockBuilder = toType.createBlockBuilder(null, block.getPositionCount());
-            for (int i = 0; i < block.getPositionCount(); i++) {
-                if (block.isNull(i)) {
-                    blockBuilder.appendNull();
-                    continue;
-                }
-                toType.writeLong(blockBuilder, fromType.getLong(block, i));
-            }
-            return blockBuilder.build();
-        }
-    }
-
-    private static class IntegerNumberToVarcharCoercer
-            implements Function<Block, Block>
-    {
-        private final Type fromType;
-        private final Type toType;
-
-        public IntegerNumberToVarcharCoercer(Type fromType, Type toType)
-        {
-            this.fromType = requireNonNull(fromType, "fromType is null");
-            this.toType = requireNonNull(toType, "toType is null");
-        }
-
-        @Override
-        public Block apply(Block block)
-        {
-            BlockBuilder blockBuilder = toType.createBlockBuilder(null, block.getPositionCount());
-            for (int i = 0; i < block.getPositionCount(); i++) {
-                if (block.isNull(i)) {
-                    blockBuilder.appendNull();
-                    continue;
-                }
-                toType.writeSlice(blockBuilder, utf8Slice(String.valueOf(fromType.getLong(block, i))));
-            }
-            return blockBuilder.build();
-        }
-    }
-
-    private static class VarcharToIntegerNumberCoercer
-            implements Function<Block, Block>
-    {
-        private final Type fromType;
-        private final Type toType;
-
-        private final long minValue;
-        private final long maxValue;
-
-        public VarcharToIntegerNumberCoercer(Type fromType, Type toType)
-        {
-            this.fromType = requireNonNull(fromType, "fromType is null");
-            this.toType = requireNonNull(toType, "toType is null");
-
-            if (toType.equals(TINYINT)) {
-                minValue = Byte.MIN_VALUE;
-                maxValue = Byte.MAX_VALUE;
-            }
-            else if (toType.equals(SMALLINT)) {
-                minValue = Short.MIN_VALUE;
-                maxValue = Short.MAX_VALUE;
-            }
-            else if (toType.equals(INTEGER)) {
-                minValue = Integer.MIN_VALUE;
-                maxValue = Integer.MAX_VALUE;
-            }
-            else if (toType.equals(BIGINT)) {
-                minValue = Long.MIN_VALUE;
-                maxValue = Long.MAX_VALUE;
-            }
-            else {
-                throw new PrestoException(NOT_SUPPORTED, format("Could not create Coercer from from varchar to %s", toType));
-            }
-        }
-
-        @Override
-        public Block apply(Block block)
-        {
-            BlockBuilder blockBuilder = toType.createBlockBuilder(null, block.getPositionCount());
-            for (int i = 0; i < block.getPositionCount(); i++) {
-                if (block.isNull(i)) {
-                    blockBuilder.appendNull();
-                    continue;
-                }
-                try {
-                    long value = Long.parseLong(fromType.getSlice(block, i).toStringUtf8());
-                    if (minValue <= value && value <= maxValue) {
-                        toType.writeLong(blockBuilder, value);
-                    }
-                    else {
-                        blockBuilder.appendNull();
-                    }
-                }
-                catch (NumberFormatException e) {
-                    blockBuilder.appendNull();
-                }
-            }
-            return blockBuilder.build();
-        }
-    }
-
-    private static class FloatToDoubleCoercer
-            implements Function<Block, Block>
-    {
-        @Override
-        public Block apply(Block block)
-        {
-            BlockBuilder blockBuilder = DOUBLE.createBlockBuilder(null, block.getPositionCount());
-            for (int i = 0; i < block.getPositionCount(); i++) {
-                if (block.isNull(i)) {
-                    blockBuilder.appendNull();
-                    continue;
-                }
-                DOUBLE.writeDouble(blockBuilder, intBitsToFloat((int) REAL.getLong(block, i)));
-            }
-            return blockBuilder.build();
-        }
     }
 
     private static class ListCoercer

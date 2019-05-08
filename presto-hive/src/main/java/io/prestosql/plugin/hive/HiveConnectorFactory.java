@@ -21,13 +21,14 @@ import io.airlift.bootstrap.Bootstrap;
 import io.airlift.bootstrap.LifeCycleManager;
 import io.airlift.event.client.EventModule;
 import io.airlift.json.JsonModule;
+import io.prestosql.plugin.base.jmx.MBeanServerModule;
 import io.prestosql.plugin.hive.authentication.HiveAuthenticationModule;
 import io.prestosql.plugin.hive.gcs.HiveGcsModule;
 import io.prestosql.plugin.hive.metastore.HiveMetastore;
 import io.prestosql.plugin.hive.metastore.HiveMetastoreModule;
 import io.prestosql.plugin.hive.s3.HiveS3Module;
 import io.prestosql.plugin.hive.security.HiveSecurityModule;
-import io.prestosql.plugin.hive.security.PartitionsAwareAccessControl;
+import io.prestosql.plugin.hive.security.SystemTableAwareAccessControl;
 import io.prestosql.spi.NodeManager;
 import io.prestosql.spi.PageIndexerFactory;
 import io.prestosql.spi.PageSorter;
@@ -49,9 +50,6 @@ import io.prestosql.spi.procedure.Procedure;
 import io.prestosql.spi.type.TypeManager;
 import org.weakref.jmx.guice.MBeanModule;
 
-import javax.management.MBeanServer;
-
-import java.lang.management.ManagementFactory;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -106,9 +104,8 @@ public class HiveConnectorFactory
                     new HiveSecurityModule(),
                     new HiveAuthenticationModule(),
                     new HiveProcedureModule(),
+                    new MBeanServerModule(),
                     binder -> {
-                        MBeanServer platformMBeanServer = ManagementFactory.getPlatformMBeanServer();
-                        binder.bind(MBeanServer.class).toInstance(new RebindSafeMBeanServer(platformMBeanServer));
                         binder.bind(NodeVersion.class).toInstance(new NodeVersion(context.getNodeManager().getCurrentNode().getVersion()));
                         binder.bind(NodeManager.class).toInstance(context.getNodeManager());
                         binder.bind(TypeManager.class).toInstance(context.getTypeManager());
@@ -133,7 +130,7 @@ public class HiveConnectorFactory
             HiveSessionProperties hiveSessionProperties = injector.getInstance(HiveSessionProperties.class);
             HiveTableProperties hiveTableProperties = injector.getInstance(HiveTableProperties.class);
             HiveAnalyzeProperties hiveAnalyzeProperties = injector.getInstance(HiveAnalyzeProperties.class);
-            ConnectorAccessControl accessControl = new PartitionsAwareAccessControl(injector.getInstance(ConnectorAccessControl.class));
+            ConnectorAccessControl accessControl = new SystemTableAwareAccessControl(injector.getInstance(ConnectorAccessControl.class));
             Set<Procedure> procedures = injector.getInstance(Key.get(new TypeLiteral<Set<Procedure>>() {}));
 
             return new HiveConnector(

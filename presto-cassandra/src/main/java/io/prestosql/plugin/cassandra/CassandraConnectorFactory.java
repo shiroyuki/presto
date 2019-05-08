@@ -13,20 +13,16 @@
  */
 package io.prestosql.plugin.cassandra;
 
-import com.google.inject.Binder;
 import com.google.inject.Injector;
-import com.google.inject.Module;
 import io.airlift.bootstrap.Bootstrap;
 import io.airlift.json.JsonModule;
+import io.prestosql.plugin.base.jmx.MBeanServerModule;
 import io.prestosql.spi.connector.Connector;
 import io.prestosql.spi.connector.ConnectorContext;
 import io.prestosql.spi.connector.ConnectorFactory;
 import io.prestosql.spi.connector.ConnectorHandleResolver;
 import org.weakref.jmx.guice.MBeanModule;
 
-import javax.management.MBeanServer;
-
-import java.lang.management.ManagementFactory;
 import java.util.Map;
 
 import static com.google.common.base.Throwables.throwIfUnchecked;
@@ -57,15 +53,7 @@ public class CassandraConnectorFactory
                     new MBeanModule(),
                     new JsonModule(),
                     new CassandraClientModule(),
-                    new Module()
-                    {
-                        @Override
-                        public void configure(Binder binder)
-                        {
-                            MBeanServer platformMBeanServer = ManagementFactory.getPlatformMBeanServer();
-                            binder.bind(MBeanServer.class).toInstance(new RebindSafeMBeanServer(platformMBeanServer));
-                        }
-                    });
+                    new MBeanServerModule());
 
             Injector injector = app.strictConfig().doNotInitializeLogging()
                     .setRequiredConfigurationProperties(config)

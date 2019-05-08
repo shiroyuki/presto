@@ -214,6 +214,8 @@ Property Name                                Description
 
 ``hive.s3.aws-secret-key``                   Default AWS secret key to use.
 
+``hive.s3.iam-role``                         IAM role to assume.
+
 ``hive.s3.endpoint``                         The S3 storage endpoint server. This can be used to
                                              connect to an S3-compatible storage system instead
                                              of AWS. When using v4 signatures, it is recommended to
@@ -274,10 +276,11 @@ it is highly recommended that you set ``hive.s3.use-instance-credentials``
 to ``true`` and use IAM Roles for EC2 to govern access to S3. If this is
 the case, your EC2 instances will need to be assigned an IAM Role which
 grants appropriate access to the data stored in the S3 bucket(s) you wish
-to use.  This is much cleaner than setting AWS access and secret keys in
-the ``hive.s3.aws-access-key`` and ``hive.s3.aws-secret-key`` settings, and also
-allows EC2 to automatically rotate credentials on a regular basis without
-any additional work on your part.
+to use. It's also possible to configure an IAM role with ``hive.s3.iam-role``
+that will be assumed for accessing any S3 bucket. This is much cleaner than
+setting AWS access and secret keys in the ``hive.s3.aws-access-key``
+and ``hive.s3.aws-secret-key`` settings, and also allows EC2 to automatically
+rotate credentials on a regular basis without any additional work on your part.
 
 Custom S3 Credentials Provider
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -429,6 +432,24 @@ If your workload experiences the error *Timeout waiting for connection from
 pool*, increase the value of both ``hive.s3select-pushdown.max-connections`` and
 the maximum connections configuration for the file system you are using.
 
+Google Cloud Storage Configuration
+----------------------------------
+
+The Hive connector can access data stored in GCS, using the ``gs://`` URI prefix.
+Please refer to the :doc:`hive-gcs-tutorial` for step-by-step instructions.
+
+GCS Configuration properties
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+============================================ =================================================================
+Property Name                                Description
+============================================ =================================================================
+``hive.gcs.json-key-file-path``              JSON key file used to authenticate with Google Cloud Storage.
+
+``hive.gcs.use-access-token``                Use client-provided OAuth token to access Google Cloud Storage.
+                                             This is mutually exclusive with a global JSON key file.
+============================================ =================================================================
+
 Table Statistics
 ----------------
 
@@ -464,11 +485,13 @@ the ``collect-column-statistics-on-write`` catalog session property.
 Updating table and partition statistics
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The Hive connector supports collection of table and partition statistics
-via the :doc:`/sql/analyze` statement. When analyzing a partitioned table,
-the partitions to analyze can be specified via the optional ``partitions``
-property, which is an array containing the values of the partition keys
-in the order they are declared in the table schema::
+If your queries are complex and include joining large data sets,
+running :doc:`/sql/analyze` on tables/partitions may improve query performance
+by collecting statistical information about the data.
+
+When analyzing a partitioned table, the partitions to analyze can be specified
+via the optional ``partitions`` property, which is an array containing
+the values of the partition keys in the order they are declared in the table schema::
 
     ANALYZE table_name WITH (
         partitions = ARRAY[
@@ -636,6 +659,15 @@ existing data in S3::
       format = 'TEXTFILE',
       external_location = 's3://my-bucket/data/logs/'
     )
+
+Collect statistics for the ``request_logs`` table::
+
+    ANALYZE hive.web.request_logs;
+
+The examples shown here should work on Google Cloud Storage after replacing ``s3://`` with ``gs://``.
+
+Cleaning up
+^^^^^^^^^^^
 
 Drop the external table ``request_logs``. This only drops the metadata
 for the table. The referenced data directory is not deleted::
