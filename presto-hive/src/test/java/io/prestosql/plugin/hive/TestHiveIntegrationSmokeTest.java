@@ -2137,6 +2137,70 @@ public class TestHiveIntegrationSmokeTest
     }
 
     @Test
+    public void testCreateTableWithDelimiter()
+    {
+        @Language("SQL") String createTableSql = format("" +
+                        "CREATE TABLE %s.%s.test_table_with_delimiter (\n" +
+                        "   name varchar\n" +
+                        ")\n" +
+                        "WITH (\n" +
+                        "   field_delimiter = ',',\n" +
+                        "   format = 'TEXTFILE',\n" +
+                        "   line_delimiter = ';'\n" +
+                        ")",
+                getSession().getCatalog().get(),
+                getSession().getSchema().get());
+
+        assertUpdate(createTableSql);
+
+        MaterializedResult actual = computeActual("SHOW CREATE TABLE test_table_with_delimiter");
+        assertEquals(actual.getOnlyValue(), createTableSql);
+
+        assertUpdate("DROP TABLE test_table_with_delimiter");
+    }
+
+    @Test(expectedExceptions = RuntimeException.class, expectedExceptionsMessageRegExp = "Cannot specify field_delimiter table property for storage format: ORC")
+    public void testCreateNonTextTableWithDelimiter()
+    {
+        assertUpdate("" +
+                "CREATE TABLE test_create_non_text_table_with_delimiter\n" +
+                "(col1 bigint)\n" +
+                "WITH ( format = 'ORC', field_delimiter = ',' )");
+    }
+
+    @Test
+    public void testCreateTableWithHeaderAndFooter()
+    {
+        @Language("SQL") String createTableSql = format("" +
+                        "CREATE TABLE %s.%s.test_table_skip_header_footer (\n" +
+                        "   name varchar\n" +
+                        ")\n" +
+                        "WITH (\n" +
+                        "   format = 'TEXTFILE',\n" +
+                        "   skip_footer_count = 1,\n" +
+                        "   skip_header_count = 1\n" +
+                        ")",
+                getSession().getCatalog().get(),
+                getSession().getSchema().get());
+
+        assertUpdate(createTableSql);
+
+        MaterializedResult actual = computeActual("SHOW CREATE TABLE test_table_skip_header_footer");
+        assertEquals(actual.getOnlyValue(), createTableSql);
+
+        assertUpdate("DROP TABLE test_table_skip_header_footer");
+    }
+
+    @Test(expectedExceptions = RuntimeException.class, expectedExceptionsMessageRegExp = "Cannot specify skip_header_count table property for storage format: ORC")
+    public void testCreateNonTextTableWithHeader()
+    {
+        assertUpdate("" +
+                "CREATE TABLE test_create_non_text_table_with_delimiter\n" +
+                "(col1 bigint)\n" +
+                "WITH ( format = 'ORC', skip_header_count = 1 )");
+    }
+
+    @Test
     public void testPathHiddenColumn()
     {
         testWithAllStorageFormats(this::testPathHiddenColumn);

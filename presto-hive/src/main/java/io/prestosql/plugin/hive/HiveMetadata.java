@@ -93,6 +93,7 @@ import io.prestosql.spi.type.VarcharType;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.metastore.TableType;
 import org.apache.hadoop.hive.ql.exec.FileSinkOperator;
+import org.apache.hadoop.hive.serde.serdeConstants;
 import org.apache.hadoop.mapred.JobConf;
 import org.joda.time.DateTimeZone;
 
@@ -162,6 +163,10 @@ import static io.prestosql.plugin.hive.HiveTableProperties.ORC_BLOOM_FILTER_FPP;
 import static io.prestosql.plugin.hive.HiveTableProperties.PARTITIONED_BY_PROPERTY;
 import static io.prestosql.plugin.hive.HiveTableProperties.SORTED_BY_PROPERTY;
 import static io.prestosql.plugin.hive.HiveTableProperties.STORAGE_FORMAT_PROPERTY;
+import static io.prestosql.plugin.hive.HiveTableProperties.TEXT_FIELD_DELIMITER;
+import static io.prestosql.plugin.hive.HiveTableProperties.TEXT_LINE_DELIMITER;
+import static io.prestosql.plugin.hive.HiveTableProperties.TEXT_SKIP_FOOTER_COUNT;
+import static io.prestosql.plugin.hive.HiveTableProperties.TEXT_SKIP_HEADER_COUNT;
 import static io.prestosql.plugin.hive.HiveTableProperties.getAvroSchemaUrl;
 import static io.prestosql.plugin.hive.HiveTableProperties.getBucketProperty;
 import static io.prestosql.plugin.hive.HiveTableProperties.getExternalLocation;
@@ -169,6 +174,10 @@ import static io.prestosql.plugin.hive.HiveTableProperties.getHiveStorageFormat;
 import static io.prestosql.plugin.hive.HiveTableProperties.getOrcBloomFilterColumns;
 import static io.prestosql.plugin.hive.HiveTableProperties.getOrcBloomFilterFpp;
 import static io.prestosql.plugin.hive.HiveTableProperties.getPartitionedBy;
+import static io.prestosql.plugin.hive.HiveTableProperties.getTextFieldDelimiter;
+import static io.prestosql.plugin.hive.HiveTableProperties.getTextFooterSkipCount;
+import static io.prestosql.plugin.hive.HiveTableProperties.getTextHeaderSkipCount;
+import static io.prestosql.plugin.hive.HiveTableProperties.getTextLineDelimiter;
 import static io.prestosql.plugin.hive.HiveType.HIVE_STRING;
 import static io.prestosql.plugin.hive.HiveType.toHiveType;
 import static io.prestosql.plugin.hive.HiveUtil.PRESTO_VIEW_FLAG;
@@ -231,6 +240,12 @@ public class HiveMetadata
 
     private static final String ORC_BLOOM_FILTER_COLUMNS_KEY = "orc.bloom.filter.columns";
     private static final String ORC_BLOOM_FILTER_FPP_KEY = "orc.bloom.filter.fpp";
+
+    public static final String TEXT_FIELD_DELIMITER_KEY = "field.delim";
+    public static final String TEXT_LINE_DELIMITER_KEY = "line.delim";
+
+    public static final String TEXT_SKIP_HEADER_COUNT_KEY = "skip.header.line.count";
+    public static final String TEXT_SKIP_FOOTER_COUNT_KEY = "skip.footer.line.count";
 
     public static final String AVRO_SCHEMA_URL_KEY = "avro.schema.url";
 
@@ -476,6 +491,15 @@ public class HiveMetadata
             properties.put(PARTITIONED_BY_PROPERTY, partitionedBy);
         }
 
+        // Serde properties
+        Map<String, String> serdeProperty = table.get().getStorage().getSerdeParameters();
+        if (serdeProperty.containsKey(TEXT_FIELD_DELIMITER_KEY)) {
+            properties.put(TEXT_FIELD_DELIMITER, serdeProperty.get(TEXT_FIELD_DELIMITER_KEY));
+        }
+        if (serdeProperty.containsKey(TEXT_LINE_DELIMITER_KEY)) {
+            properties.put(TEXT_LINE_DELIMITER, serdeProperty.get(TEXT_LINE_DELIMITER_KEY));
+        }
+
         // Bucket properties
         Optional<HiveBucketProperty> bucketProperty = table.get().getStorage().getBucketProperty();
         if (bucketProperty.isPresent()) {
@@ -498,6 +522,16 @@ public class HiveMetadata
         String avroSchemaUrl = table.get().getParameters().get(AVRO_SCHEMA_URL_KEY);
         if (avroSchemaUrl != null) {
             properties.put(AVRO_SCHEMA_URL, avroSchemaUrl);
+        }
+
+        // Textfile specific property
+        String textSkipHeaderCount = table.get().getParameters().get(TEXT_SKIP_HEADER_COUNT_KEY);
+        if (textSkipHeaderCount != null) {
+            properties.put(TEXT_SKIP_HEADER_COUNT, Integer.valueOf(textSkipHeaderCount));
+        }
+        String textSkipFooterCount = table.get().getParameters().get(TEXT_SKIP_FOOTER_COUNT_KEY);
+        if (textSkipFooterCount != null) {
+            properties.put(TEXT_SKIP_FOOTER_COUNT, Integer.valueOf(textSkipFooterCount));
         }
 
         Optional<String> comment = Optional.ofNullable(table.get().getParameters().get(TABLE_COMMENT));
@@ -689,6 +723,7 @@ public class HiveMetadata
         List<HiveColumnHandle> columnHandles = getColumnHandles(tableMetadata, ImmutableSet.copyOf(partitionedBy), typeTranslator);
         HiveStorageFormat hiveStorageFormat = getHiveStorageFormat(tableMetadata.getProperties());
         Map<String, String> tableProperties = getEmptyTableProperties(tableMetadata, new HdfsContext(session, schemaName, tableName));
+        Map<String, String> serdeParameters = getDelimiterProperty(hiveStorageFormat, tableMetadata.getProperties());
 
         hiveStorageFormat.validateColumns(columnHandles);
 
@@ -726,6 +761,7 @@ public class HiveMetadata
                 partitionedBy,
                 bucketProperty,
                 tableProperties,
+                serdeParameters,
                 targetPath,
                 external,
                 prestoVersion);
@@ -761,10 +797,63 @@ public class HiveMetadata
             tableProperties.put(AVRO_SCHEMA_URL_KEY, validateAndNormalizeAvroSchemaUrl(avroSchemaUrl, hdfsContext));
         }
 
+        // Textfile specific properties
+        int textHeaderSkipCount = getTextHeaderSkipCount(tableMetadata.getProperties());
+        if (textHeaderSkipCount > 0) {
+            HiveStorageFormat hiveStorageFormat = getHiveStorageFormat(tableMetadata.getProperties());
+            if (hiveStorageFormat != HiveStorageFormat.TEXTFILE) {
+                throw new PrestoException(INVALID_TABLE_PROPERTY, format("Cannot specify %s table property for storage format: %s", TEXT_SKIP_HEADER_COUNT, hiveStorageFormat));
+            }
+            tableProperties.put(TEXT_SKIP_HEADER_COUNT_KEY, String.valueOf(textHeaderSkipCount));
+        }
+        if (textHeaderSkipCount < 0) {
+            throw new PrestoException(HIVE_INVALID_METADATA, format("Invalid value for %s property: %s", TEXT_SKIP_HEADER_COUNT, textHeaderSkipCount));
+        }
+
+        int textFooterSkipCount = getTextFooterSkipCount(tableMetadata.getProperties());
+        if (textFooterSkipCount > 0) {
+            HiveStorageFormat hiveStorageFormat = getHiveStorageFormat(tableMetadata.getProperties());
+            if (hiveStorageFormat != HiveStorageFormat.TEXTFILE) {
+                throw new PrestoException(INVALID_TABLE_PROPERTY, format("Cannot specify %s table property for storage format: %s", TEXT_SKIP_FOOTER_COUNT, hiveStorageFormat));
+            }
+            tableProperties.put(TEXT_SKIP_FOOTER_COUNT_KEY, String.valueOf(textHeaderSkipCount));
+        }
+        if (textFooterSkipCount < 0) {
+            throw new PrestoException(HIVE_INVALID_METADATA, format("Invalid value for %s property: %s", TEXT_SKIP_HEADER_COUNT, textFooterSkipCount));
+        }
+
         // Table comment property
         tableMetadata.getComment().ifPresent(value -> tableProperties.put(TABLE_COMMENT, value));
 
         return tableProperties.build();
+    }
+
+    private Map<String, String> getDelimiterProperty(HiveStorageFormat hiveStorageFormat, Map<String, Object> properties)
+    {
+        ImmutableMap.Builder<String, String> serdeParametersBuilder = ImmutableMap.builder();
+        String filedDelimiter = getTextFieldDelimiter(properties);
+        if (filedDelimiter != null) {
+            if (hiveStorageFormat != HiveStorageFormat.TEXTFILE) {
+                throw new PrestoException(INVALID_TABLE_PROPERTY, format("Cannot specify %s table property for storage format: %s", TEXT_FIELD_DELIMITER, hiveStorageFormat));
+            }
+            if (filedDelimiter.length() > 1) {
+                throw new PrestoException(INVALID_TABLE_PROPERTY, format("%s must be one character", TEXT_FIELD_DELIMITER));
+            }
+            serdeParametersBuilder.put(serdeConstants.FIELD_DELIM, filedDelimiter);
+        }
+
+        String lineDelimiter = getTextLineDelimiter(properties);
+        if (lineDelimiter != null) {
+            if (hiveStorageFormat != HiveStorageFormat.TEXTFILE) {
+                throw new PrestoException(INVALID_TABLE_PROPERTY, format("Cannot specify %s table property for storage format: %s", TEXT_LINE_DELIMITER, hiveStorageFormat));
+            }
+            if (lineDelimiter.length() > 1) {
+                throw new PrestoException(INVALID_TABLE_PROPERTY, format("%s must be one character", TEXT_LINE_DELIMITER));
+            }
+            serdeParametersBuilder.put(serdeConstants.LINE_DELIM, lineDelimiter);
+        }
+
+        return serdeParametersBuilder.build();
     }
 
     private String validateAndNormalizeAvroSchemaUrl(String url, HdfsContext context)
@@ -827,6 +916,7 @@ public class HiveMetadata
             List<String> partitionedBy,
             Optional<HiveBucketProperty> bucketProperty,
             Map<String, String> additionalTableParameters,
+            Map<String, String> serdeParameters,
             Path targetPath,
             boolean external,
             String prestoVersion)
@@ -873,7 +963,8 @@ public class HiveMetadata
         tableBuilder.getStorageBuilder()
                 .setStorageFormat(fromHiveStorageFormat(hiveStorageFormat))
                 .setBucketProperty(bucketProperty)
-                .setLocation(targetPath.toString());
+                .setLocation(targetPath.toString())
+                .setSerdeParameters(serdeParameters);
 
         return tableBuilder.build();
     }
@@ -1058,6 +1149,7 @@ public class HiveMetadata
         Map<String, String> tableProperties = getEmptyTableProperties(tableMetadata, new HdfsContext(session, schemaName, tableName));
         List<HiveColumnHandle> columnHandles = getColumnHandles(tableMetadata, ImmutableSet.copyOf(partitionedBy), typeTranslator);
         HiveStorageFormat partitionStorageFormat = isRespectTableFormat(session) ? tableStorageFormat : getHiveStorageFormat(session);
+        Map<String, String> serdeParameters = getDelimiterProperty(tableStorageFormat, tableMetadata.getProperties());
 
         // unpartitioned tables ignore the partition storage format
         HiveStorageFormat actualStorageFormat = partitionedBy.isEmpty() ? tableStorageFormat : partitionStorageFormat;
@@ -1083,7 +1175,8 @@ public class HiveMetadata
                 partitionedBy,
                 bucketProperty,
                 session.getUser(),
-                tableProperties);
+                tableProperties,
+                serdeParameters);
 
         WriteInfo writeInfo = locationService.getQueryWriteInfo(locationHandle);
         metastore.declareIntentionToWrite(session, writeInfo.getWriteMode(), writeInfo.getWritePath(), result.getFilePrefix(), schemaTableName);
@@ -1112,6 +1205,7 @@ public class HiveMetadata
                 handle.getPartitionedBy(),
                 handle.getBucketProperty(),
                 handle.getAdditionalTableParameters(),
+                handle.getSerdeParameters(),
                 writeInfo.getTargetPath(),
                 false,
                 prestoVersion);

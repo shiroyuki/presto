@@ -50,6 +50,10 @@ public class HiveTableProperties
     public static final String ORC_BLOOM_FILTER_COLUMNS = "orc_bloom_filter_columns";
     public static final String ORC_BLOOM_FILTER_FPP = "orc_bloom_filter_fpp";
     public static final String AVRO_SCHEMA_URL = "avro_schema_url";
+    public static final String TEXT_FIELD_DELIMITER = "field_delimiter";
+    public static final String TEXT_LINE_DELIMITER = "line_delimiter";
+    public static final String TEXT_SKIP_HEADER_COUNT = "skip_header_count";
+    public static final String TEXT_SKIP_FOOTER_COUNT = "skip_footer_count";
 
     private final List<PropertyMetadata<?>> tableProperties;
 
@@ -123,6 +127,10 @@ public class HiveTableProperties
                         config.getOrcDefaultBloomFilterFpp(),
                         false),
                 integerProperty(BUCKET_COUNT_PROPERTY, "Number of buckets", 0, false),
+                stringProperty(TEXT_FIELD_DELIMITER, "Field delimiter character", null, false),
+                stringProperty(TEXT_LINE_DELIMITER, "Line delimiter character", null, false),
+                integerProperty(TEXT_SKIP_HEADER_COUNT, "Number of header lines", 0, false),
+                integerProperty(TEXT_SKIP_FOOTER_COUNT, "Number of footer lines", 0, false),
                 stringProperty(AVRO_SCHEMA_URL, "URI pointing to Avro schema for the table", null, false));
     }
 
@@ -139,6 +147,26 @@ public class HiveTableProperties
     public static String getAvroSchemaUrl(Map<String, Object> tableProperties)
     {
         return (String) tableProperties.get(AVRO_SCHEMA_URL);
+    }
+
+    public static String getTextFieldDelimiter(Map<String, Object> tableProperties)
+    {
+        return (String) tableProperties.get(TEXT_FIELD_DELIMITER);
+    }
+
+    public static String getTextLineDelimiter(Map<String, Object> tableProperties)
+    {
+        return (String) tableProperties.get(TEXT_LINE_DELIMITER);
+    }
+
+    public static int getTextHeaderSkipCount(Map<String, Object> tableProperties)
+    {
+        return (int) tableProperties.get(TEXT_SKIP_HEADER_COUNT);
+    }
+
+    public static int getTextFooterSkipCount(Map<String, Object> tableProperties)
+    {
+        return (int) tableProperties.get(TEXT_SKIP_FOOTER_COUNT);
     }
 
     public static HiveStorageFormat getHiveStorageFormat(Map<String, Object> tableProperties)
