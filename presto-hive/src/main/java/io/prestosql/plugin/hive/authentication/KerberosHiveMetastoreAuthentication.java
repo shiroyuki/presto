@@ -28,6 +28,7 @@ import java.io.UncheckedIOException;
 import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkState;
+import static io.prestosql.plugin.hive.authentication.UserGroupInformationUtils.executeActionInDoAs;
 import static java.util.Objects.requireNonNull;
 import static org.apache.hadoop.security.SaslRpcServer.AuthMethod.KERBEROS;
 import static org.apache.hadoop.security.SecurityUtil.getServerPrincipal;
@@ -36,17 +37,17 @@ public class KerberosHiveMetastoreAuthentication
         implements HiveMetastoreAuthentication
 {
     private final String hiveMetastoreServicePrincipal;
-    private final HadoopAuthentication authentication;
+    private final HiveAuthentication authentication;
 
     @Inject
     public KerberosHiveMetastoreAuthentication(
             MetastoreKerberosConfig config,
-            @ForHiveMetastore HadoopAuthentication authentication)
+            @ForHiveMetastore HiveAuthentication hiveAuthentication)
     {
-        this(config.getHiveMetastoreServicePrincipal(), authentication);
+        this(config.getHiveMetastoreServicePrincipal(), hiveAuthentication);
     }
 
-    public KerberosHiveMetastoreAuthentication(String hiveMetastoreServicePrincipal, HadoopAuthentication authentication)
+    public KerberosHiveMetastoreAuthentication(String hiveMetastoreServicePrincipal, HiveAuthentication authentication)
     {
         this.hiveMetastoreServicePrincipal = requireNonNull(hiveMetastoreServicePrincipal, "hiveMetastoreServicePrincipal is null");
         this.authentication = requireNonNull(authentication, "authentication is null");
@@ -79,5 +80,12 @@ public class KerberosHiveMetastoreAuthentication
         catch (IOException e) {
             throw new UncheckedIOException(e);
         }
+    }
+
+    @Override
+    public <R, E extends Exception> R doAs(String user, GenericExceptionAction<R, E> action)
+            throws E
+    {
+        return executeActionInDoAs(authentication.getUserGroupInformation(), action);
     }
 }

@@ -41,6 +41,17 @@ public final class AuthenticationModules
                 .in(SINGLETON);
     }
 
+    public static Module simpleImpersonatingHiveMetastoreAuthenticationModule()
+    {
+        return binder -> {
+            binder.bind(Key.get(HiveAuthentication.class, ForHiveMetastore.class))
+                    .to(SimpleHiveMetastoreAuthentication.class);
+            binder.bind(HiveMetastoreAuthentication.class)
+                    .to(ImpersonatingHiveMetastoreAuthentication.class)
+                    .in(SINGLETON);
+        };
+    }
+
     public static Module kerberosHiveMetastoreAuthenticationModule()
     {
         return new Module()
@@ -58,11 +69,37 @@ public final class AuthenticationModules
             @Provides
             @Singleton
             @ForHiveMetastore
-            HadoopAuthentication createHadoopAuthentication(MetastoreKerberosConfig config, HdfsConfigurationInitializer updater)
+            HiveAuthentication createHiveAuthentication(MetastoreKerberosConfig config, HdfsConfigurationInitializer updater)
             {
                 String principal = config.getHiveMetastoreClientPrincipal();
                 String keytabLocation = config.getHiveMetastoreClientKeytab();
-                return createCachingKerberosHadoopAuthentication(principal, keytabLocation, updater);
+                return createCachingKerberosHiveMetastoreAuthentication(principal, keytabLocation, updater);
+            }
+        };
+    }
+
+    public static Module kerberosImpersonatingHiveMetastoreAuthenticationModule()
+    {
+        return new Module()
+        {
+            @Override
+            public void configure(Binder binder)
+            {
+                binder.bind(HiveMetastoreAuthentication.class)
+                        .to(ImpersonatingHiveMetastoreAuthentication.class)
+                        .in(SINGLETON);
+                configBinder(binder).bindConfig(MetastoreKerberosConfig.class);
+            }
+
+            @Inject
+            @Provides
+            @Singleton
+            @ForHiveMetastore
+            HiveAuthentication createHiveAuthentication(MetastoreKerberosConfig config, HdfsConfigurationInitializer updater)
+            {
+                String principal = config.getHiveMetastoreClientPrincipal();
+                String keytabLocation = config.getHiveMetastoreClientKeytab();
+                return createCachingKerberosHiveMetastoreAuthentication(principal, keytabLocation, updater);
             }
         };
     }
@@ -136,6 +173,13 @@ public final class AuthenticationModules
                 return createCachingKerberosHadoopAuthentication(principal, keytabLocation, updater);
             }
         };
+    }
+
+    private static HiveAuthentication createCachingKerberosHiveMetastoreAuthentication(String principal, String keytabLocation, HdfsConfigurationInitializer updater)
+    {
+        KerberosAuthentication kerberosAuthentication = new KerberosAuthentication(principal, keytabLocation);
+        KerberosHadoopAuthentication kerberosHadoopAuthentication = createKerberosHadoopAuthentication(kerberosAuthentication, updater);
+        return new CachingKerberosHiveMetastoreAuthentication(kerberosHadoopAuthentication);
     }
 
     private static HadoopAuthentication createCachingKerberosHadoopAuthentication(String principal, String keytabLocation, HdfsConfigurationInitializer updater)

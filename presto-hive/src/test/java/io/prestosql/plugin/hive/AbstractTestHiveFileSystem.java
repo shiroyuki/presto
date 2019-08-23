@@ -26,6 +26,7 @@ import io.prestosql.plugin.hive.AbstractTestHive.HiveTransaction;
 import io.prestosql.plugin.hive.AbstractTestHive.Transaction;
 import io.prestosql.plugin.hive.HdfsEnvironment.HdfsContext;
 import io.prestosql.plugin.hive.authentication.NoHdfsAuthentication;
+import io.prestosql.plugin.hive.authentication.NoHiveMetastoreAuthentication;
 import io.prestosql.plugin.hive.metastore.Database;
 import io.prestosql.plugin.hive.metastore.HiveMetastore;
 import io.prestosql.plugin.hive.metastore.PrincipalPrivileges;
@@ -113,6 +114,7 @@ public abstract class AbstractTestHiveFileSystem
     protected SchemaTableName temporaryCreateTable;
 
     protected HdfsEnvironment hdfsEnvironment;
+    protected HiveEnvironment hiveEnvironment;
     protected LocationService locationService;
     protected TestingHiveMetastore metastoreClient;
     protected HiveMetadataFactory metadataFactory;
@@ -163,6 +165,7 @@ public abstract class AbstractTestHiveFileSystem
         HdfsConfiguration hdfsConfiguration = hdfsConfigurationProvider.apply(config);
 
         hdfsEnvironment = new HdfsEnvironment(hdfsConfiguration, config, new NoHdfsAuthentication());
+        hiveEnvironment = new HiveEnvironment(new NoHiveMetastoreAuthentication());
         metastoreClient = new TestingHiveMetastore(
                 new BridgingHiveMetastore(new ThriftHiveMetastore(metastoreLocator, new ThriftHiveMetastoreConfig())),
                 executor,
@@ -174,6 +177,7 @@ public abstract class AbstractTestHiveFileSystem
                 config,
                 metastoreClient,
                 hdfsEnvironment,
+                hiveEnvironment,
                 hivePartitionManager,
                 newDirectExecutorService(),
                 TYPE_MANAGER,

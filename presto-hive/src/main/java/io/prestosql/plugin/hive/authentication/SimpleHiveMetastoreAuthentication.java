@@ -13,21 +13,22 @@
  */
 package io.prestosql.plugin.hive.authentication;
 
-import org.apache.thrift.transport.TTransport;
+import org.apache.hadoop.security.UserGroupInformation;
 
-public class NoHiveMetastoreAuthentication
-        implements HiveMetastoreAuthentication
+import java.io.IOException;
+import java.io.UncheckedIOException;
+
+public class SimpleHiveMetastoreAuthentication
+        implements HiveAuthentication
 {
     @Override
-    public TTransport authenticate(TTransport rawTransport, String hiveMetastoreHost)
+    public UserGroupInformation getUserGroupInformation()
     {
-        return rawTransport;
-    }
-
-    @Override
-    public <R, E extends Exception> R doAs(String user, GenericExceptionAction<R, E> action)
-            throws E
-    {
-        return action.run();
+        try {
+            return UserGroupInformation.getLoginUser();
+        }
+        catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 }

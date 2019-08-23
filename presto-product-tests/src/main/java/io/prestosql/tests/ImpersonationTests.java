@@ -32,6 +32,7 @@ public class ImpersonationTests
         extends ProductTest
 {
     private QueryExecutor aliceExecutor;
+    private QueryExecutor bobExecutor;
 
     @Inject
     private HdfsClient hdfsClient;
@@ -55,6 +56,7 @@ public class ImpersonationTests
     public void setup()
     {
         aliceExecutor = connectToPresto("alice@presto");
+        bobExecutor = connectToPresto("bob@presto");
     }
 
     @Test(groups = {HDFS_NO_IMPERSONATION, PROFILE_SPECIFIC_TESTS})
@@ -83,6 +85,6 @@ public class ImpersonationTests
         String tableLocation = getTableLocation(tableName);
         String owner = hdfsClient.getOwner(tableLocation);
         assertEquals(owner, expectedOwner);
-        executor.executeQuery(format("DROP TABLE IF EXISTS %s", tableName));
+        bobExecutor.executeQuery(format("DROP TABLE IF EXISTS %s", tableName));
     }
 }

@@ -13,21 +13,9 @@
  */
 package io.prestosql.plugin.hive.authentication;
 
-import org.apache.thrift.transport.TTransport;
+import org.apache.hadoop.security.UserGroupInformation;
 
-public class NoHiveMetastoreAuthentication
-        implements HiveMetastoreAuthentication
+public interface HiveAuthentication
 {
-    @Override
-    public TTransport authenticate(TTransport rawTransport, String hiveMetastoreHost)
-    {
-        return rawTransport;
-    }
-
-    @Override
-    public <R, E extends Exception> R doAs(String user, GenericExceptionAction<R, E> action)
-            throws E
-    {
-        return action.run();
-    }
+    UserGroupInformation getUserGroupInformation();
 }

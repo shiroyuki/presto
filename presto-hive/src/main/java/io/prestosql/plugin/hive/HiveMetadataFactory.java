@@ -44,6 +44,7 @@ public class HiveMetadataFactory
     private final long perTransactionCacheMaximumSize;
     private final HiveMetastore metastore;
     private final HdfsEnvironment hdfsEnvironment;
+    private final HiveEnvironment hiveEnvironment;
     private final HivePartitionManager partitionManager;
     private final DateTimeZone timeZone;
     private final TypeManager typeManager;
@@ -60,6 +61,7 @@ public class HiveMetadataFactory
             HiveConfig hiveConfig,
             HiveMetastore metastore,
             HdfsEnvironment hdfsEnvironment,
+            HiveEnvironment hiveEnvironment,
             HivePartitionManager partitionManager,
             @ForHive ExecutorService executorService,
             TypeManager typeManager,
@@ -72,6 +74,7 @@ public class HiveMetadataFactory
         this(
                 metastore,
                 hdfsEnvironment,
+                hiveEnvironment,
                 partitionManager,
                 hiveConfig.getDateTimeZone(),
                 hiveConfig.getMaxConcurrentFileRenames(),
@@ -93,6 +96,7 @@ public class HiveMetadataFactory
     public HiveMetadataFactory(
             HiveMetastore metastore,
             HdfsEnvironment hdfsEnvironment,
+            HiveEnvironment hiveEnvironment,
             HivePartitionManager partitionManager,
             DateTimeZone timeZone,
             int maxConcurrentFileRenames,
@@ -119,6 +123,7 @@ public class HiveMetadataFactory
 
         this.metastore = requireNonNull(metastore, "metastore is null");
         this.hdfsEnvironment = requireNonNull(hdfsEnvironment, "hdfsEnvironment is null");
+        this.hiveEnvironment = requireNonNull(hiveEnvironment, "hiveEnvironment is null");
         this.partitionManager = requireNonNull(partitionManager, "partitionManager is null");
         this.timeZone = requireNonNull(timeZone, "timeZone is null");
         this.typeManager = requireNonNull(typeManager, "typeManager is null");
@@ -151,6 +156,7 @@ public class HiveMetadataFactory
         return new HiveMetadata(
                 metastore,
                 hdfsEnvironment,
+                hiveEnvironment,
                 partitionManager,
                 timeZone,
                 allowCorruptWritesForTesting,
