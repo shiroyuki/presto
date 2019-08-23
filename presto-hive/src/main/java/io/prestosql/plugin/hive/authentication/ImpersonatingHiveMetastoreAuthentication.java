@@ -13,11 +13,24 @@
  */
 package io.prestosql.plugin.hive.authentication;
 
+import io.prestosql.plugin.hive.ForHiveMetastore;
 import org.apache.thrift.transport.TTransport;
 
-public class NoHiveMetastoreAuthentication
+import javax.inject.Inject;
+
+import static java.util.Objects.requireNonNull;
+
+public class ImpersonatingHiveMetastoreAuthentication
         implements HiveMetastoreAuthentication
 {
+    private final HiveAuthentication hiveAuthentication;
+
+    @Inject
+    public ImpersonatingHiveMetastoreAuthentication(@ForHiveMetastore HiveAuthentication hiveAuthentication)
+    {
+        this.hiveAuthentication = requireNonNull(hiveAuthentication);
+    }
+
     @Override
     public TTransport authenticate(TTransport rawTransport, String hiveMetastoreHost)
     {
@@ -27,7 +40,6 @@ public class NoHiveMetastoreAuthentication
     @Override
     public String getUsername()
     {
-        // TODO: Return HADOOP_USER_NAME or return null
-        return "hive";
+        return hiveAuthentication.getUserGroupInformation().getUserName();
     }
 }

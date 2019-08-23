@@ -36,17 +36,17 @@ public class KerberosHiveMetastoreAuthentication
         implements HiveMetastoreAuthentication
 {
     private final String hiveMetastoreServicePrincipal;
-    private final HadoopAuthentication authentication;
+    private final HiveAuthentication authentication;
 
     @Inject
     public KerberosHiveMetastoreAuthentication(
             MetastoreKerberosConfig config,
-            @ForHiveMetastore HadoopAuthentication authentication)
+            @ForHiveMetastore HiveAuthentication hiveAuthentication)
     {
-        this(config.getHiveMetastoreServicePrincipal(), authentication);
+        this(config.getHiveMetastoreServicePrincipal(), hiveAuthentication);
     }
 
-    public KerberosHiveMetastoreAuthentication(String hiveMetastoreServicePrincipal, HadoopAuthentication authentication)
+    public KerberosHiveMetastoreAuthentication(String hiveMetastoreServicePrincipal, HiveAuthentication authentication)
     {
         this.hiveMetastoreServicePrincipal = requireNonNull(hiveMetastoreServicePrincipal, "hiveMetastoreServicePrincipal is null");
         this.authentication = requireNonNull(authentication, "authentication is null");
@@ -79,5 +79,11 @@ public class KerberosHiveMetastoreAuthentication
         catch (IOException e) {
             throw new UncheckedIOException(e);
         }
+    }
+
+    @Override
+    public String getUsername()
+    {
+        return authentication.getUserGroupInformation().getUserName();
     }
 }

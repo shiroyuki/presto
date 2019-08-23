@@ -126,6 +126,7 @@ public class HiveConfig
     private boolean rcfileWriterValidate;
 
     private HiveMetastoreAuthenticationType hiveMetastoreAuthenticationType = HiveMetastoreAuthenticationType.NONE;
+    private boolean hiveMetastoreImpersonationEnabled;
     private HdfsAuthenticationType hdfsAuthenticationType = HdfsAuthenticationType.NONE;
     private boolean hdfsImpersonationEnabled;
     private boolean hdfsWireEncryptionEnabled;
@@ -975,6 +976,19 @@ public class HiveConfig
     {
         NONE,
         KERBEROS,
+    }
+
+    public boolean isHiveMetastoreImpersonationEnabled()
+    {
+        return hiveMetastoreImpersonationEnabled;
+    }
+
+    @Config("hive.metastore.impersonation.enabled")
+    @ConfigDescription("Should Presto user be impersonated when communicating with Hive Metastore")
+    public HiveConfig setHiveMetastoreImpersonationEnabled(boolean hiveMetastoreImpersonationEnabled)
+    {
+        this.hiveMetastoreImpersonationEnabled = hiveMetastoreImpersonationEnabled;
+        return this;
     }
 
     @NotNull

@@ -28,6 +28,7 @@ import io.prestosql.GroupByHashPageIndexerFactory;
 import io.prestosql.plugin.hive.HdfsEnvironment.HdfsContext;
 import io.prestosql.plugin.hive.LocationService.WriteInfo;
 import io.prestosql.plugin.hive.authentication.NoHdfsAuthentication;
+import io.prestosql.plugin.hive.authentication.NoHiveMetastoreAuthentication;
 import io.prestosql.plugin.hive.metastore.Column;
 import io.prestosql.plugin.hive.metastore.HiveColumnStatistics;
 import io.prestosql.plugin.hive.metastore.HiveMetastore;
@@ -577,6 +578,7 @@ public abstract class AbstractTestHive
     protected DateTimeZone timeZone;
 
     protected HdfsEnvironment hdfsEnvironment;
+    protected HiveEnvironment hiveEnvironment;
     protected LocationService locationService;
 
     protected HiveMetadataFactory metadataFactory;
@@ -699,7 +701,7 @@ public abstract class AbstractTestHive
 
         MetastoreLocator metastoreLocator = new TestingMetastoreLocator(hiveConfig, host, port);
         HiveMetastore metastore = new CachingHiveMetastore(
-                new BridgingHiveMetastore(new ThriftHiveMetastore(metastoreLocator, new ThriftHiveMetastoreConfig())),
+                new BridgingHiveMetastore(new ThriftHiveMetastore(metastoreLocator, new ThriftHiveMetastoreConfig(), new HiveEnvironment(new NoHiveMetastoreAuthentication()))),
                 executor,
                 Duration.valueOf("1m"),
                 Duration.valueOf("15s"),
@@ -716,11 +718,13 @@ public abstract class AbstractTestHive
         HivePartitionManager partitionManager = new HivePartitionManager(TYPE_MANAGER, hiveConfig);
         HdfsConfiguration hdfsConfiguration = new HiveHdfsConfiguration(new HdfsConfigurationInitializer(hiveConfig), ImmutableSet.of());
         hdfsEnvironment = new HdfsEnvironment(hdfsConfiguration, hiveConfig, new NoHdfsAuthentication());
+        hiveEnvironment = new HiveEnvironment(new NoHiveMetastoreAuthentication());
         locationService = new HiveLocationService(hdfsEnvironment);
         JsonCodec<PartitionUpdate> partitionUpdateCodec = JsonCodec.jsonCodec(PartitionUpdate.class);
         metadataFactory = new HiveMetadataFactory(
                 metastoreClient,
                 hdfsEnvironment,
+                hiveEnvironment,
                 partitionManager,
                 timeZone,
                 10,

@@ -11,17 +11,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.prestosql.plugin.hive.metastore.thrift;
+package io.prestosql.plugin.hive.authentication;
 
-import org.apache.thrift.TException;
+import org.apache.hadoop.security.UserGroupInformation;
 
-import java.util.Optional;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 
-public interface MetastoreLocator
+public class SimpleHiveMetastoreAuthentication
+        implements HiveAuthentication
 {
-    /**
-     * Create a connected {@link ThriftMetastoreClient}
-     */
-    ThriftMetastoreClient createMetastoreClient(Optional<String> username)
-            throws TException;
+    @Override
+    public UserGroupInformation getUserGroupInformation()
+    {
+        try {
+            return UserGroupInformation.getLoginUser();
+        }
+        catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
 }

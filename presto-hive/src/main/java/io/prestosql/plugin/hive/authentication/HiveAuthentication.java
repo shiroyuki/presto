@@ -11,17 +11,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.prestosql.plugin.hive.metastore.thrift;
+package io.prestosql.plugin.hive.authentication;
 
-import org.apache.thrift.TException;
+import org.apache.hadoop.security.UserGroupInformation;
 
-import java.util.Optional;
-
-public interface MetastoreLocator
+public interface HiveAuthentication
 {
-    /**
-     * Create a connected {@link ThriftMetastoreClient}
-     */
-    ThriftMetastoreClient createMetastoreClient(Optional<String> username)
-            throws TException;
+    UserGroupInformation getUserGroupInformation();
 }

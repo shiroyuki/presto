@@ -254,10 +254,12 @@ public class HiveMetadata
     private final String prestoVersion;
     private final HiveStatisticsProvider hiveStatisticsProvider;
     private final AccessControlMetadata accessControlMetadata;
+    private final HiveEnvironment hiveEnvironment;
 
     public HiveMetadata(
             SemiTransactionalHiveMetastore metastore,
             HdfsEnvironment hdfsEnvironment,
+            HiveEnvironment hiveEnvironment,
             HivePartitionManager partitionManager,
             DateTimeZone timeZone,
             boolean allowCorruptWritesForTesting,
@@ -275,6 +277,7 @@ public class HiveMetadata
 
         this.metastore = requireNonNull(metastore, "metastore is null");
         this.hdfsEnvironment = requireNonNull(hdfsEnvironment, "hdfsEnvironment is null");
+        this.hiveEnvironment = requireNonNull(hiveEnvironment, "hiveEnvironment is null");
         this.partitionManager = requireNonNull(partitionManager, "partitionManager is null");
         this.timeZone = requireNonNull(timeZone, "timeZone is null");
         this.typeManager = requireNonNull(typeManager, "typeManager is null");
@@ -674,6 +677,7 @@ public class HiveMetadata
                 .setOwnerName(session.getUser())
                 .build();
 
+        hiveEnvironment.setUsername(session.getIdentity().getUser());
         metastore.createDatabase(database);
     }
 
@@ -685,12 +689,15 @@ public class HiveMetadata
                 !listViews(session, Optional.of(schemaName)).isEmpty()) {
             throw new PrestoException(SCHEMA_NOT_EMPTY, "Schema not empty: " + schemaName);
         }
+
+        hiveEnvironment.setUsername(session.getIdentity().getUser());
         metastore.dropDatabase(schemaName);
     }
 
     @Override
     public void renameSchema(ConnectorSession session, String source, String target)
     {
+        hiveEnvironment.setUsername(session.getIdentity().getUser());
         metastore.renameDatabase(source, target);
     }
 

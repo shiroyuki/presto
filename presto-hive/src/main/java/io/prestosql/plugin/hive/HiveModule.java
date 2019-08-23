@@ -56,6 +56,7 @@ public class HiveModule
         newSetBinder(binder, DynamicConfigurationProvider.class);
         binder.bind(HdfsConfiguration.class).to(HiveHdfsConfiguration.class).in(Scopes.SINGLETON);
         binder.bind(HdfsEnvironment.class).in(Scopes.SINGLETON);
+        binder.bind(HiveEnvironment.class).in(Scopes.SINGLETON);
         binder.bind(DirectoryLister.class).to(CachingDirectoryLister.class).in(Scopes.SINGLETON);
         configBinder(binder).bindConfig(HiveConfig.class);
 

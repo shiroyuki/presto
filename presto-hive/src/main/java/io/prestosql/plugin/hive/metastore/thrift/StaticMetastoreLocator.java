@@ -14,6 +14,7 @@
 package io.prestosql.plugin.hive.metastore.thrift;
 
 import com.google.common.net.HostAndPort;
+import io.prestosql.plugin.hive.HiveConfig;
 import org.apache.thrift.TException;
 
 import javax.inject.Inject;
@@ -22,6 +23,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Strings.isNullOrEmpty;
@@ -34,14 +36,15 @@ public class StaticMetastoreLocator
     private final List<HostAndPort> addresses;
     private final ThriftMetastoreClientFactory clientFactory;
     private final String metastoreUsername;
+    private boolean isImpersonationEnabled;
 
     @Inject
-    public StaticMetastoreLocator(StaticMetastoreConfig config, ThriftMetastoreClientFactory clientFactory)
+    public StaticMetastoreLocator(StaticMetastoreConfig config, ThriftMetastoreClientFactory clientFactory, HiveConfig hiveConfig)
     {
-        this(config.getMetastoreUris(), config.getMetastoreUsername(), clientFactory);
+        this(config.getMetastoreUris(), config.getMetastoreUsername(), hiveConfig.isHiveMetastoreImpersonationEnabled(), clientFactory);
     }
 
-    public StaticMetastoreLocator(List<URI> metastoreUris, String metastoreUsername, ThriftMetastoreClientFactory clientFactory)
+    public StaticMetastoreLocator(List<URI> metastoreUris, String metastoreUsername, boolean isImpersonationEnabled, ThriftMetastoreClientFactory clientFactory)
     {
         requireNonNull(metastoreUris, "metastoreUris is null");
         checkArgument(!metastoreUris.isEmpty(), "metastoreUris must specify at least one URI");
@@ -50,6 +53,7 @@ public class StaticMetastoreLocator
                 .map(uri -> HostAndPort.fromParts(uri.getHost(), uri.getPort()))
                 .collect(toList());
         this.metastoreUsername = metastoreUsername;
+        this.isImpersonationEnabled = isImpersonationEnabled;
         this.clientFactory = requireNonNull(clientFactory, "clientFactory is null");
     }
 
@@ -62,7 +66,7 @@ public class StaticMetastoreLocator
      * connection succeeds or there are no more fallback metastores.
      */
     @Override
-    public ThriftMetastoreClient createMetastoreClient()
+    public ThriftMetastoreClient createMetastoreClient(Optional<String> username)
             throws TException
     {
         List<HostAndPort> metastores = new ArrayList<>(addresses);
@@ -72,7 +76,10 @@ public class StaticMetastoreLocator
         for (HostAndPort metastore : metastores) {
             try {
                 ThriftMetastoreClient client = clientFactory.create(metastore);
-                if (!isNullOrEmpty(metastoreUsername)) {
+                if (isImpersonationEnabled && username.isPresent()) {
+                    client.setUGI(username.get());
+                }
+                else if (!isNullOrEmpty(metastoreUsername)) {
                     client.setUGI(metastoreUsername);
                 }
                 return client;
