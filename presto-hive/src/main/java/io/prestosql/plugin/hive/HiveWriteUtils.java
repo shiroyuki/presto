@@ -544,9 +544,21 @@ public final class HiveWriteUtils
             throw new PrestoException(HIVE_FILESYSTEM_ERROR, "Failed to create directory: " + path, e);
         }
 
-        // explicitly set permission since the default umask overrides it on creation
         try {
             hdfsEnvironment.getFileSystem(context, path).setPermission(path, ALL_PERMISSIONS);
+        }
+        catch (IOException e) {
+            throw new PrestoException(HIVE_FILESYSTEM_ERROR, "Failed to set permission on directory: " + path, e);
+        }
+    }
+
+    public static void setParentPermisson(HdfsContext context, HdfsEnvironment hdfsEnvironment, Path path)
+    {
+        Path parentPath = path.getParent();
+        try {
+            FileSystem fileSystem = hdfsEnvironment.getFileSystem(context, parentPath);
+            FsPermission parentPermission = fileSystem.getFileStatus(parentPath).getPermission();
+            hdfsEnvironment.getFileSystem(context, path).setPermission(path, parentPermission);
         }
         catch (IOException e) {
             throw new PrestoException(HIVE_FILESYSTEM_ERROR, "Failed to set permission on directory: " + path, e);

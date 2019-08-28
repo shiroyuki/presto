@@ -77,6 +77,7 @@ import static io.prestosql.plugin.hive.HiveUtil.isPrestoView;
 import static io.prestosql.plugin.hive.HiveUtil.toPartitionValues;
 import static io.prestosql.plugin.hive.HiveWriteUtils.createDirectory;
 import static io.prestosql.plugin.hive.HiveWriteUtils.pathExists;
+import static io.prestosql.plugin.hive.HiveWriteUtils.setParentPermisson;
 import static io.prestosql.plugin.hive.LocationHandle.WriteMode.DIRECT_TO_TARGET_NEW_DIRECTORY;
 import static io.prestosql.plugin.hive.metastore.HivePrivilegeInfo.HivePrivilege.OWNERSHIP;
 import static io.prestosql.plugin.hive.util.Statistics.ReduceOperator.SUBTRACT;
@@ -1172,6 +1173,7 @@ public class SemiTransactionalHiveMetastore
                     else {
                         cleanUpTasksForAbort.add(new DirectoryCleanUpTask(context, targetPath, true));
                         createDirectory(context, hdfsEnvironment, targetPath);
+                        setParentPermisson(context, hdfsEnvironment, targetPath);
                     }
                 }
             }
