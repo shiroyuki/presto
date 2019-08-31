@@ -278,5 +278,11 @@ public class TestCachingHiveMetastore
         {
             return client;
         }
+
+        @Override
+        public ThriftMetastoreClient createMetastoreClient(String username)
+        {
+            return client;
+        }
     }
 }

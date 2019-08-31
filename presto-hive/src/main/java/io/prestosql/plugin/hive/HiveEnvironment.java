@@ -30,6 +30,10 @@ public class HiveEnvironment
         this.hiveMetastoreAuthentication = requireNonNull(hiveMetastoreAuthentication, "hiveMetastoreAuthentication is null");
     }
 
+    public String getUsername(String user) {
+        return user;
+    }
+
     public <R, E extends Exception> R doAs(String user, GenericExceptionAction<R, E> action)
             throws E
     {

@@ -30,4 +30,10 @@ public class NoHiveMetastoreAuthentication
     {
         return action.run();
     }
+
+    @Override
+    public String getUsername()
+    {
+        return "hive";
+    }
 }

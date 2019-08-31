@@ -771,7 +771,7 @@ public class ThriftHiveMetastore
                     .stopOn(AlreadyExistsException.class, InvalidObjectException.class, MetaException.class)
                     .stopOnIllegalExceptions()
                     .run("createDatabase", stats.getCreateDatabase().wrap(() -> {
-                        try (ThriftMetastoreClient client = createMetastoreClient()) {
+                        try (ThriftMetastoreClient client = createMetastoreClient("ebyhr")) {
                             client.createDatabase(database);
                         }
                         return null;
@@ -1337,6 +1337,12 @@ public class ThriftHiveMetastore
             throws TException
     {
         return clientProvider.createMetastoreClient();
+    }
+
+    private ThriftMetastoreClient createMetastoreClient(String username)
+            throws TException
+    {
+        return clientProvider.createMetastoreClient(username);
     }
 
     private RetryDriver retry()

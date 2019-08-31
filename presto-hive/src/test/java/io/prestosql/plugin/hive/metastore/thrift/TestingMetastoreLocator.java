@@ -38,4 +38,11 @@ public class TestingMetastoreLocator
     {
         return new ThriftMetastoreClientFactory(config, new ThriftHiveMetastoreConfig(), new NoHiveMetastoreAuthentication()).create(address);
     }
+
+    @Override
+    public ThriftMetastoreClient createMetastoreClient(String username)
+            throws TException
+    {
+        return new ThriftMetastoreClientFactory(config, new ThriftHiveMetastoreConfig(), new NoHiveMetastoreAuthentication()).create(address);
+    }
 }

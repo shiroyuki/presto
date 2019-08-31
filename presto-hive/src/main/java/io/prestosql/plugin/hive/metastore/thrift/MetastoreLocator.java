@@ -22,4 +22,7 @@ public interface MetastoreLocator
      */
     ThriftMetastoreClient createMetastoreClient()
             throws TException;
+
+    ThriftMetastoreClient createMetastoreClient(String username)
+            throws TException;
 }

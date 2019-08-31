@@ -84,6 +84,27 @@ public class StaticMetastoreLocator
         throw new TException("Failed connecting to Hive metastore: " + addresses, lastException);
     }
 
+    @Override
+    public ThriftMetastoreClient createMetastoreClient(String sessionUsername)
+            throws TException
+    {
+        List<HostAndPort> metastores = new ArrayList<>(addresses);
+        Collections.shuffle(metastores.subList(1, metastores.size()));
+
+        TException lastException = null;
+        for (HostAndPort metastore : metastores) {
+            try {
+                ThriftMetastoreClient client = clientFactory.create(metastore);
+                client.setUGI(sessionUsername);
+                return client;
+            }
+            catch (TException e) {
+                lastException = e;
+            }
+        }
+        throw new TException("Failed connecting to Hive metastore: " + addresses, lastException);
+    }
+
     private static URI checkMetastoreUri(URI uri)
     {
         requireNonNull(uri, "metastoreUri is null");
