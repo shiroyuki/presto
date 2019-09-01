@@ -43,7 +43,6 @@ import static io.airlift.log.Level.WARN;
 import static io.airlift.units.Duration.nanosSince;
 import static io.prestosql.plugin.tpch.TpchMetadata.TINY_SCHEMA_NAME;
 import static io.prestosql.spi.security.SelectedRole.Type.ROLE;
-import static io.prestosql.testing.TestingConnectorSession.SESSION;
 import static io.prestosql.testing.TestingSession.testSessionBuilder;
 import static io.prestosql.tests.QueryAssertions.copyTpchTables;
 import static java.lang.String.format;
@@ -128,12 +127,12 @@ public final class HiveQueryRunner
             queryRunner.createCatalog(HIVE_BUCKETED_CATALOG, HIVE_CATALOG, hiveBucketedProperties);
 
             if (!metastore.getDatabase(TPCH_SCHEMA).isPresent()) {
-                metastore.createDatabase(SESSION.getIdentity().getUser(), createDatabaseMetastoreObject(TPCH_SCHEMA));
+                metastore.createDatabase(createDatabaseMetastoreObject(TPCH_SCHEMA));
                 copyTpchTables(queryRunner, "tpch", TINY_SCHEMA_NAME, createSession(Optional.empty()), tables);
             }
 
             if (!metastore.getDatabase(TPCH_BUCKETED_SCHEMA).isPresent()) {
-                metastore.createDatabase(SESSION.getIdentity().getUser(), createDatabaseMetastoreObject(TPCH_BUCKETED_SCHEMA));
+                metastore.createDatabase(createDatabaseMetastoreObject(TPCH_BUCKETED_SCHEMA));
                 copyTpchTablesBucketed(queryRunner, "tpch", TINY_SCHEMA_NAME, createBucketedSession(Optional.empty()), tables);
             }
 

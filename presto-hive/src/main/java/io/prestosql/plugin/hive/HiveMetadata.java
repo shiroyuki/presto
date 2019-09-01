@@ -29,7 +29,6 @@ import io.airlift.json.JsonCodec;
 import io.airlift.slice.Slice;
 import io.prestosql.plugin.hive.HdfsEnvironment.HdfsContext;
 import io.prestosql.plugin.hive.LocationService.WriteInfo;
-import io.prestosql.plugin.hive.authentication.GenericExceptionAction;
 import io.prestosql.plugin.hive.metastore.Column;
 import io.prestosql.plugin.hive.metastore.Database;
 import io.prestosql.plugin.hive.metastore.HiveColumnStatistics;
@@ -678,8 +677,8 @@ public class HiveMetadata
                 .setOwnerName(session.getUser())
                 .build();
 
-//        doAs(session.getIdentity().getUser(), () -> metastore.createDatabase( database));
-        metastore.createDatabase(session.getIdentity().getUser(), database);
+        hiveEnvironment.setUsername(session.getIdentity().getUser());
+        metastore.createDatabase(database);
     }
 
     @Override
@@ -690,15 +689,16 @@ public class HiveMetadata
                 !listViews(session, Optional.of(schemaName)).isEmpty()) {
             throw new PrestoException(SCHEMA_NOT_EMPTY, "Schema not empty: " + schemaName);
         }
-        doAs(session.getIdentity().getUser(), () ->
-                metastore.dropDatabase(schemaName));
+
+        hiveEnvironment.setUsername(session.getIdentity().getUser());
+        metastore.dropDatabase(schemaName);
     }
 
     @Override
     public void renameSchema(ConnectorSession session, String source, String target)
     {
-        doAs(session.getIdentity().getUser(), () ->
-                metastore.renameDatabase(source, target));
+        hiveEnvironment.setUsername(session.getIdentity().getUser());
+        metastore.renameDatabase(source, target);
     }
 
     @Override
@@ -759,14 +759,13 @@ public class HiveMetadata
                 prestoVersion);
         PrincipalPrivileges principalPrivileges = buildInitialPrivilegeSet(table.getOwner());
         HiveBasicStatistics basicStatistics = table.getPartitionColumns().isEmpty() ? createZeroStatistics() : createEmptyStatistics();
-        doAs(session.getIdentity().getUser(), () ->
-                metastore.createTable(
-                        session,
-                        table,
-                        principalPrivileges,
-                        Optional.empty(),
-                        ignoreExisting,
-                        new PartitionStatistics(basicStatistics, ImmutableMap.of())));
+        metastore.createTable(
+                session,
+                table,
+                principalPrivileges,
+                Optional.empty(),
+                ignoreExisting,
+                new PartitionStatistics(basicStatistics, ImmutableMap.of()));
     }
 
     private Map<String, String> getEmptyTableProperties(ConnectorTableMetadata tableMetadata, HdfsContext hdfsContext)
@@ -959,8 +958,7 @@ public class HiveMetadata
         HiveTableHandle handle = (HiveTableHandle) tableHandle;
         failIfAvroSchemaIsSet(handle);
 
-        doAs(session.getIdentity().getUser(), () ->
-                metastore.addColumn(handle.getSchemaName(), handle.getTableName(), column.getName(), toHiveType(typeTranslator, column.getType()), column.getComment()));
+        metastore.addColumn(handle.getSchemaName(), handle.getTableName(), column.getName(), toHiveType(typeTranslator, column.getType()), column.getComment());
     }
 
     @Override
@@ -970,8 +968,7 @@ public class HiveMetadata
         failIfAvroSchemaIsSet(hiveTableHandle);
         HiveColumnHandle sourceHandle = (HiveColumnHandle) source;
 
-        doAs(session.getIdentity().getUser(), () ->
-                metastore.renameColumn(hiveTableHandle.getSchemaName(), hiveTableHandle.getTableName(), sourceHandle.getName(), target));
+        metastore.renameColumn(hiveTableHandle.getSchemaName(), hiveTableHandle.getTableName(), sourceHandle.getName(), target);
     }
 
     @Override
@@ -981,8 +978,7 @@ public class HiveMetadata
         failIfAvroSchemaIsSet(hiveTableHandle);
         HiveColumnHandle columnHandle = (HiveColumnHandle) column;
 
-        doAs(session.getIdentity().getUser(), () ->
-                metastore.dropColumn(hiveTableHandle.getSchemaName(), hiveTableHandle.getTableName(), columnHandle.getName()));
+        metastore.dropColumn(hiveTableHandle.getSchemaName(), hiveTableHandle.getTableName(), columnHandle.getName());
     }
 
     private void failIfAvroSchemaIsSet(HiveTableHandle handle)
@@ -998,16 +994,14 @@ public class HiveMetadata
     public void renameTable(ConnectorSession session, ConnectorTableHandle tableHandle, SchemaTableName newTableName)
     {
         HiveTableHandle handle = (HiveTableHandle) tableHandle;
-        doAs(session.getIdentity().getUser(), () ->
-                metastore.renameTable(handle.getSchemaName(), handle.getTableName(), newTableName.getSchemaName(), newTableName.getTableName()));
+        metastore.renameTable(handle.getSchemaName(), handle.getTableName(), newTableName.getSchemaName(), newTableName.getTableName());
     }
 
     @Override
     public void setTableComment(ConnectorSession session, ConnectorTableHandle tableHandle, Optional<String> comment)
     {
         HiveTableHandle handle = (HiveTableHandle) tableHandle;
-        doAs(session.getIdentity().getUser(), () ->
-                metastore.commentTable(handle.getSchemaName(), handle.getTableName(), comment));
+        metastore.commentTable(handle.getSchemaName(), handle.getTableName(), comment);
     }
 
     @Override
@@ -1018,8 +1012,7 @@ public class HiveMetadata
         if (!target.isPresent()) {
             throw new TableNotFoundException(handle.getSchemaTableName());
         }
-        doAs(session.getIdentity().getUser(), () ->
-                metastore.dropTable(session, handle.getSchemaName(), handle.getTableName()));
+        metastore.dropTable(session, handle.getSchemaName(), handle.getTableName());
     }
 
     @Override
@@ -1027,9 +1020,8 @@ public class HiveMetadata
     {
         verifyJvmTimeZone();
         SchemaTableName tableName = ((HiveTableHandle) tableHandle).getSchemaTableName();
-        doAs(session.getIdentity().getUser(), () ->
-                metastore.getTable(tableName.getSchemaName(), tableName.getTableName())
-                        .orElseThrow(() -> new TableNotFoundException(tableName)));
+        metastore.getTable(tableName.getSchemaName(), tableName.getTableName())
+                .orElseThrow(() -> new TableNotFoundException(tableName));
         return tableHandle;
     }
 
@@ -1203,8 +1195,7 @@ public class HiveMetadata
             tableStatistics = new PartitionStatistics(createEmptyStatistics(), ImmutableMap.of());
         }
 
-        doAs(session.getIdentity().getUser(), () ->
-                metastore.createTable(session, table, principalPrivileges, Optional.of(writeInfo.getWritePath()), false, tableStatistics));
+        metastore.createTable(session, table, principalPrivileges, Optional.of(writeInfo.getWritePath()), false, tableStatistics);
 
         if (!handle.getPartitionedBy().isEmpty()) {
             if (isRespectTableFormat(session)) {
@@ -1217,14 +1208,13 @@ public class HiveMetadata
                         update.getStatistics(),
                         columnTypes,
                         getColumnStatistics(partitionComputedStatistics, partition.getValues()));
-                doAs(session.getIdentity().getUser(), () ->
-                        metastore.addPartition(
-                                session,
-                                handle.getSchemaName(),
-                                handle.getTableName(),
-                                buildPartitionObject(session, table, update),
-                                update.getWritePath(),
-                                partitionStatistics));
+                metastore.addPartition(
+                        session,
+                        handle.getSchemaName(),
+                        handle.getTableName(),
+                        buildPartitionObject(session, table, update),
+                        update.getWritePath(),
+                        partitionStatistics);
             }
         }
 
@@ -1307,11 +1297,9 @@ public class HiveMetadata
             schema = getHiveSchema(table);
             format = table.getStorage().getStorageFormat();
         }
-        hdfsEnvironment.doAs(session.getUser(), () -> {
-            for (String fileName : fileNames) {
-                writeEmptyFile(session, new Path(path, fileName), conf, schema, format.getSerDe(), format.getOutputFormat());
-            }
-        });
+        for (String fileName : fileNames) {
+            writeEmptyFile(session, new Path(path, fileName), conf, schema, format.getSerDe(), format.getOutputFormat());
+        }
     }
 
     private static void writeEmptyFile(ConnectorSession session, Path target, JobConf conf, Properties properties, String serDe, String outputFormatName)
@@ -1335,9 +1323,8 @@ public class HiveMetadata
         verifyJvmTimeZone();
 
         SchemaTableName tableName = ((HiveTableHandle) tableHandle).getSchemaTableName();
-        Table table = doAs(session.getIdentity().getUser(), () ->
-                metastore.getTable(tableName.getSchemaName(), tableName.getTableName())
-                        .orElseThrow(() -> new TableNotFoundException(tableName)));
+        Table table = metastore.getTable(tableName.getSchemaName(), tableName.getTableName())
+                .orElseThrow(() -> new TableNotFoundException(tableName));
 
         checkTableIsWritable(table, writesToNonManagedTablesEnabled);
 
@@ -2262,17 +2249,6 @@ public class HiveMetadata
                 return cursor.apply(constraint);
             }
         };
-    }
-
-    public <R, E extends Exception> R doAs(String user, GenericExceptionAction<R, E> action)
-            throws E
-    {
-        return hiveEnvironment.doAs(user, action);
-    }
-
-    public void doAs(String user, Runnable action)
-    {
-        hiveEnvironment.doAs(user, action);
     }
 
     private enum SystemTableHandler

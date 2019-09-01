@@ -396,7 +396,7 @@ public class GlueHiveMetastore
     }
 
     @Override
-    public void createDatabase(String username, Database database)
+    public void createDatabase(Database database)
     {
         if (!database.getLocation().isPresent() && defaultDir.isPresent()) {
             String databaseLocation = new Path(defaultDir.get(), database.getDatabaseName()).toString();

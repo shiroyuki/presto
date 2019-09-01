@@ -167,7 +167,7 @@ public abstract class AbstractTestHiveFileSystem
         hdfsEnvironment = new HdfsEnvironment(hdfsConfiguration, config, new NoHdfsAuthentication());
         hiveEnvironment = new HiveEnvironment(new NoHiveMetastoreAuthentication());
         metastoreClient = new TestingHiveMetastore(
-                new BridgingHiveMetastore(new ThriftHiveMetastore(metastoreLocator, new ThriftHiveMetastoreConfig())),
+                new BridgingHiveMetastore(new ThriftHiveMetastore(metastoreLocator, new ThriftHiveMetastoreConfig(), new HiveEnvironment(new NoHiveMetastoreAuthentication()))),
                 executor,
                 getBasePath(),
                 hdfsEnvironment);

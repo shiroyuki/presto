@@ -260,10 +260,10 @@ public class RecordingHiveMetastore
     }
 
     @Override
-    public void createDatabase(String username, Database database)
+    public void createDatabase(Database database)
     {
         verifyRecordingMode();
-        delegate.createDatabase(username, database);
+        delegate.createDatabase(database);
     }
 
     @Override

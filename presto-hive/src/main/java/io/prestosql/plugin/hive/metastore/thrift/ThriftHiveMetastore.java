@@ -19,6 +19,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import io.airlift.units.Duration;
 import io.prestosql.plugin.hive.HiveBasicStatistics;
+import io.prestosql.plugin.hive.HiveEnvironment;
 import io.prestosql.plugin.hive.HiveType;
 import io.prestosql.plugin.hive.HiveViewNotSupportedException;
 import io.prestosql.plugin.hive.PartitionNotFoundException;
@@ -115,12 +116,13 @@ public class ThriftHiveMetastore
     private final Duration maxBackoffDelay;
     private final Duration maxRetryTime;
     private final int maxRetries;
+    private final HiveEnvironment hiveEnvironment;
 
     private volatile boolean metastoreKnownToSupportTableParamEqualsPredicate;
     private volatile boolean metastoreKnownToSupportTableParamLikePredicate;
 
     @Inject
-    public ThriftHiveMetastore(MetastoreLocator metastoreLocator, ThriftHiveMetastoreConfig thriftConfig)
+    public ThriftHiveMetastore(MetastoreLocator metastoreLocator, ThriftHiveMetastoreConfig thriftConfig, HiveEnvironment hiveEnvironment)
     {
         this.clientProvider = requireNonNull(metastoreLocator, "metastoreLocator is null");
         this.backoffScaleFactor = thriftConfig.getBackoffScaleFactor();
@@ -128,6 +130,7 @@ public class ThriftHiveMetastore
         this.maxBackoffDelay = thriftConfig.getMaxBackoffDelay();
         this.maxRetryTime = thriftConfig.getMaxRetryTime();
         this.maxRetries = thriftConfig.getMaxRetries();
+        this.hiveEnvironment = hiveEnvironment;
     }
 
     @Managed
@@ -764,14 +767,14 @@ public class ThriftHiveMetastore
     }
 
     @Override
-    public void createDatabase(String username, Database database)
+    public void createDatabase(Database database)
     {
         try {
             retry()
                     .stopOn(AlreadyExistsException.class, InvalidObjectException.class, MetaException.class)
                     .stopOnIllegalExceptions()
                     .run("createDatabase", stats.getCreateDatabase().wrap(() -> {
-                        try (ThriftMetastoreClient client = createMetastoreClient(username)) {
+                        try (ThriftMetastoreClient client = createMetastoreClient()) {
                             client.createDatabase(database);
                         }
                         return null;
@@ -1336,13 +1339,7 @@ public class ThriftHiveMetastore
     private ThriftMetastoreClient createMetastoreClient()
             throws TException
     {
-        return clientProvider.createMetastoreClient(Optional.empty());
-    }
-
-    private ThriftMetastoreClient createMetastoreClient(String username)
-            throws TException
-    {
-        return clientProvider.createMetastoreClient(Optional.of(username));
+        return clientProvider.createMetastoreClient(Optional.of(hiveEnvironment.getUsername()));
     }
 
     private RetryDriver retry()

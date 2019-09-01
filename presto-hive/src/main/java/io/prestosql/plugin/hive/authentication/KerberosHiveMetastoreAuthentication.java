@@ -28,7 +28,6 @@ import java.io.UncheckedIOException;
 import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkState;
-import static io.prestosql.plugin.hive.authentication.UserGroupInformationUtils.executeActionInDoAs;
 import static java.util.Objects.requireNonNull;
 import static org.apache.hadoop.security.SaslRpcServer.AuthMethod.KERBEROS;
 import static org.apache.hadoop.security.SecurityUtil.getServerPrincipal;
@@ -86,12 +85,5 @@ public class KerberosHiveMetastoreAuthentication
     public String getUsername()
     {
         return authentication.getUserGroupInformation().getUserName();
-    }
-
-    @Override
-    public <R, E extends Exception> R doAs(String user, GenericExceptionAction<R, E> action)
-            throws E
-    {
-        return executeActionInDoAs(authentication.getUserGroupInformation(), action);
     }
 }

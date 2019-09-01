@@ -14,6 +14,7 @@
 package io.prestosql.plugin.hive.metastore.thrift;
 
 import com.google.common.net.HostAndPort;
+import io.prestosql.plugin.hive.HiveEnvironment;
 import org.apache.thrift.TException;
 
 import javax.inject.Inject;
@@ -35,14 +36,15 @@ public class StaticMetastoreLocator
     private final List<HostAndPort> addresses;
     private final ThriftMetastoreClientFactory clientFactory;
     private final String metastoreUsername;
+    private final String sessionUsername;
 
     @Inject
-    public StaticMetastoreLocator(StaticMetastoreConfig config, ThriftMetastoreClientFactory clientFactory)
+    public StaticMetastoreLocator(StaticMetastoreConfig config, ThriftMetastoreClientFactory clientFactory, HiveEnvironment hiveEnvironment)
     {
-        this(config.getMetastoreUris(), config.getMetastoreUsername(), clientFactory);
+        this(config.getMetastoreUris(), config.getMetastoreUsername(), hiveEnvironment.getUsername(), clientFactory);
     }
 
-    public StaticMetastoreLocator(List<URI> metastoreUris, String metastoreUsername, ThriftMetastoreClientFactory clientFactory)
+    public StaticMetastoreLocator(List<URI> metastoreUris, String metastoreUsername, String sessionUsername, ThriftMetastoreClientFactory clientFactory)
     {
         requireNonNull(metastoreUris, "metastoreUris is null");
         checkArgument(!metastoreUris.isEmpty(), "metastoreUris must specify at least one URI");
@@ -51,7 +53,9 @@ public class StaticMetastoreLocator
                 .map(uri -> HostAndPort.fromParts(uri.getHost(), uri.getPort()))
                 .collect(toList());
         this.metastoreUsername = metastoreUsername;
+        this.sessionUsername = sessionUsername;
         this.clientFactory = requireNonNull(clientFactory, "clientFactory is null");
+        System.out.println("StaticMetastoreLocator" + metastoreUsername + " " + sessionUsername);
     }
 
     /**

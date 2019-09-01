@@ -25,15 +25,9 @@ public class NoHiveMetastoreAuthentication
     }
 
     @Override
-    public <R, E extends Exception> R doAs(String user, GenericExceptionAction<R, E> action)
-            throws E
-    {
-        return action.run();
-    }
-
-    @Override
     public String getUsername()
     {
+        // TODO: Return HADOOP_USER_NAME or return null
         return "hive";
     }
 }

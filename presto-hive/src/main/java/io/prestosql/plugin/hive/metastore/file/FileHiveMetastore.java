@@ -161,7 +161,7 @@ public class FileHiveMetastore
     }
 
     @Override
-    public synchronized void createDatabase(String username, Database database)
+    public synchronized void createDatabase(Database database)
     {
         requireNonNull(database, "database is null");
 

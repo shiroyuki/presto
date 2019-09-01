@@ -38,7 +38,7 @@ import static io.prestosql.plugin.hive.HiveErrorCode.HIVE_INVALID_METADATA;
 
 public interface ThriftMetastore
 {
-    void createDatabase(String username, Database database);
+    void createDatabase(Database database);
 
     void dropDatabase(String databaseName);
 

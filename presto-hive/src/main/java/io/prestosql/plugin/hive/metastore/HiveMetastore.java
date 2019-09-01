@@ -47,7 +47,7 @@ public interface HiveMetastore
 
     List<String> getAllViews(String databaseName);
 
-    void createDatabase(String username, Database database);
+    void createDatabase(Database database);
 
     void dropDatabase(String databaseName);
 

@@ -132,9 +132,9 @@ public class BridgingHiveMetastore
     }
 
     @Override
-    public void createDatabase(String username, Database database)
+    public void createDatabase(Database database)
     {
-        delegate.createDatabase(username, toMetastoreApiDatabase(database));
+        delegate.createDatabase(toMetastoreApiDatabase(database));
     }
 
     @Override
