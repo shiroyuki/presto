@@ -14,10 +14,12 @@
 package io.prestosql.plugin.hive.authentication;
 
 import io.prestosql.plugin.hive.ForHiveMetastore;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.thrift.transport.TTransport;
 
 import javax.inject.Inject;
 
+import static io.prestosql.plugin.hive.authentication.UserGroupInformationUtils.executeActionInDoAs;
 import static java.util.Objects.requireNonNull;
 
 public class ImpersonatingHiveMetastoreAuthentication
@@ -41,5 +43,18 @@ public class ImpersonatingHiveMetastoreAuthentication
     public String getUsername()
     {
         return hiveAuthentication.getUserGroupInformation().getUserName();
+    }
+
+    @Override
+    public <R, E extends Exception> R doAs(String user, GenericExceptionAction<R, E> action)
+            throws E
+    {
+        System.out.println("ImpersonatingHiveMetastoreAuthentication " + createProxyUser(user).getUserName());
+        return executeActionInDoAs(createProxyUser(user), action);
+    }
+
+    private UserGroupInformation createProxyUser(String user)
+    {
+        return UserGroupInformation.createProxyUser(user, hiveAuthentication.getUserGroupInformation());
     }
 }

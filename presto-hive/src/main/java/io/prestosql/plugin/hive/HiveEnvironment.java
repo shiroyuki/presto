@@ -13,6 +13,7 @@
  */
 package io.prestosql.plugin.hive;
 
+import io.prestosql.plugin.hive.authentication.GenericExceptionAction;
 import io.prestosql.plugin.hive.authentication.HiveMetastoreAuthentication;
 
 import javax.inject.Inject;
@@ -39,5 +40,11 @@ public class HiveEnvironment
     public String getUsername()
     {
         return firstNonNull(username, hiveMetastoreAuthentication.getUsername());
+    }
+
+    public <R, E extends Exception> R doAs(String user, GenericExceptionAction<R, E> action)
+            throws E
+    {
+        return hiveMetastoreAuthentication.doAs(user, action);
     }
 }

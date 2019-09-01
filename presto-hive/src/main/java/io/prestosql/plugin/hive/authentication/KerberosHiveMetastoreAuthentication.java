@@ -86,4 +86,11 @@ public class KerberosHiveMetastoreAuthentication
     {
         return authentication.getUserGroupInformation().getUserName();
     }
+
+    @Override
+    public <R, E extends Exception> R doAs(String user, GenericExceptionAction<R, E> action)
+            throws E
+    {
+        return action.run();
+    }
 }

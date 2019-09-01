@@ -677,8 +677,10 @@ public class HiveMetadata
                 .setOwnerName(session.getUser())
                 .build();
 
-        hiveEnvironment.setUsername(session.getIdentity().getUser());
-        metastore.createDatabase(database);
+        hiveEnvironment.doAs("ebyhr", () -> {
+            metastore.createDatabase(database);
+            return null;
+        });
     }
 
     @Override
