@@ -289,9 +289,9 @@ public class SemiTransactionalHiveMetastore
         return delegate.getAllViews(databaseName);
     }
 
-    public synchronized void createDatabase(Database database)
+    public synchronized void createDatabase(String username, Database database)
     {
-        setExclusive((delegate, hdfsEnvironment) -> delegate.createDatabase(database));
+        setExclusive((delegate, hdfsEnvironment) -> delegate.createDatabase(username, database));
     }
 
     public synchronized void dropDatabase(String schemaName)

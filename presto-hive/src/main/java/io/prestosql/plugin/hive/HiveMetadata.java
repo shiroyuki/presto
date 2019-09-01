@@ -678,7 +678,8 @@ public class HiveMetadata
                 .setOwnerName(session.getUser())
                 .build();
 
-        doAs(session.getIdentity().getUser(), () -> metastore.createDatabase(database));
+//        doAs(session.getIdentity().getUser(), () -> metastore.createDatabase( database));
+        metastore.createDatabase(session.getIdentity().getUser(), database);
     }
 
     @Override

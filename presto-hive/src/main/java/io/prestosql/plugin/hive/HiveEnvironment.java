@@ -18,11 +18,13 @@ import io.prestosql.plugin.hive.authentication.HiveMetastoreAuthentication;
 
 import javax.inject.Inject;
 
+import static com.google.common.base.MoreObjects.firstNonNull;
 import static java.util.Objects.requireNonNull;
 
 public class HiveEnvironment
 {
     private final HiveMetastoreAuthentication hiveMetastoreAuthentication;
+    private String username;
 
     @Inject
     public HiveEnvironment(HiveMetastoreAuthentication hiveMetastoreAuthentication)
@@ -30,8 +32,14 @@ public class HiveEnvironment
         this.hiveMetastoreAuthentication = requireNonNull(hiveMetastoreAuthentication, "hiveMetastoreAuthentication is null");
     }
 
-    public String getUsername(String user) {
-        return user;
+    public void setUsername(String username)
+    {
+        this.username = username;
+    }
+
+    public String getUsername()
+    {
+        return firstNonNull(username, hiveMetastoreAuthentication.getUsername());
     }
 
     public <R, E extends Exception> R doAs(String user, GenericExceptionAction<R, E> action)

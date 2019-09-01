@@ -385,10 +385,10 @@ public class CachingHiveMetastore
     }
 
     @Override
-    public void createDatabase(Database database)
+    public void createDatabase(String username, Database database)
     {
         try {
-            delegate.createDatabase(database);
+            delegate.createDatabase(username, database);
         }
         finally {
             invalidateDatabase(database.getDatabaseName());

@@ -31,6 +31,7 @@ import java.util.Optional;
 import static com.google.common.io.MoreFiles.deleteRecursively;
 import static com.google.common.io.RecursiveDeleteOption.ALLOW_INSECURE;
 import static io.prestosql.plugin.hive.metastore.file.FileHiveMetastore.createTestingFileHiveMetastore;
+import static io.prestosql.testing.TestingConnectorSession.SESSION;
 import static io.prestosql.testing.TestingSession.testSessionBuilder;
 import static java.util.Objects.requireNonNull;
 
@@ -66,11 +67,12 @@ public final class HiveBenchmarkQueryRunner
         // add hive
         File hiveDir = new File(tempDir, "hive_data");
         HiveMetastore metastore = createTestingFileHiveMetastore(hiveDir);
-        metastore.createDatabase(Database.builder()
-                .setDatabaseName("tpch")
-                .setOwnerName("public")
-                .setOwnerType(PrincipalType.ROLE)
-                .build());
+        metastore.createDatabase(SESSION.getIdentity().getUser(),
+                Database.builder()
+                        .setDatabaseName("tpch")
+                        .setOwnerName("public")
+                        .setOwnerType(PrincipalType.ROLE)
+                        .build());
 
         HiveConnectorFactory hiveConnectorFactory = new HiveConnectorFactory(
                 "hive",

@@ -15,14 +15,13 @@ package io.prestosql.plugin.hive.metastore.thrift;
 
 import org.apache.thrift.TException;
 
+import java.util.Optional;
+
 public interface MetastoreLocator
 {
     /**
      * Create a connected {@link ThriftMetastoreClient}
      */
-    ThriftMetastoreClient createMetastoreClient()
-            throws TException;
-
-    ThriftMetastoreClient createMetastoreClient(String username)
+    ThriftMetastoreClient createMetastoreClient(Optional<String> username)
             throws TException;
 }

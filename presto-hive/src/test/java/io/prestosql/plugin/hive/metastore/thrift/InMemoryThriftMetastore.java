@@ -95,7 +95,7 @@ public class InMemoryThriftMetastore
     }
 
     @Override
-    public synchronized void createDatabase(Database database)
+    public synchronized void createDatabase(String username, Database database)
     {
         requireNonNull(database, "database is null");
 

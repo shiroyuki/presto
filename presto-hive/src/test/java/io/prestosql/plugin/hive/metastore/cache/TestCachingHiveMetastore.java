@@ -274,13 +274,7 @@ public class TestCachingHiveMetastore
         }
 
         @Override
-        public ThriftMetastoreClient createMetastoreClient()
-        {
-            return client;
-        }
-
-        @Override
-        public ThriftMetastoreClient createMetastoreClient(String username)
+        public ThriftMetastoreClient createMetastoreClient(Optional<String> username)
         {
             return client;
         }

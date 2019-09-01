@@ -29,6 +29,7 @@ import java.io.IOException;
 
 import static com.google.common.io.MoreFiles.deleteRecursively;
 import static com.google.common.io.RecursiveDeleteOption.ALLOW_INSECURE;
+import static io.prestosql.testing.TestingConnectorSession.SESSION;
 import static java.util.Objects.requireNonNull;
 
 public abstract class AbstractTestHiveLocal
@@ -58,7 +59,7 @@ public abstract class AbstractTestHiveLocal
 
         HiveMetastore metastore = createMetastore(tempDir);
 
-        metastore.createDatabase(Database.builder()
+        metastore.createDatabase(SESSION.getUser(), Database.builder()
                 .setDatabaseName(testDbName)
                 .setOwnerName("public")
                 .setOwnerType(PrincipalType.ROLE)

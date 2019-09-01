@@ -89,7 +89,7 @@ class UnimplementedHiveMetastore
     }
 
     @Override
-    public void createDatabase(Database database)
+    public void createDatabase(String username, Database database)
     {
         throw new UnsupportedOperationException();
     }
