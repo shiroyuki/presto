@@ -30,6 +30,7 @@ import io.prestosql.plugin.hive.PartitionNotFoundException;
 import io.prestosql.plugin.hive.PartitionStatistics;
 import io.prestosql.plugin.hive.SchemaAlreadyExistsException;
 import io.prestosql.plugin.hive.TableAlreadyExistsException;
+import io.prestosql.plugin.hive.authentication.HiveContext;
 import io.prestosql.plugin.hive.authentication.NoHdfsAuthentication;
 import io.prestosql.plugin.hive.metastore.Column;
 import io.prestosql.plugin.hive.metastore.Database;
@@ -161,7 +162,7 @@ public class FileHiveMetastore
     }
 
     @Override
-    public synchronized void createDatabase(Database database)
+    public synchronized void createDatabase(HiveContext hiveContext, Database database)
     {
         requireNonNull(database, "database is null");
 
@@ -176,7 +177,7 @@ public class FileHiveMetastore
     }
 
     @Override
-    public synchronized void dropDatabase(String databaseName)
+    public synchronized void dropDatabase(HiveContext hiveContext, String databaseName)
     {
         requireNonNull(databaseName, "databaseName is null");
 
@@ -189,7 +190,7 @@ public class FileHiveMetastore
     }
 
     @Override
-    public synchronized void renameDatabase(String databaseName, String newDatabaseName)
+    public synchronized void renameDatabase(HiveContext hiveContext, String databaseName, String newDatabaseName)
     {
         requireNonNull(databaseName, "databaseName is null");
         requireNonNull(newDatabaseName, "newDatabaseName is null");
@@ -240,7 +241,7 @@ public class FileHiveMetastore
     }
 
     @Override
-    public synchronized void createTable(Table table, PrincipalPrivileges principalPrivileges)
+    public synchronized void createTable(HiveContext hiveContext, Table table, PrincipalPrivileges principalPrivileges)
     {
         verifyTableNotExists(table.getDatabaseName(), table.getTableName());
 
@@ -342,7 +343,7 @@ public class FileHiveMetastore
     }
 
     @Override
-    public synchronized void updateTableStatistics(String databaseName, String tableName, Function<PartitionStatistics, PartitionStatistics> update)
+    public synchronized void updateTableStatistics(HiveContext hiveContext, String databaseName, String tableName, Function<PartitionStatistics, PartitionStatistics> update)
     {
         PartitionStatistics originalStatistics = getTableStatistics(databaseName, tableName);
         PartitionStatistics updatedStatistics = update.apply(originalStatistics);
@@ -359,7 +360,7 @@ public class FileHiveMetastore
     }
 
     @Override
-    public synchronized void updatePartitionStatistics(String databaseName, String tableName, String partitionName, Function<PartitionStatistics, PartitionStatistics> update)
+    public synchronized void updatePartitionStatistics(HiveContext hiveContext, String databaseName, String tableName, String partitionName, Function<PartitionStatistics, PartitionStatistics> update)
     {
         PartitionStatistics originalStatistics = getPartitionStatistics(databaseName, tableName, ImmutableSet.of(partitionName)).get(partitionName);
         if (originalStatistics == null) {
@@ -414,7 +415,7 @@ public class FileHiveMetastore
     }
 
     @Override
-    public synchronized void dropTable(String databaseName, String tableName, boolean deleteData)
+    public synchronized void dropTable(HiveContext hiveContext, String databaseName, String tableName, boolean deleteData)
     {
         requireNonNull(databaseName, "databaseName is null");
         requireNonNull(tableName, "tableName is null");
@@ -435,7 +436,7 @@ public class FileHiveMetastore
     }
 
     @Override
-    public synchronized void replaceTable(String databaseName, String tableName, Table newTable, PrincipalPrivileges principalPrivileges)
+    public synchronized void replaceTable(HiveContext hiveContext, String databaseName, String tableName, Table newTable, PrincipalPrivileges principalPrivileges)
     {
         Table table = getRequiredTable(databaseName, tableName);
         if (!table.getDatabaseName().equals(databaseName) || !table.getTableName().equals(tableName)) {
@@ -457,7 +458,7 @@ public class FileHiveMetastore
     }
 
     @Override
-    public synchronized void renameTable(String databaseName, String tableName, String newDatabaseName, String newTableName)
+    public synchronized void renameTable(HiveContext hiveContext, String databaseName, String tableName, String newDatabaseName, String newTableName)
     {
         requireNonNull(databaseName, "databaseName is null");
         requireNonNull(tableName, "tableName is null");
@@ -488,7 +489,7 @@ public class FileHiveMetastore
     }
 
     @Override
-    public synchronized void commentTable(String databaseName, String tableName, Optional<String> comment)
+    public synchronized void commentTable(HiveContext hiveContext, String databaseName, String tableName, Optional<String> comment)
     {
         alterTable(databaseName, tableName, oldTable -> {
             Map<String, String> parameters = oldTable.getParameters().entrySet().stream()
@@ -503,7 +504,7 @@ public class FileHiveMetastore
     }
 
     @Override
-    public synchronized void addColumn(String databaseName, String tableName, String columnName, HiveType columnType, String columnComment)
+    public synchronized void addColumn(HiveContext hiveContext, String databaseName, String tableName, String columnName, HiveType columnType, String columnComment)
     {
         alterTable(databaseName, tableName, oldTable -> {
             if (oldTable.getColumn(columnName).isPresent()) {
@@ -518,7 +519,7 @@ public class FileHiveMetastore
     }
 
     @Override
-    public synchronized void renameColumn(String databaseName, String tableName, String oldColumnName, String newColumnName)
+    public synchronized void renameColumn(HiveContext hiveContext, String databaseName, String tableName, String oldColumnName, String newColumnName)
     {
         alterTable(databaseName, tableName, oldTable -> {
             if (oldTable.getColumn(newColumnName).isPresent()) {
@@ -549,7 +550,7 @@ public class FileHiveMetastore
     }
 
     @Override
-    public synchronized void dropColumn(String databaseName, String tableName, String columnName)
+    public synchronized void dropColumn(HiveContext hiveContext, String databaseName, String tableName, String columnName)
     {
         alterTable(databaseName, tableName, oldTable -> {
             verifyCanDropColumn(this, databaseName, tableName, columnName);
@@ -587,7 +588,7 @@ public class FileHiveMetastore
     }
 
     @Override
-    public synchronized void addPartitions(String databaseName, String tableName, List<PartitionWithStatistics> partitions)
+    public synchronized void addPartitions(HiveContext hiveContext, String databaseName, String tableName, List<PartitionWithStatistics> partitions)
     {
         requireNonNull(databaseName, "databaseName is null");
         requireNonNull(tableName, "tableName is null");
@@ -670,7 +671,7 @@ public class FileHiveMetastore
     }
 
     @Override
-    public synchronized void dropPartition(String databaseName, String tableName, List<String> partitionValues, boolean deleteData)
+    public synchronized void dropPartition(HiveContext hiveContext, String databaseName, String tableName, List<String> partitionValues, boolean deleteData)
     {
         requireNonNull(databaseName, "databaseName is null");
         requireNonNull(tableName, "tableName is null");
@@ -692,7 +693,7 @@ public class FileHiveMetastore
     }
 
     @Override
-    public synchronized void alterPartition(String databaseName, String tableName, PartitionWithStatistics partitionWithStatistics)
+    public synchronized void alterPartition(HiveContext hiveContext, String databaseName, String tableName, PartitionWithStatistics partitionWithStatistics)
     {
         Table table = getRequiredTable(databaseName, tableName);
 
@@ -704,7 +705,7 @@ public class FileHiveMetastore
     }
 
     @Override
-    public synchronized void createRole(String role, String grantor)
+    public synchronized void createRole(HiveContext hiveContext, String role, String grantor)
     {
         Set<String> roles = new HashSet<>(listRoles());
         roles.add(role);
@@ -712,7 +713,7 @@ public class FileHiveMetastore
     }
 
     @Override
-    public synchronized void dropRole(String role)
+    public synchronized void dropRole(HiveContext hiveContext, String role)
     {
         Set<String> roles = new HashSet<>(listRoles());
         roles.remove(role);
@@ -728,7 +729,7 @@ public class FileHiveMetastore
     }
 
     @Override
-    public synchronized void grantRoles(Set<String> roles, Set<HivePrincipal> grantees, boolean withAdminOption, HivePrincipal grantor)
+    public synchronized void grantRoles(HiveContext hiveContext, Set<String> roles, Set<HivePrincipal> grantees, boolean withAdminOption, HivePrincipal grantor)
     {
         Set<String> existingRoles = listRoles();
         Set<RoleGrant> existingGrants = listRoleGrantsSanitized();
@@ -760,7 +761,7 @@ public class FileHiveMetastore
     }
 
     @Override
-    public synchronized void revokeRoles(Set<String> roles, Set<HivePrincipal> grantees, boolean adminOptionFor, HivePrincipal grantor)
+    public synchronized void revokeRoles(HiveContext hiveContext, Set<String> roles, Set<HivePrincipal> grantees, boolean adminOptionFor, HivePrincipal grantor)
     {
         Set<RoleGrant> existingGrants = listRoleGrantsSanitized();
         Set<RoleGrant> modifiedGrants = new HashSet<>(existingGrants);
@@ -978,13 +979,13 @@ public class FileHiveMetastore
     }
 
     @Override
-    public synchronized void grantTablePrivileges(String databaseName, String tableName, String tableOwner, HivePrincipal grantee, Set<HivePrivilegeInfo> privileges)
+    public synchronized void grantTablePrivileges(HiveContext hiveContext, String databaseName, String tableName, String tableOwner, HivePrincipal grantee, Set<HivePrivilegeInfo> privileges)
     {
         setTablePrivileges(grantee, databaseName, tableName, privileges);
     }
 
     @Override
-    public synchronized void revokeTablePrivileges(String databaseName, String tableName, String tableOwner, HivePrincipal grantee, Set<HivePrivilegeInfo> privileges)
+    public synchronized void revokeTablePrivileges(HiveContext hiveContext, String databaseName, String tableName, String tableOwner, HivePrincipal grantee, Set<HivePrivilegeInfo> privileges)
     {
         Set<HivePrivilegeInfo> currentPrivileges = listTablePrivileges(databaseName, tableName, tableOwner, grantee);
         currentPrivileges.removeAll(privileges);

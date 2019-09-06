@@ -22,6 +22,7 @@ import io.prestosql.plugin.hive.HiveBucketProperty;
 import io.prestosql.plugin.hive.HiveConfig;
 import io.prestosql.plugin.hive.HiveType;
 import io.prestosql.plugin.hive.PartitionStatistics;
+import io.prestosql.plugin.hive.authentication.HiveContext;
 import io.prestosql.plugin.hive.metastore.HivePrivilegeInfo.HivePrivilege;
 import io.prestosql.plugin.hive.metastore.SortingColumn.Order;
 import io.prestosql.spi.security.PrestoPrincipal;
@@ -45,6 +46,7 @@ import static io.prestosql.spi.security.PrincipalType.USER;
 import static io.prestosql.spi.statistics.ColumnStatisticType.MAX_VALUE;
 import static io.prestosql.spi.statistics.ColumnStatisticType.MIN_VALUE;
 import static io.prestosql.spi.type.VarcharType.createVarcharType;
+import static io.prestosql.testing.TestingConnectorSession.SESSION;
 import static org.testng.Assert.assertEquals;
 
 public class TestRecordingHiveMetastore
@@ -111,7 +113,7 @@ public class TestRecordingHiveMetastore
 
         RecordingHiveMetastore recordingHiveMetastore = new RecordingHiveMetastore(new TestingHiveMetastore(), recordingHiveConfig);
         validateMetadata(recordingHiveMetastore);
-        recordingHiveMetastore.dropDatabase("other_database");
+        recordingHiveMetastore.dropDatabase(new HiveContext(SESSION), "other_database");
         recordingHiveMetastore.writeRecording();
 
         HiveConfig replayingHiveConfig = recordingHiveConfig
@@ -217,7 +219,7 @@ public class TestRecordingHiveMetastore
         }
 
         @Override
-        public void dropDatabase(String databaseName)
+        public void dropDatabase(HiveContext context, String databaseName)
         {
             // noop for test purpose
         }

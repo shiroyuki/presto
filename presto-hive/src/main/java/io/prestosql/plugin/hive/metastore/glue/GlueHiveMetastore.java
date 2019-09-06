@@ -70,6 +70,7 @@ import io.prestosql.plugin.hive.PartitionNotFoundException;
 import io.prestosql.plugin.hive.PartitionStatistics;
 import io.prestosql.plugin.hive.SchemaAlreadyExistsException;
 import io.prestosql.plugin.hive.TableAlreadyExistsException;
+import io.prestosql.plugin.hive.authentication.HiveContext;
 import io.prestosql.plugin.hive.metastore.Column;
 import io.prestosql.plugin.hive.metastore.Database;
 import io.prestosql.plugin.hive.metastore.HiveMetastore;
@@ -278,7 +279,7 @@ public class GlueHiveMetastore
     }
 
     @Override
-    public void updateTableStatistics(String databaseName, String tableName, Function<PartitionStatistics, PartitionStatistics> update)
+    public void updateTableStatistics(HiveContext hiveContext, String databaseName, String tableName, Function<PartitionStatistics, PartitionStatistics> update)
     {
         PartitionStatistics currentStatistics = getTableStatistics(databaseName, tableName);
         PartitionStatistics updatedStatistics = update.apply(currentStatistics);
@@ -305,7 +306,7 @@ public class GlueHiveMetastore
     }
 
     @Override
-    public void updatePartitionStatistics(String databaseName, String tableName, String partitionName, Function<PartitionStatistics, PartitionStatistics> update)
+    public void updatePartitionStatistics(HiveContext hiveContext, String databaseName, String tableName, String partitionName, Function<PartitionStatistics, PartitionStatistics> update)
     {
         PartitionStatistics currentStatistics = getPartitionStatistics(databaseName, tableName, ImmutableSet.of(partitionName)).get(partitionName);
         if (currentStatistics == null) {
@@ -396,7 +397,7 @@ public class GlueHiveMetastore
     }
 
     @Override
-    public void createDatabase(Database database)
+    public void createDatabase(HiveContext hiveContext, Database database)
     {
         if (!database.getLocation().isPresent() && defaultDir.isPresent()) {
             String databaseLocation = new Path(defaultDir.get(), database.getDatabaseName()).toString();
@@ -422,7 +423,7 @@ public class GlueHiveMetastore
     }
 
     @Override
-    public void dropDatabase(String databaseName)
+    public void dropDatabase(HiveContext hiveContext, String databaseName)
     {
         try {
             glueClient.deleteDatabase(new DeleteDatabaseRequest().withCatalogId(catalogId).withName(databaseName));
@@ -436,7 +437,7 @@ public class GlueHiveMetastore
     }
 
     @Override
-    public void renameDatabase(String databaseName, String newDatabaseName)
+    public void renameDatabase(HiveContext hiveContext, String databaseName, String newDatabaseName)
     {
         try {
             Database database = getDatabase(databaseName).orElseThrow(() -> new SchemaNotFoundException(databaseName));
@@ -452,7 +453,7 @@ public class GlueHiveMetastore
     }
 
     @Override
-    public void createTable(Table table, PrincipalPrivileges principalPrivileges)
+    public void createTable(HiveContext hiveContext, Table table, PrincipalPrivileges principalPrivileges)
     {
         try {
             TableInput input = GlueInputConverter.convertTable(table);
@@ -473,7 +474,7 @@ public class GlueHiveMetastore
     }
 
     @Override
-    public void dropTable(String databaseName, String tableName, boolean deleteData)
+    public void dropTable(HiveContext hiveContext, String databaseName, String tableName, boolean deleteData)
     {
         Table table = getTableOrElseThrow(databaseName, tableName);
 
@@ -510,7 +511,7 @@ public class GlueHiveMetastore
     }
 
     @Override
-    public void replaceTable(String databaseName, String tableName, Table newTable, PrincipalPrivileges principalPrivileges)
+    public void replaceTable(HiveContext hiveContext, String databaseName, String tableName, Table newTable, PrincipalPrivileges principalPrivileges)
     {
         try {
             TableInput newTableInput = GlueInputConverter.convertTable(newTable);
@@ -528,29 +529,29 @@ public class GlueHiveMetastore
     }
 
     @Override
-    public void renameTable(String databaseName, String tableName, String newDatabaseName, String newTableName)
+    public void renameTable(HiveContext hiveContext, String databaseName, String tableName, String newDatabaseName, String newTableName)
     {
         throw new PrestoException(NOT_SUPPORTED, "Table rename is not yet supported by Glue service");
     }
 
     @Override
-    public void commentTable(String databaseName, String tableName, Optional<String> comment)
+    public void commentTable(HiveContext hiveContext, String databaseName, String tableName, Optional<String> comment)
     {
         throw new PrestoException(NOT_SUPPORTED, "Table comment is not yet supported by Glue service");
     }
 
     @Override
-    public void addColumn(String databaseName, String tableName, String columnName, HiveType columnType, String columnComment)
+    public void addColumn(HiveContext hiveContext, String databaseName, String tableName, String columnName, HiveType columnType, String columnComment)
     {
         Table oldTable = getTableOrElseThrow(databaseName, tableName);
         Table newTable = Table.builder(oldTable)
                 .addDataColumn(new Column(columnName, columnType, Optional.ofNullable(columnComment)))
                 .build();
-        replaceTable(databaseName, tableName, newTable, null);
+        replaceTable(hiveContext, databaseName, tableName, newTable, null);
     }
 
     @Override
-    public void renameColumn(String databaseName, String tableName, String oldColumnName, String newColumnName)
+    public void renameColumn(HiveContext hiveContext, String databaseName, String tableName, String oldColumnName, String newColumnName)
     {
         Table oldTable = getTableOrElseThrow(databaseName, tableName);
         if (oldTable.getPartitionColumns().stream().anyMatch(c -> c.getName().equals(oldColumnName))) {
@@ -570,11 +571,11 @@ public class GlueHiveMetastore
         Table newTable = Table.builder(oldTable)
                 .setDataColumns(newDataColumns.build())
                 .build();
-        replaceTable(databaseName, tableName, newTable, null);
+        replaceTable(hiveContext, databaseName, tableName, newTable, null);
     }
 
     @Override
-    public void dropColumn(String databaseName, String tableName, String columnName)
+    public void dropColumn(HiveContext hiveContext, String databaseName, String tableName, String columnName)
     {
         verifyCanDropColumn(this, databaseName, tableName, columnName);
         Table oldTable = getTableOrElseThrow(databaseName, tableName);
@@ -592,7 +593,7 @@ public class GlueHiveMetastore
         Table newTable = Table.builder(oldTable)
                 .setDataColumns(newDataColumns.build())
                 .build();
-        replaceTable(databaseName, tableName, newTable, null);
+        replaceTable(hiveContext, databaseName, tableName, newTable, null);
     }
 
     @Override
@@ -741,7 +742,7 @@ public class GlueHiveMetastore
     }
 
     @Override
-    public void addPartitions(String databaseName, String tableName, List<PartitionWithStatistics> partitions)
+    public void addPartitions(HiveContext hiveContext, String databaseName, String tableName, List<PartitionWithStatistics> partitions)
     {
         try {
             List<List<PartitionWithStatistics>> batchedPartitions = Lists.partition(partitions, BATCH_CREATE_PARTITION_MAX_PAGE_SIZE);
@@ -787,7 +788,7 @@ public class GlueHiveMetastore
     }
 
     @Override
-    public void dropPartition(String databaseName, String tableName, List<String> parts, boolean deleteData)
+    public void dropPartition(HiveContext hiveContext, String databaseName, String tableName, List<String> parts, boolean deleteData)
     {
         Table table = getTableOrElseThrow(databaseName, tableName);
         Partition partition = getPartition(databaseName, tableName, parts)
@@ -811,7 +812,7 @@ public class GlueHiveMetastore
     }
 
     @Override
-    public void alterPartition(String databaseName, String tableName, PartitionWithStatistics partition)
+    public void alterPartition(HiveContext hiveContext, String databaseName, String tableName, PartitionWithStatistics partition)
     {
         try {
             PartitionInput newPartition = GlueInputConverter.convertPartition(partition);
@@ -831,13 +832,13 @@ public class GlueHiveMetastore
     }
 
     @Override
-    public void createRole(String role, String grantor)
+    public void createRole(HiveContext hiveContext, String role, String grantor)
     {
         throw new PrestoException(NOT_SUPPORTED, "createRole is not supported by Glue");
     }
 
     @Override
-    public void dropRole(String role)
+    public void dropRole(HiveContext hiveContext, String role)
     {
         throw new PrestoException(NOT_SUPPORTED, "dropRole is not supported by Glue");
     }
@@ -849,13 +850,13 @@ public class GlueHiveMetastore
     }
 
     @Override
-    public void grantRoles(Set<String> roles, Set<HivePrincipal> grantees, boolean withAdminOption, HivePrincipal grantor)
+    public void grantRoles(HiveContext hiveContext, Set<String> roles, Set<HivePrincipal> grantees, boolean withAdminOption, HivePrincipal grantor)
     {
         throw new PrestoException(NOT_SUPPORTED, "grantRoles is not supported by Glue");
     }
 
     @Override
-    public void revokeRoles(Set<String> roles, Set<HivePrincipal> grantees, boolean adminOptionFor, HivePrincipal grantor)
+    public void revokeRoles(HiveContext hiveContext, Set<String> roles, Set<HivePrincipal> grantees, boolean adminOptionFor, HivePrincipal grantor)
     {
         throw new PrestoException(NOT_SUPPORTED, "revokeRoles is not supported by Glue");
     }
@@ -870,13 +871,13 @@ public class GlueHiveMetastore
     }
 
     @Override
-    public void grantTablePrivileges(String databaseName, String tableName, String tableOwner, HivePrincipal grantee, Set<HivePrivilegeInfo> privileges)
+    public void grantTablePrivileges(HiveContext hiveContext, String databaseName, String tableName, String tableOwner, HivePrincipal grantee, Set<HivePrivilegeInfo> privileges)
     {
         throw new PrestoException(NOT_SUPPORTED, "grantTablePrivileges is not supported by Glue");
     }
 
     @Override
-    public void revokeTablePrivileges(String databaseName, String tableName, String tableOwner, HivePrincipal grantee, Set<HivePrivilegeInfo> privileges)
+    public void revokeTablePrivileges(HiveContext hiveContext, String databaseName, String tableName, String tableOwner, HivePrincipal grantee, Set<HivePrivilegeInfo> privileges)
     {
         throw new PrestoException(NOT_SUPPORTED, "revokeTablePrivileges is not supported by Glue");
     }

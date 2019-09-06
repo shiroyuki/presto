@@ -15,6 +15,7 @@ package io.prestosql.plugin.hive.metastore;
 
 import io.prestosql.plugin.hive.HiveType;
 import io.prestosql.plugin.hive.PartitionStatistics;
+import io.prestosql.plugin.hive.authentication.HiveContext;
 import io.prestosql.spi.security.RoleGrant;
 import io.prestosql.spi.statistics.ColumnStatisticType;
 import io.prestosql.spi.type.Type;
@@ -65,13 +66,13 @@ class UnimplementedHiveMetastore
     }
 
     @Override
-    public void updateTableStatistics(String databaseName, String tableName, Function<PartitionStatistics, PartitionStatistics> update)
+    public void updateTableStatistics(HiveContext context, String databaseName, String tableName, Function<PartitionStatistics, PartitionStatistics> update)
     {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void updatePartitionStatistics(String databaseName, String tableName, String partitionName, Function<PartitionStatistics, PartitionStatistics> update)
+    public void updatePartitionStatistics(HiveContext context, String databaseName, String tableName, String partitionName, Function<PartitionStatistics, PartitionStatistics> update)
     {
         throw new UnsupportedOperationException();
     }
@@ -89,67 +90,67 @@ class UnimplementedHiveMetastore
     }
 
     @Override
-    public void createDatabase(Database database)
+    public void createDatabase(HiveContext context, Database database)
     {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void dropDatabase(String databaseName)
+    public void dropDatabase(HiveContext context, String databaseName)
     {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void renameDatabase(String databaseName, String newDatabaseName)
+    public void renameDatabase(HiveContext context, String databaseName, String newDatabaseName)
     {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void createTable(Table table, PrincipalPrivileges principalPrivileges)
+    public void createTable(HiveContext context, Table table, PrincipalPrivileges principalPrivileges)
     {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void dropTable(String databaseName, String tableName, boolean deleteData)
+    public void dropTable(HiveContext context, String databaseName, String tableName, boolean deleteData)
     {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void replaceTable(String databaseName, String tableName, Table newTable, PrincipalPrivileges principalPrivileges)
+    public void replaceTable(HiveContext context, String databaseName, String tableName, Table newTable, PrincipalPrivileges principalPrivileges)
     {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void renameTable(String databaseName, String tableName, String newDatabaseName, String newTableName)
+    public void renameTable(HiveContext context, String databaseName, String tableName, String newDatabaseName, String newTableName)
     {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void commentTable(String databaseName, String tableName, Optional<String> comment)
+    public void commentTable(HiveContext context, String databaseName, String tableName, Optional<String> comment)
     {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void addColumn(String databaseName, String tableName, String columnName, HiveType columnType, String columnComment)
+    public void addColumn(HiveContext context, String databaseName, String tableName, String columnName, HiveType columnType, String columnComment)
     {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void renameColumn(String databaseName, String tableName, String oldColumnName, String newColumnName)
+    public void renameColumn(HiveContext context, String databaseName, String tableName, String oldColumnName, String newColumnName)
     {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void dropColumn(String databaseName, String tableName, String columnName)
+    public void dropColumn(HiveContext context, String databaseName, String tableName, String columnName)
     {
         throw new UnsupportedOperationException();
     }
@@ -179,19 +180,19 @@ class UnimplementedHiveMetastore
     }
 
     @Override
-    public void addPartitions(String databaseName, String tableName, List<PartitionWithStatistics> partitions)
+    public void addPartitions(HiveContext context, String databaseName, String tableName, List<PartitionWithStatistics> partitions)
     {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void dropPartition(String databaseName, String tableName, List<String> parts, boolean deleteData)
+    public void dropPartition(HiveContext context, String databaseName, String tableName, List<String> parts, boolean deleteData)
     {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void alterPartition(String databaseName, String tableName, PartitionWithStatistics partition)
+    public void alterPartition(HiveContext context, String databaseName, String tableName, PartitionWithStatistics partition)
     {
         throw new UnsupportedOperationException();
     }
@@ -203,25 +204,25 @@ class UnimplementedHiveMetastore
     }
 
     @Override
-    public void grantTablePrivileges(String databaseName, String tableName, String tableOwner, HivePrincipal grantee, Set<HivePrivilegeInfo> privileges)
+    public void grantTablePrivileges(HiveContext context, String databaseName, String tableName, String tableOwner, HivePrincipal grantee, Set<HivePrivilegeInfo> privileges)
     {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void revokeTablePrivileges(String databaseName, String tableName, String tableOwner, HivePrincipal grantee, Set<HivePrivilegeInfo> privileges)
+    public void revokeTablePrivileges(HiveContext context, String databaseName, String tableName, String tableOwner, HivePrincipal grantee, Set<HivePrivilegeInfo> privileges)
     {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void createRole(String role, String grantor)
+    public void createRole(HiveContext context, String role, String grantor)
     {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void dropRole(String role)
+    public void dropRole(HiveContext context, String role)
     {
         throw new UnsupportedOperationException();
     }
@@ -233,13 +234,13 @@ class UnimplementedHiveMetastore
     }
 
     @Override
-    public void grantRoles(Set<String> roles, Set<HivePrincipal> grantees, boolean withAdminOption, HivePrincipal grantor)
+    public void grantRoles(HiveContext context, Set<String> roles, Set<HivePrincipal> grantees, boolean withAdminOption, HivePrincipal grantor)
     {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void revokeRoles(Set<String> roles, Set<HivePrincipal> grantees, boolean adminOptionFor, HivePrincipal grantor)
+    public void revokeRoles(HiveContext context, Set<String> roles, Set<HivePrincipal> grantees, boolean adminOptionFor, HivePrincipal grantor)
     {
         throw new UnsupportedOperationException();
     }

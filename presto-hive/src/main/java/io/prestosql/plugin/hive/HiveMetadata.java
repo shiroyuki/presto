@@ -29,6 +29,7 @@ import io.airlift.json.JsonCodec;
 import io.airlift.slice.Slice;
 import io.prestosql.plugin.hive.HdfsEnvironment.HdfsContext;
 import io.prestosql.plugin.hive.LocationService.WriteInfo;
+import io.prestosql.plugin.hive.authentication.HiveContext;
 import io.prestosql.plugin.hive.metastore.Column;
 import io.prestosql.plugin.hive.metastore.Database;
 import io.prestosql.plugin.hive.metastore.HiveColumnStatistics;
@@ -681,7 +682,7 @@ public class HiveMetadata
                 .setOwnerName(session.getUser())
                 .build();
 
-        metastore.createDatabase(database);
+        metastore.createDatabase(new HiveContext(session), database);
     }
 
     @Override
@@ -692,13 +693,13 @@ public class HiveMetadata
                 !listViews(session, Optional.of(schemaName)).isEmpty()) {
             throw new PrestoException(SCHEMA_NOT_EMPTY, "Schema not empty: " + schemaName);
         }
-        metastore.dropDatabase(schemaName);
+        metastore.dropDatabase(new HiveContext(session), schemaName);
     }
 
     @Override
     public void renameSchema(ConnectorSession session, String source, String target)
     {
-        metastore.renameDatabase(source, target);
+        metastore.renameDatabase(new HiveContext(session), source, target);
     }
 
     @Override
@@ -958,7 +959,7 @@ public class HiveMetadata
         HiveTableHandle handle = (HiveTableHandle) tableHandle;
         failIfAvroSchemaIsSet(handle);
 
-        metastore.addColumn(handle.getSchemaName(), handle.getTableName(), column.getName(), toHiveType(typeTranslator, column.getType()), column.getComment());
+        metastore.addColumn(new HiveContext(session), handle.getSchemaName(), handle.getTableName(), column.getName(), toHiveType(typeTranslator, column.getType()), column.getComment());
     }
 
     @Override
@@ -968,7 +969,7 @@ public class HiveMetadata
         failIfAvroSchemaIsSet(hiveTableHandle);
         HiveColumnHandle sourceHandle = (HiveColumnHandle) source;
 
-        metastore.renameColumn(hiveTableHandle.getSchemaName(), hiveTableHandle.getTableName(), sourceHandle.getName(), target);
+        metastore.renameColumn(new HiveContext(session), hiveTableHandle.getSchemaName(), hiveTableHandle.getTableName(), sourceHandle.getName(), target);
     }
 
     @Override
@@ -978,7 +979,7 @@ public class HiveMetadata
         failIfAvroSchemaIsSet(hiveTableHandle);
         HiveColumnHandle columnHandle = (HiveColumnHandle) column;
 
-        metastore.dropColumn(hiveTableHandle.getSchemaName(), hiveTableHandle.getTableName(), columnHandle.getName());
+        metastore.dropColumn(new HiveContext(session), hiveTableHandle.getSchemaName(), hiveTableHandle.getTableName(), columnHandle.getName());
     }
 
     private void failIfAvroSchemaIsSet(HiveTableHandle handle)
@@ -994,14 +995,14 @@ public class HiveMetadata
     public void renameTable(ConnectorSession session, ConnectorTableHandle tableHandle, SchemaTableName newTableName)
     {
         HiveTableHandle handle = (HiveTableHandle) tableHandle;
-        metastore.renameTable(handle.getSchemaName(), handle.getTableName(), newTableName.getSchemaName(), newTableName.getTableName());
+        metastore.renameTable(new HiveContext(session), handle.getSchemaName(), handle.getTableName(), newTableName.getSchemaName(), newTableName.getTableName());
     }
 
     @Override
     public void setTableComment(ConnectorSession session, ConnectorTableHandle tableHandle, Optional<String> comment)
     {
         HiveTableHandle handle = (HiveTableHandle) tableHandle;
-        metastore.commentTable(handle.getSchemaName(), handle.getTableName(), comment);
+        metastore.commentTable(new HiveContext(session), handle.getSchemaName(), handle.getTableName(), comment);
     }
 
     @Override
@@ -1046,7 +1047,7 @@ public class HiveMetadata
 
         if (partitionColumns.isEmpty()) {
             // commit analyze to unpartitioned table
-            metastore.setTableStatistics(table, createPartitionStatistics(session, columnTypes, computedStatisticsMap.get(ImmutableList.<String>of())));
+            metastore.setTableStatistics(new HiveContext(session), table, createPartitionStatistics(session, columnTypes, computedStatisticsMap.get(ImmutableList.<String>of())));
         }
         else {
             List<List<String>> partitionValuesList;
@@ -1080,7 +1081,7 @@ public class HiveMetadata
                 }
             }
             verify(usedComputedStatistics == computedStatistics.size(), "All computed statistics must be used");
-            metastore.setPartitionStatistics(table, partitionStatistics.build());
+            metastore.setPartitionStatistics(new HiveContext(session), table, partitionStatistics.build());
         }
     }
 
@@ -1576,7 +1577,7 @@ public class HiveMetadata
                 throw new ViewAlreadyExistsException(viewName);
             }
 
-            metastore.replaceTable(viewName.getSchemaName(), viewName.getTableName(), table, principalPrivileges);
+            metastore.replaceTable(new HiveContext(session), viewName.getSchemaName(), viewName.getTableName(), table, principalPrivileges);
             return;
         }
 

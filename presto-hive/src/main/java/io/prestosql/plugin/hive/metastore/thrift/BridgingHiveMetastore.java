@@ -17,6 +17,7 @@ import com.google.common.collect.ImmutableMap;
 import io.prestosql.plugin.hive.HiveType;
 import io.prestosql.plugin.hive.HiveUtil;
 import io.prestosql.plugin.hive.PartitionStatistics;
+import io.prestosql.plugin.hive.authentication.HiveContext;
 import io.prestosql.plugin.hive.metastore.Database;
 import io.prestosql.plugin.hive.metastore.HiveMetastore;
 import io.prestosql.plugin.hive.metastore.HivePrincipal;
@@ -108,15 +109,15 @@ public class BridgingHiveMetastore
     }
 
     @Override
-    public void updateTableStatistics(String databaseName, String tableName, Function<PartitionStatistics, PartitionStatistics> update)
+    public void updateTableStatistics(HiveContext context, String databaseName, String tableName, Function<PartitionStatistics, PartitionStatistics> update)
     {
-        delegate.updateTableStatistics(databaseName, tableName, update);
+        delegate.updateTableStatistics(context, databaseName, tableName, update);
     }
 
     @Override
-    public void updatePartitionStatistics(String databaseName, String tableName, String partitionName, Function<PartitionStatistics, PartitionStatistics> update)
+    public void updatePartitionStatistics(HiveContext context, String databaseName, String tableName, String partitionName, Function<PartitionStatistics, PartitionStatistics> update)
     {
-        delegate.updatePartitionStatistics(databaseName, tableName, partitionName, update);
+        delegate.updatePartitionStatistics(context, databaseName, tableName, partitionName, update);
     }
 
     @Override
@@ -132,24 +133,24 @@ public class BridgingHiveMetastore
     }
 
     @Override
-    public void createDatabase(Database database)
+    public void createDatabase(HiveContext context, Database database)
     {
-        delegate.createDatabase(toMetastoreApiDatabase(database));
+        delegate.createDatabase(context, toMetastoreApiDatabase(database));
     }
 
     @Override
-    public void dropDatabase(String databaseName)
+    public void dropDatabase(HiveContext context, String databaseName)
     {
-        delegate.dropDatabase(databaseName);
+        delegate.dropDatabase(context, databaseName);
     }
 
     @Override
-    public void renameDatabase(String databaseName, String newDatabaseName)
+    public void renameDatabase(HiveContext context, String databaseName, String newDatabaseName)
     {
         org.apache.hadoop.hive.metastore.api.Database database = delegate.getDatabase(databaseName)
                 .orElseThrow(() -> new SchemaNotFoundException(databaseName));
         database.setName(newDatabaseName);
-        delegate.alterDatabase(databaseName, database);
+        delegate.alterDatabase(context, databaseName, database);
 
         delegate.getDatabase(databaseName).ifPresent(newDatabase -> {
             if (newDatabase.getName().equals(databaseName)) {
@@ -159,25 +160,25 @@ public class BridgingHiveMetastore
     }
 
     @Override
-    public void createTable(Table table, PrincipalPrivileges principalPrivileges)
+    public void createTable(HiveContext context, Table table, PrincipalPrivileges principalPrivileges)
     {
-        delegate.createTable(toMetastoreApiTable(table, principalPrivileges));
+        delegate.createTable(context, toMetastoreApiTable(table, principalPrivileges));
     }
 
     @Override
-    public void dropTable(String databaseName, String tableName, boolean deleteData)
+    public void dropTable(HiveContext context, String databaseName, String tableName, boolean deleteData)
     {
-        delegate.dropTable(databaseName, tableName, deleteData);
+        delegate.dropTable(context, databaseName, tableName, deleteData);
     }
 
     @Override
-    public void replaceTable(String databaseName, String tableName, Table newTable, PrincipalPrivileges principalPrivileges)
+    public void replaceTable(HiveContext context, String databaseName, String tableName, Table newTable, PrincipalPrivileges principalPrivileges)
     {
-        alterTable(databaseName, tableName, toMetastoreApiTable(newTable, principalPrivileges));
+        alterTable(context, databaseName, tableName, toMetastoreApiTable(newTable, principalPrivileges));
     }
 
     @Override
-    public void renameTable(String databaseName, String tableName, String newDatabaseName, String newTableName)
+    public void renameTable(HiveContext context, String databaseName, String tableName, String newDatabaseName, String newTableName)
     {
         Optional<org.apache.hadoop.hive.metastore.api.Table> source = delegate.getTable(databaseName, tableName);
         if (!source.isPresent()) {
@@ -186,11 +187,11 @@ public class BridgingHiveMetastore
         org.apache.hadoop.hive.metastore.api.Table table = source.get();
         table.setDbName(newDatabaseName);
         table.setTableName(newTableName);
-        alterTable(databaseName, tableName, table);
+        alterTable(context, databaseName, tableName, table);
     }
 
     @Override
-    public void commentTable(String databaseName, String tableName, Optional<String> comment)
+    public void commentTable(HiveContext context, String databaseName, String tableName, Optional<String> comment)
     {
         Optional<org.apache.hadoop.hive.metastore.api.Table> source = delegate.getTable(databaseName, tableName);
         if (!source.isPresent()) {
@@ -204,11 +205,11 @@ public class BridgingHiveMetastore
         comment.ifPresent(value -> parameters.put(TABLE_COMMENT, comment.get()));
 
         table.setParameters(parameters);
-        alterTable(databaseName, tableName, table);
+        alterTable(context, databaseName, tableName, table);
     }
 
     @Override
-    public void addColumn(String databaseName, String tableName, String columnName, HiveType columnType, String columnComment)
+    public void addColumn(HiveContext context, String databaseName, String tableName, String columnName, HiveType columnType, String columnComment)
     {
         Optional<org.apache.hadoop.hive.metastore.api.Table> source = delegate.getTable(databaseName, tableName);
         if (!source.isPresent()) {
@@ -217,11 +218,11 @@ public class BridgingHiveMetastore
         org.apache.hadoop.hive.metastore.api.Table table = source.get();
         table.getSd().getCols().add(
                 new FieldSchema(columnName, columnType.getHiveTypeName().toString(), columnComment));
-        alterTable(databaseName, tableName, table);
+        alterTable(context, databaseName, tableName, table);
     }
 
     @Override
-    public void renameColumn(String databaseName, String tableName, String oldColumnName, String newColumnName)
+    public void renameColumn(HiveContext context, String databaseName, String tableName, String oldColumnName, String newColumnName)
     {
         Optional<org.apache.hadoop.hive.metastore.api.Table> source = delegate.getTable(databaseName, tableName);
         if (!source.isPresent()) {
@@ -238,22 +239,22 @@ public class BridgingHiveMetastore
                 fieldSchema.setName(newColumnName);
             }
         }
-        alterTable(databaseName, tableName, table);
+        alterTable(context, databaseName, tableName, table);
     }
 
     @Override
-    public void dropColumn(String databaseName, String tableName, String columnName)
+    public void dropColumn(HiveContext context, String databaseName, String tableName, String columnName)
     {
         verifyCanDropColumn(this, databaseName, tableName, columnName);
         org.apache.hadoop.hive.metastore.api.Table table = delegate.getTable(databaseName, tableName)
                 .orElseThrow(() -> new TableNotFoundException(new SchemaTableName(databaseName, tableName)));
         table.getSd().getCols().removeIf(fieldSchema -> fieldSchema.getName().equals(columnName));
-        alterTable(databaseName, tableName, table);
+        alterTable(context, databaseName, tableName, table);
     }
 
-    private void alterTable(String databaseName, String tableName, org.apache.hadoop.hive.metastore.api.Table table)
+    private void alterTable(HiveContext context, String databaseName, String tableName, org.apache.hadoop.hive.metastore.api.Table table)
     {
-        delegate.alterTable(databaseName, tableName, table);
+        delegate.alterTable(context, databaseName, tableName, table);
     }
 
     @Override
@@ -305,33 +306,33 @@ public class BridgingHiveMetastore
     }
 
     @Override
-    public void addPartitions(String databaseName, String tableName, List<PartitionWithStatistics> partitions)
+    public void addPartitions(HiveContext context, String databaseName, String tableName, List<PartitionWithStatistics> partitions)
     {
-        delegate.addPartitions(databaseName, tableName, partitions);
+        delegate.addPartitions(context, databaseName, tableName, partitions);
     }
 
     @Override
-    public void dropPartition(String databaseName, String tableName, List<String> parts, boolean deleteData)
+    public void dropPartition(HiveContext context, String databaseName, String tableName, List<String> parts, boolean deleteData)
     {
-        delegate.dropPartition(databaseName, tableName, parts, deleteData);
+        delegate.dropPartition(context, databaseName, tableName, parts, deleteData);
     }
 
     @Override
-    public void alterPartition(String databaseName, String tableName, PartitionWithStatistics partition)
+    public void alterPartition(HiveContext context, String databaseName, String tableName, PartitionWithStatistics partition)
     {
-        delegate.alterPartition(databaseName, tableName, partition);
+        delegate.alterPartition(context, databaseName, tableName, partition);
     }
 
     @Override
-    public void createRole(String role, String grantor)
+    public void createRole(HiveContext context, String role, String grantor)
     {
-        delegate.createRole(role, grantor);
+        delegate.createRole(context, role, grantor);
     }
 
     @Override
-    public void dropRole(String role)
+    public void dropRole(HiveContext context, String role)
     {
-        delegate.dropRole(role);
+        delegate.dropRole(context, role);
     }
 
     @Override
@@ -341,15 +342,15 @@ public class BridgingHiveMetastore
     }
 
     @Override
-    public void grantRoles(Set<String> roles, Set<HivePrincipal> grantees, boolean withAdminOption, HivePrincipal grantor)
+    public void grantRoles(HiveContext context, Set<String> roles, Set<HivePrincipal> grantees, boolean withAdminOption, HivePrincipal grantor)
     {
-        delegate.grantRoles(roles, grantees, withAdminOption, grantor);
+        delegate.grantRoles(context, roles, grantees, withAdminOption, grantor);
     }
 
     @Override
-    public void revokeRoles(Set<String> roles, Set<HivePrincipal> grantees, boolean adminOptionFor, HivePrincipal grantor)
+    public void revokeRoles(HiveContext context, Set<String> roles, Set<HivePrincipal> grantees, boolean adminOptionFor, HivePrincipal grantor)
     {
-        delegate.revokeRoles(roles, grantees, adminOptionFor, grantor);
+        delegate.revokeRoles(context, roles, grantees, adminOptionFor, grantor);
     }
 
     @Override
@@ -359,15 +360,15 @@ public class BridgingHiveMetastore
     }
 
     @Override
-    public void grantTablePrivileges(String databaseName, String tableName, String tableOwner, HivePrincipal grantee, Set<HivePrivilegeInfo> privileges)
+    public void grantTablePrivileges(HiveContext context, String databaseName, String tableName, String tableOwner, HivePrincipal grantee, Set<HivePrivilegeInfo> privileges)
     {
-        delegate.grantTablePrivileges(databaseName, tableName, tableOwner, grantee, privileges);
+        delegate.grantTablePrivileges(context, databaseName, tableName, tableOwner, grantee, privileges);
     }
 
     @Override
-    public void revokeTablePrivileges(String databaseName, String tableName, String tableOwner, HivePrincipal grantee, Set<HivePrivilegeInfo> privileges)
+    public void revokeTablePrivileges(HiveContext context, String databaseName, String tableName, String tableOwner, HivePrincipal grantee, Set<HivePrivilegeInfo> privileges)
     {
-        delegate.revokeTablePrivileges(databaseName, tableName, tableOwner, grantee, privileges);
+        delegate.revokeTablePrivileges(context, databaseName, tableName, tableOwner, grantee, privileges);
     }
 
     @Override
