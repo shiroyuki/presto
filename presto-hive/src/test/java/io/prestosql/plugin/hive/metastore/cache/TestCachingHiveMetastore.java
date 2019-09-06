@@ -17,6 +17,9 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import io.airlift.units.Duration;
+import io.prestosql.plugin.hive.HiveConfig;
+import io.prestosql.plugin.hive.authentication.HiveContext;
+import io.prestosql.plugin.hive.authentication.NoHiveMetastoreAuthentication;
 import io.prestosql.plugin.hive.metastore.Partition;
 import io.prestosql.plugin.hive.metastore.thrift.BridgingHiveMetastore;
 import io.prestosql.plugin.hive.metastore.thrift.MetastoreLocator;
@@ -41,6 +44,7 @@ import static io.prestosql.plugin.hive.metastore.thrift.MockThriftMetastoreClien
 import static io.prestosql.plugin.hive.metastore.thrift.MockThriftMetastoreClient.TEST_PARTITION2;
 import static io.prestosql.plugin.hive.metastore.thrift.MockThriftMetastoreClient.TEST_ROLES;
 import static io.prestosql.plugin.hive.metastore.thrift.MockThriftMetastoreClient.TEST_TABLE;
+import static io.prestosql.testing.TestingConnectorSession.SESSION;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.testng.Assert.assertEquals;
@@ -73,7 +77,7 @@ public class TestCachingHiveMetastore
     private ThriftHiveMetastore createThriftHiveMetastore()
     {
         MetastoreLocator metastoreLocator = new MockMetastoreLocator(mockClient);
-        return new ThriftHiveMetastore(metastoreLocator, new ThriftHiveMetastoreConfig());
+        return new ThriftHiveMetastore(metastoreLocator, new ThriftHiveMetastoreConfig(), new HiveConfig(), new NoHiveMetastoreAuthentication());
     }
 
     @Test
@@ -229,12 +233,13 @@ public class TestCachingHiveMetastore
         assertEquals(metastore.listRoles(), TEST_ROLES);
         assertEquals(mockClient.getAccessCount(), 2);
 
-        metastore.createRole("role", "grantor");
+        HiveContext context = new HiveContext(SESSION);
+        metastore.createRole(context, "role", "grantor");
 
         assertEquals(metastore.listRoles(), TEST_ROLES);
         assertEquals(mockClient.getAccessCount(), 3);
 
-        metastore.dropRole("testrole");
+        metastore.dropRole(context, "testrole");
 
         assertEquals(metastore.listRoles(), TEST_ROLES);
         assertEquals(mockClient.getAccessCount(), 4);

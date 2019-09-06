@@ -15,6 +15,7 @@ package io.prestosql.plugin.hive.security;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import io.prestosql.plugin.hive.authentication.HiveContext;
 import io.prestosql.plugin.hive.metastore.HivePrincipal;
 import io.prestosql.plugin.hive.metastore.HivePrivilegeInfo;
 import io.prestosql.plugin.hive.metastore.SemiTransactionalHiveMetastore;
@@ -58,14 +59,14 @@ public class SqlStandardAccessControlMetadata
     public void createRole(ConnectorSession session, String role, Optional<HivePrincipal> grantor)
     {
         checkRoleIsNotReserved(role);
-        metastore.createRole(role, null);
+        metastore.createRole(new HiveContext(session), role, null);
     }
 
     @Override
     public void dropRole(ConnectorSession session, String role)
     {
         checkRoleIsNotReserved(role);
-        metastore.dropRole(role);
+        metastore.dropRole(new HiveContext(session), role);
     }
 
     private static void checkRoleIsNotReserved(String role)
@@ -91,13 +92,13 @@ public class SqlStandardAccessControlMetadata
     @Override
     public void grantRoles(ConnectorSession session, Set<String> roles, Set<HivePrincipal> grantees, boolean withAdminOption, Optional<HivePrincipal> grantor)
     {
-        metastore.grantRoles(roles, grantees, withAdminOption, grantor.orElse(new HivePrincipal(USER, session.getUser())));
+        metastore.grantRoles(new HiveContext(session), roles, grantees, withAdminOption, grantor.orElse(new HivePrincipal(USER, session.getUser())));
     }
 
     @Override
     public void revokeRoles(ConnectorSession session, Set<String> roles, Set<HivePrincipal> grantees, boolean adminOptionFor, Optional<HivePrincipal> grantor)
     {
-        metastore.revokeRoles(roles, grantees, adminOptionFor, grantor.orElse(new HivePrincipal(USER, session.getUser())));
+        metastore.revokeRoles(new HiveContext(session), roles, grantees, adminOptionFor, grantor.orElse(new HivePrincipal(USER, session.getUser())));
     }
 
     @Override
@@ -124,7 +125,7 @@ public class SqlStandardAccessControlMetadata
                 .map(privilege -> new HivePrivilegeInfo(toHivePrivilege(privilege), grantOption, new HivePrincipal(USER, session.getUser()), new HivePrincipal(USER, session.getUser())))
                 .collect(toSet());
 
-        metastore.grantTablePrivileges(schemaName, tableName, grantee, hivePrivilegeInfos);
+        metastore.grantTablePrivileges(new HiveContext(session), schemaName, tableName, grantee, hivePrivilegeInfos);
     }
 
     @Override
@@ -137,7 +138,7 @@ public class SqlStandardAccessControlMetadata
                 .map(privilege -> new HivePrivilegeInfo(toHivePrivilege(privilege), grantOption, new HivePrincipal(USER, session.getUser()), new HivePrincipal(USER, session.getUser())))
                 .collect(toSet());
 
-        metastore.revokeTablePrivileges(schemaName, tableName, grantee, hivePrivilegeInfos);
+        metastore.revokeTablePrivileges(new HiveContext(session), schemaName, tableName, grantee, hivePrivilegeInfos);
     }
 
     @Override

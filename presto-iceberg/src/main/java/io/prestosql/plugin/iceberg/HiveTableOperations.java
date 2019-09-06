@@ -17,6 +17,7 @@ import io.airlift.log.Logger;
 import io.prestosql.plugin.hive.HdfsEnvironment;
 import io.prestosql.plugin.hive.HdfsEnvironment.HdfsContext;
 import io.prestosql.plugin.hive.HiveType;
+import io.prestosql.plugin.hive.authentication.HiveContext;
 import io.prestosql.plugin.hive.metastore.Column;
 import io.prestosql.plugin.hive.metastore.HiveMetastore;
 import io.prestosql.plugin.hive.metastore.PrincipalPrivileges;
@@ -25,6 +26,7 @@ import io.prestosql.plugin.hive.metastore.Table;
 import io.prestosql.spi.PrestoException;
 import io.prestosql.spi.connector.SchemaTableName;
 import io.prestosql.spi.connector.TableNotFoundException;
+import io.prestosql.spi.security.ConnectorIdentity;
 import org.apache.hadoop.hive.metastore.TableType;
 import org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe;
 import org.apache.hadoop.mapred.FileInputFormat;
@@ -214,11 +216,13 @@ public class HiveTableOperations
         }
 
         PrincipalPrivileges privileges = buildInitialPrivilegeSet(table.getOwner());
+        ConnectorIdentity identity = new ConnectorIdentity(table.getOwner(), Optional.empty(), Optional.empty());
+        HiveContext context = new HiveContext(identity);
         if (base == null) {
-            metastore.createTable(table, privileges);
+            metastore.createTable(context, table, privileges);
         }
         else {
-            metastore.replaceTable(database, tableName, table, privileges);
+            metastore.replaceTable(context, database, tableName, table, privileges);
         }
 
         shouldRefresh = true;
