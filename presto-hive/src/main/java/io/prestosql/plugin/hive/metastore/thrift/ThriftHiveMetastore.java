@@ -242,7 +242,7 @@ public class ThriftHiveMetastore
     }
 
     @Override
-    public Optional<Table> getTable(String databaseName, String tableName)
+    public Optional<Table> getTable(HiveContext context, String databaseName, String tableName)
     {
         try {
             return retry()
@@ -288,9 +288,9 @@ public class ThriftHiveMetastore
     }
 
     @Override
-    public PartitionStatistics getTableStatistics(String databaseName, String tableName)
+    public PartitionStatistics getTableStatistics(HiveContext context, String databaseName, String tableName)
     {
-        Table table = getTable(databaseName, tableName)
+        Table table = getTable(context, databaseName, tableName)
                 .orElseThrow(() -> new TableNotFoundException(new SchemaTableName(databaseName, tableName)));
         List<String> dataColumns = table.getSd().getCols().stream()
                 .map(FieldSchema::getName)
@@ -324,9 +324,9 @@ public class ThriftHiveMetastore
     }
 
     @Override
-    public Map<String, PartitionStatistics> getPartitionStatistics(String databaseName, String tableName, Set<String> partitionNames)
+    public Map<String, PartitionStatistics> getPartitionStatistics(HiveContext context, String databaseName, String tableName, Set<String> partitionNames)
     {
-        Table table = getTable(databaseName, tableName)
+        Table table = getTable(context, databaseName, tableName)
                 .orElseThrow(() -> new TableNotFoundException(new SchemaTableName(databaseName, tableName)));
         List<String> dataColumns = table.getSd().getCols().stream()
                 .map(FieldSchema::getName)
@@ -358,7 +358,7 @@ public class ThriftHiveMetastore
     }
 
     @Override
-    public Optional<List<FieldSchema>> getFields(String databaseName, String tableName)
+    public Optional<List<FieldSchema>> getFields(HiveContext context, String databaseName, String tableName)
     {
         try {
             return retry()
@@ -427,10 +427,10 @@ public class ThriftHiveMetastore
     @Override
     public synchronized void updateTableStatistics(HiveContext context, String databaseName, String tableName, Function<PartitionStatistics, PartitionStatistics> update)
     {
-        PartitionStatistics currentStatistics = getTableStatistics(databaseName, tableName);
+        PartitionStatistics currentStatistics = getTableStatistics(context, databaseName, tableName);
         PartitionStatistics updatedStatistics = update.apply(currentStatistics);
 
-        Table originalTable = getTable(databaseName, tableName)
+        Table originalTable = getTable(context, databaseName, tableName)
                 .orElseThrow(() -> new TableNotFoundException(new SchemaTableName(databaseName, tableName)));
         Table modifiedTable = originalTable.deepCopy();
         HiveBasicStatistics basicStatistics = updatedStatistics.getBasicStatistics();
@@ -501,7 +501,7 @@ public class ThriftHiveMetastore
     public synchronized void updatePartitionStatistics(HiveContext context, String databaseName, String tableName, String partitionName, Function<PartitionStatistics, PartitionStatistics> update)
     {
         PartitionStatistics currentStatistics = requireNonNull(
-                getPartitionStatistics(databaseName, tableName, ImmutableSet.of(partitionName)).get(partitionName), "getPartitionStatistics() returned null");
+                getPartitionStatistics(context, databaseName, tableName, ImmutableSet.of(partitionName)).get(partitionName), "getPartitionStatistics() returned null");
         PartitionStatistics updatedStatistics = update.apply(currentStatistics);
 
         List<Partition> partitions = getPartitionsByNames(databaseName, tableName, ImmutableList.of(partitionName));
@@ -930,7 +930,7 @@ public class ThriftHiveMetastore
                     .stopOnIllegalExceptions()
                     .run("alterTable", stats.getAlterTable().wrap(() -> {
                         try (ThriftMetastoreClient client = createMetastoreClient(context)) {
-                            Optional<Table> source = getTable(databaseName, tableName);
+                            Optional<Table> source = getTable(context, databaseName, tableName);
                             if (!source.isPresent()) {
                                 throw new TableNotFoundException(new SchemaTableName(databaseName, tableName));
                             }
@@ -951,7 +951,7 @@ public class ThriftHiveMetastore
     }
 
     @Override
-    public Optional<List<String>> getPartitionNames(String databaseName, String tableName)
+    public Optional<List<String>> getPartitionNames(HiveContext context, String databaseName, String tableName)
     {
         try {
             return retry()
@@ -975,7 +975,7 @@ public class ThriftHiveMetastore
     }
 
     @Override
-    public Optional<List<String>> getPartitionNamesByParts(String databaseName, String tableName, List<String> parts)
+    public Optional<List<String>> getPartitionNamesByParts(HiveContext context, String databaseName, String tableName, List<String> parts)
     {
         try {
             return retry()
@@ -1156,7 +1156,7 @@ public class ThriftHiveMetastore
     }
 
     @Override
-    public Optional<Partition> getPartition(String databaseName, String tableName, List<String> partitionValues)
+    public Optional<Partition> getPartition(HiveContext context, String databaseName, String tableName, List<String> partitionValues)
     {
         requireNonNull(partitionValues, "partitionValues is null");
         try {

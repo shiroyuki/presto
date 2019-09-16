@@ -139,7 +139,8 @@ public class IcebergMetadata
     public IcebergTableHandle getTableHandle(ConnectorSession session, SchemaTableName tableName)
     {
         IcebergTableHandle handle = IcebergTableHandle.from(tableName);
-        Optional<Table> table = metastore.getTable(handle.getSchemaName(), handle.getTableName());
+        HiveContext context = new HiveContext(session);
+        Optional<Table> table = metastore.getTable(context, handle.getSchemaName(), handle.getTableName());
         if (!table.isPresent()) {
             return null;
         }
@@ -286,9 +287,10 @@ public class IcebergMetadata
                 .orElseThrow(() -> new SchemaNotFoundException(schemaName));
 
         HdfsContext hdfsContext = new HdfsContext(session, schemaName, tableName);
+        HiveContext hiveContext = new HiveContext(session);
         String targetPath = getTableDefaultLocation(database, hdfsContext, hdfsEnvironment, schemaName, tableName).toString();
 
-        TableOperations operations = new HiveTableOperations(metastore, hdfsEnvironment, hdfsContext, schemaName, tableName, session.getUser(), targetPath);
+        TableOperations operations = new HiveTableOperations(metastore, hdfsEnvironment, hdfsContext, hiveContext, schemaName, tableName, session.getUser(), targetPath);
         if (operations.current() != null) {
             throw new TableAlreadyExistsException(schemaTableName);
         }
@@ -432,7 +434,8 @@ public class IcebergMetadata
 
     private ConnectorTableMetadata getTableMetadata(ConnectorSession session, SchemaTableName table)
     {
-        if (!metastore.getTable(table.getSchemaName(), table.getTableName()).isPresent()) {
+        HiveContext context = new HiveContext(session);
+        if (!metastore.getTable(context, table.getSchemaName(), table.getTableName()).isPresent()) {
             throw new TableNotFoundException(table);
         }
 

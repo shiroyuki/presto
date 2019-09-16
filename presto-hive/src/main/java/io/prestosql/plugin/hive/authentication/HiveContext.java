@@ -16,6 +16,9 @@ package io.prestosql.plugin.hive.authentication;
 import io.prestosql.spi.connector.ConnectorSession;
 import io.prestosql.spi.security.ConnectorIdentity;
 
+import java.util.Objects;
+
+import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public final class HiveContext
@@ -37,5 +40,33 @@ public final class HiveContext
     public String getUsername()
     {
         return username;
+    }
+
+    @Override
+    public String toString()
+    {
+        return toStringHelper(this)
+                .add("username", username)
+                .toString();
+    }
+
+    @Override
+    public boolean equals(Object o)
+    {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        HiveContext other = (HiveContext) o;
+        return Objects.equals(username, other.username);
+    }
+
+    @Override
+    public int hashCode()
+    {
+        return Objects.hash(username);
     }
 }

@@ -203,7 +203,7 @@ public class InMemoryThriftMetastore
     @Override
     public synchronized void dropTable(HiveContext context, String databaseName, String tableName, boolean deleteData)
     {
-        List<String> locations = listAllDataPaths(this, databaseName, tableName);
+        List<String> locations = listAllDataPaths(context, this, databaseName, tableName);
 
         SchemaTableName schemaTableName = new SchemaTableName(databaseName, tableName);
         Table table = relations.remove(schemaTableName);
@@ -225,10 +225,10 @@ public class InMemoryThriftMetastore
         }
     }
 
-    private static List<String> listAllDataPaths(ThriftMetastore metastore, String schemaName, String tableName)
+    private static List<String> listAllDataPaths(HiveContext context, ThriftMetastore metastore, String schemaName, String tableName)
     {
         ImmutableList.Builder<String> locations = ImmutableList.builder();
-        Table table = metastore.getTable(schemaName, tableName).get();
+        Table table = metastore.getTable(context, schemaName, tableName).get();
         if (table.getSd().getLocation() != null) {
             // For unpartitioned table, there should be nothing directly under this directory.
             // But including this location in the set makes the directory content assert more
@@ -236,7 +236,7 @@ public class InMemoryThriftMetastore
             locations.add(table.getSd().getLocation());
         }
 
-        Optional<List<String>> partitionNames = metastore.getPartitionNames(schemaName, tableName);
+        Optional<List<String>> partitionNames = metastore.getPartitionNames(context, schemaName, tableName);
         if (partitionNames.isPresent()) {
             metastore.getPartitionsByNames(schemaName, tableName, partitionNames.get()).stream()
                     .map(partition -> partition.getSd().getLocation())
@@ -350,7 +350,7 @@ public class InMemoryThriftMetastore
     }
 
     @Override
-    public synchronized Optional<List<String>> getPartitionNames(String databaseName, String tableName)
+    public synchronized Optional<List<String>> getPartitionNames(HiveContext context, String databaseName, String tableName)
     {
         return Optional.of(ImmutableList.copyOf(partitions.entrySet().stream()
                 .filter(entry -> entry.getKey().matches(databaseName, tableName))
@@ -359,7 +359,7 @@ public class InMemoryThriftMetastore
     }
 
     @Override
-    public synchronized Optional<Partition> getPartition(String databaseName, String tableName, List<String> partitionValues)
+    public synchronized Optional<Partition> getPartition(HiveContext context, String databaseName, String tableName, List<String> partitionValues)
     {
         PartitionName name = PartitionName.partition(databaseName, tableName, partitionValues);
         Partition partition = partitions.get(name);
@@ -370,7 +370,7 @@ public class InMemoryThriftMetastore
     }
 
     @Override
-    public synchronized Optional<List<String>> getPartitionNamesByParts(String databaseName, String tableName, List<String> parts)
+    public synchronized Optional<List<String>> getPartitionNamesByParts(HiveContext context, String databaseName, String tableName, List<String> parts)
     {
         return Optional.of(partitions.entrySet().stream()
                 .filter(entry -> partitionMatches(entry.getValue(), databaseName, tableName, parts))
@@ -413,7 +413,7 @@ public class InMemoryThriftMetastore
     }
 
     @Override
-    public synchronized Optional<Table> getTable(String databaseName, String tableName)
+    public synchronized Optional<Table> getTable(HiveContext context, String databaseName, String tableName)
     {
         SchemaTableName schemaTableName = new SchemaTableName(databaseName, tableName);
         return Optional.ofNullable(relations.get(schemaTableName));
@@ -426,7 +426,7 @@ public class InMemoryThriftMetastore
     }
 
     @Override
-    public synchronized PartitionStatistics getTableStatistics(String databaseName, String tableName)
+    public synchronized PartitionStatistics getTableStatistics(HiveContext context, String databaseName, String tableName)
     {
         SchemaTableName schemaTableName = new SchemaTableName(databaseName, tableName);
         PartitionStatistics statistics = columnStatistics.get(schemaTableName);
@@ -437,7 +437,7 @@ public class InMemoryThriftMetastore
     }
 
     @Override
-    public synchronized Map<String, PartitionStatistics> getPartitionStatistics(String databaseName, String tableName, Set<String> partitionNames)
+    public synchronized Map<String, PartitionStatistics> getPartitionStatistics(HiveContext context, String databaseName, String tableName, Set<String> partitionNames)
     {
         ImmutableMap.Builder<String, PartitionStatistics> result = ImmutableMap.builder();
         for (String partitionName : partitionNames) {
@@ -454,14 +454,14 @@ public class InMemoryThriftMetastore
     @Override
     public synchronized void updateTableStatistics(HiveContext context, String databaseName, String tableName, Function<PartitionStatistics, PartitionStatistics> update)
     {
-        columnStatistics.put(new SchemaTableName(databaseName, tableName), update.apply(getTableStatistics(databaseName, tableName)));
+        columnStatistics.put(new SchemaTableName(databaseName, tableName), update.apply(getTableStatistics(context, databaseName, tableName)));
     }
 
     @Override
     public synchronized void updatePartitionStatistics(HiveContext context, String databaseName, String tableName, String partitionName, Function<PartitionStatistics, PartitionStatistics> update)
     {
         PartitionName partitionKey = PartitionName.partition(databaseName, tableName, partitionName);
-        partitionColumnStatistics.put(partitionKey, update.apply(getPartitionStatistics(databaseName, tableName, ImmutableSet.of(partitionName)).get(partitionName)));
+        partitionColumnStatistics.put(partitionKey, update.apply(getPartitionStatistics(context, databaseName, tableName, ImmutableSet.of(partitionName)).get(partitionName)));
     }
 
     @Override

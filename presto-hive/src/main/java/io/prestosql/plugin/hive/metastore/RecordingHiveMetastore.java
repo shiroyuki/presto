@@ -209,9 +209,9 @@ public class RecordingHiveMetastore
     }
 
     @Override
-    public Optional<Table> getTable(String databaseName, String tableName)
+    public Optional<Table> getTable(HiveContext context, String databaseName, String tableName)
     {
-        return loadValue(tableCache, hiveTableName(databaseName, tableName), () -> delegate.getTable(databaseName, tableName));
+        return loadValue(tableCache, hiveTableName(databaseName, tableName), () -> delegate.getTable(context, databaseName, tableName));
     }
 
     @Override
@@ -221,21 +221,21 @@ public class RecordingHiveMetastore
     }
 
     @Override
-    public PartitionStatistics getTableStatistics(String databaseName, String tableName)
+    public PartitionStatistics getTableStatistics(HiveContext context, String databaseName, String tableName)
     {
         return loadValue(
                 tableStatisticsCache,
                 hiveTableName(databaseName, tableName),
-                () -> delegate.getTableStatistics(databaseName, tableName));
+                () -> delegate.getTableStatistics(context, databaseName, tableName));
     }
 
     @Override
-    public Map<String, PartitionStatistics> getPartitionStatistics(String databaseName, String tableName, Set<String> partitionNames)
+    public Map<String, PartitionStatistics> getPartitionStatistics(HiveContext context, String databaseName, String tableName, Set<String> partitionNames)
     {
         return loadValue(
                 partitionStatisticsCache,
                 getHivePartitionNames(databaseName, tableName, partitionNames),
-                () -> delegate.getPartitionStatistics(databaseName, tableName, partitionNames));
+                () -> delegate.getPartitionStatistics(context, databaseName, tableName, partitionNames));
     }
 
     @Override
@@ -349,39 +349,39 @@ public class RecordingHiveMetastore
     }
 
     @Override
-    public Optional<Partition> getPartition(String databaseName, String tableName, List<String> partitionValues)
+    public Optional<Partition> getPartition(HiveContext context, String databaseName, String tableName, List<String> partitionValues)
     {
         return loadValue(
                 partitionCache,
                 hivePartitionName(databaseName, tableName, partitionValues),
-                () -> delegate.getPartition(databaseName, tableName, partitionValues));
+                () -> delegate.getPartition(context, databaseName, tableName, partitionValues));
     }
 
     @Override
-    public Optional<List<String>> getPartitionNames(String databaseName, String tableName)
+    public Optional<List<String>> getPartitionNames(HiveContext context, String databaseName, String tableName)
     {
         return loadValue(
                 partitionNamesCache,
                 hiveTableName(databaseName, tableName),
-                () -> delegate.getPartitionNames(databaseName, tableName));
+                () -> delegate.getPartitionNames(context, databaseName, tableName));
     }
 
     @Override
-    public Optional<List<String>> getPartitionNamesByParts(String databaseName, String tableName, List<String> parts)
+    public Optional<List<String>> getPartitionNamesByParts(HiveContext context, String databaseName, String tableName, List<String> parts)
     {
         return loadValue(
                 partitionNamesByPartsCache,
                 partitionFilter(databaseName, tableName, parts),
-                () -> delegate.getPartitionNamesByParts(databaseName, tableName, parts));
+                () -> delegate.getPartitionNamesByParts(context, databaseName, tableName, parts));
     }
 
     @Override
-    public Map<String, Optional<Partition>> getPartitionsByNames(String databaseName, String tableName, List<String> partitionNames)
+    public Map<String, Optional<Partition>> getPartitionsByNames(HiveContext context, String databaseName, String tableName, List<String> partitionNames)
     {
         return loadValue(
                 partitionsByNamesCache,
                 getHivePartitionNames(databaseName, tableName, ImmutableSet.copyOf(partitionNames)),
-                () -> delegate.getPartitionsByNames(databaseName, tableName, partitionNames));
+                () -> delegate.getPartitionsByNames(context, databaseName, tableName, partitionNames));
     }
 
     @Override

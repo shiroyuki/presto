@@ -82,6 +82,7 @@ public class HiveTableOperations
             FileInputFormat.class.getName(),
             FileOutputFormat.class.getName());
 
+    private final HiveContext context;
     private final HiveMetastore metastore;
     private final String database;
     private final String tableName;
@@ -94,14 +95,15 @@ public class HiveTableOperations
     private boolean shouldRefresh = true;
     private int version = -1;
 
-    public HiveTableOperations(HiveMetastore metastore, HdfsEnvironment hdfsEnvironment, HdfsContext hdfsContext, String database, String table)
+    public HiveTableOperations(HiveMetastore metastore, HdfsEnvironment hdfsEnvironment, HdfsContext hdfsContext, HiveContext hiveContext, String database, String table)
     {
-        this(new HdfsFileIo(hdfsEnvironment, hdfsContext), metastore, database, table, Optional.empty(), Optional.empty());
+        this(new HdfsFileIo(hdfsEnvironment, hdfsContext), hiveContext, metastore, database, table, Optional.empty(), Optional.empty());
     }
 
-    public HiveTableOperations(HiveMetastore metastore, HdfsEnvironment hdfsEnvironment, HdfsContext hdfsContext, String database, String table, String owner, String location)
+    public HiveTableOperations(HiveMetastore metastore, HdfsEnvironment hdfsEnvironment, HdfsContext hdfsContext, HiveContext hiveContext, String database, String table, String owner, String location)
     {
         this(new HdfsFileIo(hdfsEnvironment, hdfsContext),
+                hiveContext,
                 metastore,
                 database,
                 table,
@@ -109,9 +111,10 @@ public class HiveTableOperations
                 Optional.of(requireNonNull(location, "location is null")));
     }
 
-    private HiveTableOperations(FileIO fileIo, HiveMetastore metastore, String database, String table, Optional<String> owner, Optional<String> location)
+    private HiveTableOperations(FileIO fileIo, HiveContext context, HiveMetastore metastore, String database, String table, Optional<String> owner, Optional<String> location)
     {
         this.fileIo = requireNonNull(fileIo, "fileIo is null");
+        this.context = requireNonNull(context, "context is null");
         this.metastore = requireNonNull(metastore, "metastore is null");
         this.database = requireNonNull(database, "database is null");
         this.tableName = requireNonNull(table, "table is null");
@@ -261,7 +264,7 @@ public class HiveTableOperations
 
     private Table getTable()
     {
-        return metastore.getTable(database, tableName)
+        return metastore.getTable(context, database, tableName)
                 .orElseThrow(() -> new TableNotFoundException(getSchemaTableName()));
     }
 

@@ -67,21 +67,21 @@ public interface ThriftMetastore
 
     void alterPartition(HiveContext context, String databaseName, String tableName, PartitionWithStatistics partition);
 
-    Optional<List<String>> getPartitionNames(String databaseName, String tableName);
+    Optional<List<String>> getPartitionNames(HiveContext context, String databaseName, String tableName);
 
-    Optional<List<String>> getPartitionNamesByParts(String databaseName, String tableName, List<String> parts);
+    Optional<List<String>> getPartitionNamesByParts(HiveContext context, String databaseName, String tableName, List<String> parts);
 
-    Optional<Partition> getPartition(String databaseName, String tableName, List<String> partitionValues);
+    Optional<Partition> getPartition(HiveContext context, String databaseName, String tableName, List<String> partitionValues);
 
     List<Partition> getPartitionsByNames(String databaseName, String tableName, List<String> partitionNames);
 
-    Optional<Table> getTable(String databaseName, String tableName);
+    Optional<Table> getTable(HiveContext context, String databaseName, String tableName);
 
     Set<ColumnStatisticType> getSupportedColumnStatistics(Type type);
 
-    PartitionStatistics getTableStatistics(String databaseName, String tableName);
+    PartitionStatistics getTableStatistics(HiveContext context, String databaseName, String tableName);
 
-    Map<String, PartitionStatistics> getPartitionStatistics(String databaseName, String tableName, Set<String> partitionNames);
+    Map<String, PartitionStatistics> getPartitionStatistics(HiveContext context, String databaseName, String tableName, Set<String> partitionNames);
 
     void updateTableStatistics(HiveContext context, String databaseName, String tableName, Function<PartitionStatistics, PartitionStatistics> update);
 
@@ -105,9 +105,9 @@ public interface ThriftMetastore
 
     Set<HivePrivilegeInfo> listTablePrivileges(String databaseName, String tableName, String tableOwner, HivePrincipal principal);
 
-    default Optional<List<FieldSchema>> getFields(String databaseName, String tableName)
+    default Optional<List<FieldSchema>> getFields(HiveContext context, String databaseName, String tableName)
     {
-        Optional<Table> table = getTable(databaseName, tableName);
+        Optional<Table> table = getTable(context, databaseName, tableName);
         if (!table.isPresent()) {
             throw new TableNotFoundException(new SchemaTableName(databaseName, tableName));
         }

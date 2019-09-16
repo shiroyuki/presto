@@ -22,6 +22,7 @@ import com.google.common.primitives.Shorts;
 import io.prestosql.plugin.hive.HiveBasicStatistics;
 import io.prestosql.plugin.hive.HiveBucketProperty;
 import io.prestosql.plugin.hive.HiveType;
+import io.prestosql.plugin.hive.authentication.HiveContext;
 import io.prestosql.plugin.hive.metastore.Column;
 import io.prestosql.plugin.hive.metastore.Database;
 import io.prestosql.plugin.hive.metastore.HiveColumnStatistics;
@@ -287,22 +288,25 @@ public final class ThriftMetastoreUtil
 
     public static Stream<HivePrivilegeInfo> listEnabledTablePrivileges(SemiTransactionalHiveMetastore metastore, String databaseName, String tableName, ConnectorIdentity identity)
     {
-        return listTablePrivileges(metastore, databaseName, tableName, listEnabledPrincipals(metastore, identity));
+        HiveContext context = new HiveContext(identity);
+        return listTablePrivileges(context, metastore, databaseName, tableName, listEnabledPrincipals(metastore, identity));
     }
 
-    public static Stream<HivePrivilegeInfo> listApplicableTablePrivileges(SemiTransactionalHiveMetastore metastore, String databaseName, String tableName, String user)
+    public static Stream<HivePrivilegeInfo> listApplicableTablePrivileges(SemiTransactionalHiveMetastore metastore, String databaseName, String tableName, ConnectorIdentity identity)
     {
+        HiveContext context = new HiveContext(identity);
+        String user = identity.getUser();
         HivePrincipal userPrincipal = new HivePrincipal(USER, user);
         Stream<HivePrincipal> principals = Stream.concat(
                 Stream.of(userPrincipal),
                 listApplicableRoles(metastore, userPrincipal)
                         .map(role -> new HivePrincipal(ROLE, role)));
-        return listTablePrivileges(metastore, databaseName, tableName, principals);
+        return listTablePrivileges(context, metastore, databaseName, tableName, principals);
     }
 
-    private static Stream<HivePrivilegeInfo> listTablePrivileges(SemiTransactionalHiveMetastore metastore, String databaseName, String tableName, Stream<HivePrincipal> principals)
+    private static Stream<HivePrivilegeInfo> listTablePrivileges(HiveContext context, SemiTransactionalHiveMetastore metastore, String databaseName, String tableName, Stream<HivePrincipal> principals)
     {
-        return principals.flatMap(principal -> metastore.listTablePrivileges(databaseName, tableName, principal).stream());
+        return principals.flatMap(principal -> metastore.listTablePrivileges(context, databaseName, tableName, principal).stream());
     }
 
     public static boolean isRoleEnabled(ConnectorIdentity identity, Function<HivePrincipal, Set<RoleGrant>> listRoleGrants, String role)

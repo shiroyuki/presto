@@ -32,13 +32,13 @@ public interface HiveMetastore
 
     List<String> getAllDatabases();
 
-    Optional<Table> getTable(String databaseName, String tableName);
+    Optional<Table> getTable(HiveContext context, String databaseName, String tableName);
 
     Set<ColumnStatisticType> getSupportedColumnStatistics(Type type);
 
-    PartitionStatistics getTableStatistics(String databaseName, String tableName);
+    PartitionStatistics getTableStatistics(HiveContext context, String databaseName, String tableName);
 
-    Map<String, PartitionStatistics> getPartitionStatistics(String databaseName, String tableName, Set<String> partitionNames);
+    Map<String, PartitionStatistics> getPartitionStatistics(HiveContext context, String databaseName, String tableName, Set<String> partitionNames);
 
     void updateTableStatistics(HiveContext context, String databaseName, String tableName, Function<PartitionStatistics, PartitionStatistics> update);
 
@@ -77,13 +77,13 @@ public interface HiveMetastore
 
     void dropColumn(HiveContext context, String databaseName, String tableName, String columnName);
 
-    Optional<Partition> getPartition(String databaseName, String tableName, List<String> partitionValues);
+    Optional<Partition> getPartition(HiveContext context, String databaseName, String tableName, List<String> partitionValues);
 
-    Optional<List<String>> getPartitionNames(String databaseName, String tableName);
+    Optional<List<String>> getPartitionNames(HiveContext context, String databaseName, String tableName);
 
-    Optional<List<String>> getPartitionNamesByParts(String databaseName, String tableName, List<String> parts);
+    Optional<List<String>> getPartitionNamesByParts(HiveContext context, String databaseName, String tableName, List<String> parts);
 
-    Map<String, Optional<Partition>> getPartitionsByNames(String databaseName, String tableName, List<String> partitionNames);
+    Map<String, Optional<Partition>> getPartitionsByNames(HiveContext context, String databaseName, String tableName, List<String> partitionNames);
 
     void addPartitions(HiveContext context, String databaseName, String tableName, List<PartitionWithStatistics> partitions);
 

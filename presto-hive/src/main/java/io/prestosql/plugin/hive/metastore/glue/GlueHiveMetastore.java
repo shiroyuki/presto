@@ -245,7 +245,7 @@ public class GlueHiveMetastore
     }
 
     @Override
-    public Optional<Table> getTable(String databaseName, String tableName)
+    public Optional<Table> getTable(HiveContext context, String databaseName, String tableName)
     {
         try {
             GetTableResult result = glueClient.getTable(new GetTableRequest()
@@ -268,25 +268,25 @@ public class GlueHiveMetastore
         return ImmutableSet.of();
     }
 
-    private Table getTableOrElseThrow(String databaseName, String tableName)
+    private Table getTableOrElseThrow(HiveContext context, String databaseName, String tableName)
     {
-        return getTable(databaseName, tableName)
+        return getTable(context, databaseName, tableName)
                 .orElseThrow(() -> new TableNotFoundException(new SchemaTableName(databaseName, tableName)));
     }
 
     @Override
-    public PartitionStatistics getTableStatistics(String databaseName, String tableName)
+    public PartitionStatistics getTableStatistics(HiveContext context, String databaseName, String tableName)
     {
-        Table table = getTable(databaseName, tableName)
+        Table table = getTable(context, databaseName, tableName)
                 .orElseThrow(() -> new TableNotFoundException(new SchemaTableName(databaseName, tableName)));
         return new PartitionStatistics(getHiveBasicStatistics(table.getParameters()), ImmutableMap.of());
     }
 
     @Override
-    public Map<String, PartitionStatistics> getPartitionStatistics(String databaseName, String tableName, Set<String> partitionNames)
+    public Map<String, PartitionStatistics> getPartitionStatistics(HiveContext hiveContext, String databaseName, String tableName, Set<String> partitionNames)
     {
         ImmutableMap.Builder<String, PartitionStatistics> result = ImmutableMap.builder();
-        getPartitionsByNames(databaseName, tableName, ImmutableList.copyOf(partitionNames)).forEach((partitionName, optionalPartition) -> {
+        getPartitionsByNames(hiveContext, databaseName, tableName, ImmutableList.copyOf(partitionNames)).forEach((partitionName, optionalPartition) -> {
             Partition partition = optionalPartition.orElseThrow(() ->
                     new PartitionNotFoundException(new SchemaTableName(databaseName, tableName), toPartitionValues(partitionName)));
             PartitionStatistics partitionStatistics = new PartitionStatistics(getHiveBasicStatistics(partition.getParameters()), ImmutableMap.of());
@@ -298,13 +298,13 @@ public class GlueHiveMetastore
     @Override
     public void updateTableStatistics(HiveContext hiveContext, String databaseName, String tableName, Function<PartitionStatistics, PartitionStatistics> update)
     {
-        PartitionStatistics currentStatistics = getTableStatistics(databaseName, tableName);
+        PartitionStatistics currentStatistics = getTableStatistics(hiveContext, databaseName, tableName);
         PartitionStatistics updatedStatistics = update.apply(currentStatistics);
         if (!updatedStatistics.getColumnStatistics().isEmpty()) {
             throw new PrestoException(NOT_SUPPORTED, "Glue metastore does not support column level statistics");
         }
 
-        Table table = getTableOrElseThrow(databaseName, tableName);
+        Table table = getTableOrElseThrow(hiveContext, databaseName, tableName);
 
         try {
             TableInput tableInput = GlueInputConverter.convertTable(table);
@@ -325,7 +325,7 @@ public class GlueHiveMetastore
     @Override
     public void updatePartitionStatistics(HiveContext hiveContext, String databaseName, String tableName, String partitionName, Function<PartitionStatistics, PartitionStatistics> update)
     {
-        PartitionStatistics currentStatistics = getPartitionStatistics(databaseName, tableName, ImmutableSet.of(partitionName)).get(partitionName);
+        PartitionStatistics currentStatistics = getPartitionStatistics(hiveContext, databaseName, tableName, ImmutableSet.of(partitionName)).get(partitionName);
         if (currentStatistics == null) {
             throw new PrestoException(HIVE_PARTITION_DROPPED_DURING_QUERY, "Statistics result does not contain entry for partition: " + partitionName);
         }
@@ -335,7 +335,7 @@ public class GlueHiveMetastore
         }
 
         List<String> partitionValues = toPartitionValues(partitionName);
-        Partition partition = getPartition(databaseName, tableName, partitionValues)
+        Partition partition = getPartition(hiveContext, databaseName, tableName, partitionValues)
                 .orElseThrow(() -> new PartitionNotFoundException(new SchemaTableName(databaseName, tableName), partitionValues));
         try {
             PartitionInput partitionInput = GlueInputConverter.convertPartition(partition);
@@ -500,7 +500,7 @@ public class GlueHiveMetastore
     @Override
     public void dropTable(HiveContext hiveContext, String databaseName, String tableName, boolean deleteData)
     {
-        Table table = getTableOrElseThrow(databaseName, tableName);
+        Table table = getTableOrElseThrow(hiveContext, databaseName, tableName);
 
         try {
             glueClient.deleteTable(new DeleteTableRequest()
@@ -567,7 +567,7 @@ public class GlueHiveMetastore
     @Override
     public void addColumn(HiveContext hiveContext, String databaseName, String tableName, String columnName, HiveType columnType, String columnComment)
     {
-        Table oldTable = getTableOrElseThrow(databaseName, tableName);
+        Table oldTable = getTableOrElseThrow(hiveContext, databaseName, tableName);
         Table newTable = Table.builder(oldTable)
                 .addDataColumn(new Column(columnName, columnType, Optional.ofNullable(columnComment)))
                 .build();
@@ -577,7 +577,7 @@ public class GlueHiveMetastore
     @Override
     public void renameColumn(HiveContext hiveContext, String databaseName, String tableName, String oldColumnName, String newColumnName)
     {
-        Table oldTable = getTableOrElseThrow(databaseName, tableName);
+        Table oldTable = getTableOrElseThrow(hiveContext, databaseName, tableName);
         if (oldTable.getPartitionColumns().stream().anyMatch(c -> c.getName().equals(oldColumnName))) {
             throw new PrestoException(NOT_SUPPORTED, "Renaming partition columns is not supported");
         }
@@ -601,8 +601,8 @@ public class GlueHiveMetastore
     @Override
     public void dropColumn(HiveContext hiveContext, String databaseName, String tableName, String columnName)
     {
-        verifyCanDropColumn(this, databaseName, tableName, columnName);
-        Table oldTable = getTableOrElseThrow(databaseName, tableName);
+        verifyCanDropColumn(hiveContext, this, databaseName, tableName, columnName);
+        Table oldTable = getTableOrElseThrow(hiveContext, databaseName, tableName);
 
         if (!oldTable.getColumn(columnName).isPresent()) {
             SchemaTableName name = new SchemaTableName(databaseName, tableName);
@@ -621,7 +621,7 @@ public class GlueHiveMetastore
     }
 
     @Override
-    public Optional<Partition> getPartition(String databaseName, String tableName, List<String> partitionValues)
+    public Optional<Partition> getPartition(HiveContext context, String databaseName, String tableName, List<String> partitionValues)
     {
         try {
             GetPartitionResult result = glueClient.getPartition(new GetPartitionRequest()
@@ -640,9 +640,9 @@ public class GlueHiveMetastore
     }
 
     @Override
-    public Optional<List<String>> getPartitionNames(String databaseName, String tableName)
+    public Optional<List<String>> getPartitionNames(HiveContext context, String databaseName, String tableName)
     {
-        Table table = getTableOrElseThrow(databaseName, tableName);
+        Table table = getTableOrElseThrow(context, databaseName, tableName);
         List<Partition> partitions = getPartitions(databaseName, tableName, WILDCARD_EXPRESSION);
         return Optional.of(buildPartitionNames(table.getPartitionColumns(), partitions));
     }
@@ -659,9 +659,9 @@ public class GlueHiveMetastore
      * @return a list of partition names.
      */
     @Override
-    public Optional<List<String>> getPartitionNamesByParts(String databaseName, String tableName, List<String> parts)
+    public Optional<List<String>> getPartitionNamesByParts(HiveContext context, String databaseName, String tableName, List<String> parts)
     {
-        Table table = getTableOrElseThrow(databaseName, tableName);
+        Table table = getTableOrElseThrow(context, databaseName, tableName);
         String expression = buildGlueExpression(table.getPartitionColumns(), parts);
         List<Partition> partitions = getPartitions(databaseName, tableName, expression);
         return Optional.of(buildPartitionNames(table.getPartitionColumns(), partitions));
@@ -710,7 +710,7 @@ public class GlueHiveMetastore
      * @return Mapping of partition name to partition object
      */
     @Override
-    public Map<String, Optional<Partition>> getPartitionsByNames(String databaseName, String tableName, List<String> partitionNames)
+    public Map<String, Optional<Partition>> getPartitionsByNames(HiveContext context, String databaseName, String tableName, List<String> partitionNames)
     {
         requireNonNull(partitionNames, "partitionNames is null");
         if (partitionNames.isEmpty()) {
@@ -814,8 +814,8 @@ public class GlueHiveMetastore
     @Override
     public void dropPartition(HiveContext hiveContext, String databaseName, String tableName, List<String> parts, boolean deleteData)
     {
-        Table table = getTableOrElseThrow(databaseName, tableName);
-        Partition partition = getPartition(databaseName, tableName, parts)
+        Table table = getTableOrElseThrow(hiveContext, databaseName, tableName);
+        Partition partition = getPartition(hiveContext, databaseName, tableName, parts)
                 .orElseThrow(() -> new PartitionNotFoundException(new SchemaTableName(databaseName, tableName), parts));
 
         try {
