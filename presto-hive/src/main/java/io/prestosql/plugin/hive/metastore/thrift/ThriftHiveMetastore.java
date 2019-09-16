@@ -28,7 +28,7 @@ import io.prestosql.plugin.hive.SchemaAlreadyExistsException;
 import io.prestosql.plugin.hive.TableAlreadyExistsException;
 import io.prestosql.plugin.hive.authentication.HiveContext;
 import io.prestosql.plugin.hive.authentication.HiveMetastoreAuthentication;
-import io.prestosql.plugin.hive.authentication.NoHiveMetastoreAuthentication;
+import io.prestosql.plugin.hive.authentication.KerberosHiveMetastoreAuthentication;
 import io.prestosql.plugin.hive.metastore.Column;
 import io.prestosql.plugin.hive.metastore.HiveColumnStatistics;
 import io.prestosql.plugin.hive.metastore.HivePrincipal;
@@ -123,8 +123,7 @@ public class ThriftHiveMetastore
     private final Duration maxBackoffDelay;
     private final Duration maxRetryTime;
     private final int maxRetries;
-    private final boolean isMetastoreImpersonationEnabled;
-    private final HiveMetastoreAuthentication hiveMetastoreAuthentication;
+    private final boolean impersonationEnabled;
 
     private final AtomicInteger chosenGetTableAlternative = new AtomicInteger(Integer.MAX_VALUE);
     private final AtomicInteger chosenTableParamAlternative = new AtomicInteger(Integer.MAX_VALUE);
@@ -141,8 +140,8 @@ public class ThriftHiveMetastore
         this.maxBackoffDelay = thriftConfig.getMaxBackoffDelay();
         this.maxRetryTime = thriftConfig.getMaxRetryTime();
         this.maxRetries = thriftConfig.getMaxRetries();
-        this.isMetastoreImpersonationEnabled = thriftConfig.isImpersonationEnabled();
-        this.hiveMetastoreAuthentication = hiveMetastoreAuthentication;
+        requireNonNull(hiveMetastoreAuthentication, "hiveMetastoreAuthentication is null");
+        this.impersonationEnabled = thriftConfig.isImpersonationEnabled() && hiveMetastoreAuthentication instanceof KerberosHiveMetastoreAuthentication;
     }
 
     @Managed
@@ -1413,12 +1412,12 @@ public class ThriftHiveMetastore
             throws TException
     {
         ThriftMetastoreClient client = createMetastoreClient();
-        if (!isMetastoreImpersonationEnabled || hiveMetastoreAuthentication instanceof NoHiveMetastoreAuthentication) {
+        if (!impersonationEnabled) {
             return client;
         }
 
         client.setUGI(context.getUsername());
-        return clientProvider.createMetastoreClient();
+        return client;
     }
 
     private RetryDriver retry()

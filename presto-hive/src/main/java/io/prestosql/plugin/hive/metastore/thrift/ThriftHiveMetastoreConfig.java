@@ -119,7 +119,7 @@ public class ThriftHiveMetastoreConfig
     }
 
     @Config("hive.metastore.thrift.impersonation.enabled")
-    @ConfigDescription("Should Presto user be impersonated when communicating with Hive metastore")
+    @ConfigDescription("Should end user be impersonated when communicating with metastore")
     public ThriftHiveMetastoreConfig setImpersonationEnabled(boolean impersonationEnabled)
     {
         this.impersonationEnabled = impersonationEnabled;
