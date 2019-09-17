@@ -14,7 +14,7 @@
 package io.prestosql.plugin.hive;
 
 import com.google.common.io.Files;
-import io.prestosql.plugin.hive.authentication.HiveContext;
+import io.prestosql.plugin.hive.authentication.HiveIdentity;
 import io.prestosql.plugin.hive.metastore.Database;
 import io.prestosql.plugin.hive.metastore.HiveMetastore;
 import io.prestosql.spi.connector.ConnectorMetadata;
@@ -37,7 +37,7 @@ public abstract class AbstractTestHiveLocal
         extends AbstractTestHive
 {
     private static final String DEFAULT_TEST_DB_NAME = "test";
-    private static final HiveContext HIVE_CONTEXT = new HiveContext(SESSION);
+    private static final HiveIdentity HIVE_IDENTITY = new HiveIdentity(SESSION);
 
     private File tempDir;
     private String testDbName;
@@ -61,7 +61,7 @@ public abstract class AbstractTestHiveLocal
 
         HiveMetastore metastore = createMetastore(tempDir);
 
-        metastore.createDatabase(HIVE_CONTEXT,
+        metastore.createDatabase(HIVE_IDENTITY,
                 Database.builder()
                         .setDatabaseName(testDbName)
                         .setOwnerName("public")
@@ -79,7 +79,7 @@ public abstract class AbstractTestHiveLocal
             throws IOException
     {
         try {
-            getMetastoreClient().dropDatabase(HIVE_CONTEXT, testDbName);
+            getMetastoreClient().dropDatabase(HIVE_IDENTITY, testDbName);
         }
         finally {
             deleteRecursively(tempDir.toPath(), ALLOW_INSECURE);

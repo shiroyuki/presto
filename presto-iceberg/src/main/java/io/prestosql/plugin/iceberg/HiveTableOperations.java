@@ -17,7 +17,7 @@ import io.airlift.log.Logger;
 import io.prestosql.plugin.hive.HdfsEnvironment;
 import io.prestosql.plugin.hive.HdfsEnvironment.HdfsContext;
 import io.prestosql.plugin.hive.HiveType;
-import io.prestosql.plugin.hive.authentication.HiveContext;
+import io.prestosql.plugin.hive.authentication.HiveIdentity;
 import io.prestosql.plugin.hive.metastore.Column;
 import io.prestosql.plugin.hive.metastore.HiveMetastore;
 import io.prestosql.plugin.hive.metastore.PrincipalPrivileges;
@@ -82,8 +82,8 @@ public class HiveTableOperations
             FileInputFormat.class.getName(),
             FileOutputFormat.class.getName());
 
-    private final HiveContext context;
     private final HiveMetastore metastore;
+    private final HiveIdentity identity;
     private final String database;
     private final String tableName;
     private final Optional<String> owner;
@@ -95,27 +95,27 @@ public class HiveTableOperations
     private boolean shouldRefresh = true;
     private int version = -1;
 
-    public HiveTableOperations(HiveMetastore metastore, HdfsEnvironment hdfsEnvironment, HdfsContext hdfsContext, HiveContext hiveContext, String database, String table)
+    public HiveTableOperations(HiveMetastore metastore, HdfsEnvironment hdfsEnvironment, HdfsContext hdfsContext, HiveIdentity identity, String database, String table)
     {
-        this(new HdfsFileIo(hdfsEnvironment, hdfsContext), hiveContext, metastore, database, table, Optional.empty(), Optional.empty());
+        this(new HdfsFileIo(hdfsEnvironment, hdfsContext), metastore, identity, database, table, Optional.empty(), Optional.empty());
     }
 
-    public HiveTableOperations(HiveMetastore metastore, HdfsEnvironment hdfsEnvironment, HdfsContext hdfsContext, HiveContext hiveContext, String database, String table, String owner, String location)
+    public HiveTableOperations(HiveMetastore metastore, HdfsEnvironment hdfsEnvironment, HdfsContext hdfsContext, HiveIdentity identity, String database, String table, String owner, String location)
     {
         this(new HdfsFileIo(hdfsEnvironment, hdfsContext),
-                hiveContext,
                 metastore,
+                identity,
                 database,
                 table,
                 Optional.of(requireNonNull(owner, "owner is null")),
                 Optional.of(requireNonNull(location, "location is null")));
     }
 
-    private HiveTableOperations(FileIO fileIo, HiveContext context, HiveMetastore metastore, String database, String table, Optional<String> owner, Optional<String> location)
+    private HiveTableOperations(FileIO fileIo, HiveMetastore metastore, HiveIdentity identity, String database, String table, Optional<String> owner, Optional<String> location)
     {
         this.fileIo = requireNonNull(fileIo, "fileIo is null");
-        this.context = requireNonNull(context, "context is null");
         this.metastore = requireNonNull(metastore, "metastore is null");
+        this.identity = requireNonNull(identity, "identity is null");
         this.database = requireNonNull(database, "database is null");
         this.tableName = requireNonNull(table, "table is null");
         this.owner = requireNonNull(owner, "owner is null");
@@ -220,7 +220,7 @@ public class HiveTableOperations
 
         PrincipalPrivileges privileges = buildInitialPrivilegeSet(table.getOwner());
         ConnectorIdentity identity = new ConnectorIdentity(table.getOwner(), Optional.empty(), Optional.empty());
-        HiveContext context = new HiveContext(identity);
+        HiveIdentity context = new HiveIdentity(identity);
         if (base == null) {
             metastore.createTable(context, table, privileges);
         }
@@ -264,7 +264,7 @@ public class HiveTableOperations
 
     private Table getTable()
     {
-        return metastore.getTable(context, database, tableName)
+        return metastore.getTable(identity, database, tableName)
                 .orElseThrow(() -> new TableNotFoundException(getSchemaTableName()));
     }
 

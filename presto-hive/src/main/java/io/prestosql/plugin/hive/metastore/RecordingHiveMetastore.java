@@ -25,7 +25,7 @@ import io.prestosql.plugin.hive.ForRecordingHiveMetastore;
 import io.prestosql.plugin.hive.HiveConfig;
 import io.prestosql.plugin.hive.HiveType;
 import io.prestosql.plugin.hive.PartitionStatistics;
-import io.prestosql.plugin.hive.authentication.HiveContext;
+import io.prestosql.plugin.hive.authentication.HiveIdentity;
 import io.prestosql.spi.PrestoException;
 import io.prestosql.spi.security.RoleGrant;
 import io.prestosql.spi.statistics.ColumnStatisticType;
@@ -209,9 +209,9 @@ public class RecordingHiveMetastore
     }
 
     @Override
-    public Optional<Table> getTable(HiveContext context, String databaseName, String tableName)
+    public Optional<Table> getTable(HiveIdentity identity, String databaseName, String tableName)
     {
-        return loadValue(tableCache, hiveTableName(databaseName, tableName), () -> delegate.getTable(context, databaseName, tableName));
+        return loadValue(tableCache, hiveTableName(databaseName, tableName), () -> delegate.getTable(identity, databaseName, tableName));
     }
 
     @Override
@@ -221,35 +221,35 @@ public class RecordingHiveMetastore
     }
 
     @Override
-    public PartitionStatistics getTableStatistics(HiveContext context, String databaseName, String tableName)
+    public PartitionStatistics getTableStatistics(HiveIdentity identity, String databaseName, String tableName)
     {
         return loadValue(
                 tableStatisticsCache,
                 hiveTableName(databaseName, tableName),
-                () -> delegate.getTableStatistics(context, databaseName, tableName));
+                () -> delegate.getTableStatistics(identity, databaseName, tableName));
     }
 
     @Override
-    public Map<String, PartitionStatistics> getPartitionStatistics(HiveContext context, String databaseName, String tableName, Set<String> partitionNames)
+    public Map<String, PartitionStatistics> getPartitionStatistics(HiveIdentity identity, String databaseName, String tableName, Set<String> partitionNames)
     {
         return loadValue(
                 partitionStatisticsCache,
                 getHivePartitionNames(databaseName, tableName, partitionNames),
-                () -> delegate.getPartitionStatistics(context, databaseName, tableName, partitionNames));
+                () -> delegate.getPartitionStatistics(identity, databaseName, tableName, partitionNames));
     }
 
     @Override
-    public void updateTableStatistics(HiveContext context, String databaseName, String tableName, Function<PartitionStatistics, PartitionStatistics> update)
+    public void updateTableStatistics(HiveIdentity identity, String databaseName, String tableName, Function<PartitionStatistics, PartitionStatistics> update)
     {
         verifyRecordingMode();
-        delegate.updateTableStatistics(context, databaseName, tableName, update);
+        delegate.updateTableStatistics(identity, databaseName, tableName, update);
     }
 
     @Override
-    public void updatePartitionStatistics(HiveContext context, String databaseName, String tableName, String partitionName, Function<PartitionStatistics, PartitionStatistics> update)
+    public void updatePartitionStatistics(HiveIdentity identity, String databaseName, String tableName, String partitionName, Function<PartitionStatistics, PartitionStatistics> update)
     {
         verifyRecordingMode();
-        delegate.updatePartitionStatistics(context, databaseName, tableName, partitionName, update);
+        delegate.updatePartitionStatistics(identity, databaseName, tableName, partitionName, update);
     }
 
     @Override
@@ -272,137 +272,137 @@ public class RecordingHiveMetastore
     }
 
     @Override
-    public void createDatabase(HiveContext context, Database database)
+    public void createDatabase(HiveIdentity identity, Database database)
     {
         verifyRecordingMode();
-        delegate.createDatabase(context, database);
+        delegate.createDatabase(identity, database);
     }
 
     @Override
-    public void dropDatabase(HiveContext context, String databaseName)
+    public void dropDatabase(HiveIdentity identity, String databaseName)
     {
         verifyRecordingMode();
-        delegate.dropDatabase(context, databaseName);
+        delegate.dropDatabase(identity, databaseName);
     }
 
     @Override
-    public void renameDatabase(HiveContext context, String databaseName, String newDatabaseName)
+    public void renameDatabase(HiveIdentity identity, String databaseName, String newDatabaseName)
     {
         verifyRecordingMode();
-        delegate.renameDatabase(context, databaseName, newDatabaseName);
+        delegate.renameDatabase(identity, databaseName, newDatabaseName);
     }
 
     @Override
-    public void createTable(HiveContext context, Table table, PrincipalPrivileges principalPrivileges)
+    public void createTable(HiveIdentity identity, Table table, PrincipalPrivileges principalPrivileges)
     {
         verifyRecordingMode();
-        delegate.createTable(context, table, principalPrivileges);
+        delegate.createTable(identity, table, principalPrivileges);
     }
 
     @Override
-    public void dropTable(HiveContext context, String databaseName, String tableName, boolean deleteData)
+    public void dropTable(HiveIdentity identity, String databaseName, String tableName, boolean deleteData)
     {
         verifyRecordingMode();
-        delegate.dropTable(context, databaseName, tableName, deleteData);
+        delegate.dropTable(identity, databaseName, tableName, deleteData);
     }
 
     @Override
-    public void replaceTable(HiveContext context, String databaseName, String tableName, Table newTable, PrincipalPrivileges principalPrivileges)
+    public void replaceTable(HiveIdentity identity, String databaseName, String tableName, Table newTable, PrincipalPrivileges principalPrivileges)
     {
         verifyRecordingMode();
-        delegate.replaceTable(context, databaseName, tableName, newTable, principalPrivileges);
+        delegate.replaceTable(identity, databaseName, tableName, newTable, principalPrivileges);
     }
 
     @Override
-    public void renameTable(HiveContext context, String databaseName, String tableName, String newDatabaseName, String newTableName)
+    public void renameTable(HiveIdentity identity, String databaseName, String tableName, String newDatabaseName, String newTableName)
     {
         verifyRecordingMode();
-        delegate.renameTable(context, databaseName, tableName, newDatabaseName, newTableName);
+        delegate.renameTable(identity, databaseName, tableName, newDatabaseName, newTableName);
     }
 
     @Override
-    public void commentTable(HiveContext context, String databaseName, String tableName, Optional<String> comment)
+    public void commentTable(HiveIdentity identity, String databaseName, String tableName, Optional<String> comment)
     {
         verifyRecordingMode();
-        delegate.commentTable(context, databaseName, tableName, comment);
+        delegate.commentTable(identity, databaseName, tableName, comment);
     }
 
     @Override
-    public void addColumn(HiveContext context, String databaseName, String tableName, String columnName, HiveType columnType, String columnComment)
+    public void addColumn(HiveIdentity identity, String databaseName, String tableName, String columnName, HiveType columnType, String columnComment)
     {
         verifyRecordingMode();
-        delegate.addColumn(context, databaseName, tableName, columnName, columnType, columnComment);
+        delegate.addColumn(identity, databaseName, tableName, columnName, columnType, columnComment);
     }
 
     @Override
-    public void renameColumn(HiveContext context, String databaseName, String tableName, String oldColumnName, String newColumnName)
+    public void renameColumn(HiveIdentity identity, String databaseName, String tableName, String oldColumnName, String newColumnName)
     {
         verifyRecordingMode();
-        delegate.renameColumn(context, databaseName, tableName, oldColumnName, newColumnName);
+        delegate.renameColumn(identity, databaseName, tableName, oldColumnName, newColumnName);
     }
 
     @Override
-    public void dropColumn(HiveContext context, String databaseName, String tableName, String columnName)
+    public void dropColumn(HiveIdentity identity, String databaseName, String tableName, String columnName)
     {
         verifyRecordingMode();
-        delegate.dropColumn(context, databaseName, tableName, columnName);
+        delegate.dropColumn(identity, databaseName, tableName, columnName);
     }
 
     @Override
-    public Optional<Partition> getPartition(HiveContext context, String databaseName, String tableName, List<String> partitionValues)
+    public Optional<Partition> getPartition(HiveIdentity identity, String databaseName, String tableName, List<String> partitionValues)
     {
         return loadValue(
                 partitionCache,
                 hivePartitionName(databaseName, tableName, partitionValues),
-                () -> delegate.getPartition(context, databaseName, tableName, partitionValues));
+                () -> delegate.getPartition(identity, databaseName, tableName, partitionValues));
     }
 
     @Override
-    public Optional<List<String>> getPartitionNames(HiveContext context, String databaseName, String tableName)
+    public Optional<List<String>> getPartitionNames(HiveIdentity identity, String databaseName, String tableName)
     {
         return loadValue(
                 partitionNamesCache,
                 hiveTableName(databaseName, tableName),
-                () -> delegate.getPartitionNames(context, databaseName, tableName));
+                () -> delegate.getPartitionNames(identity, databaseName, tableName));
     }
 
     @Override
-    public Optional<List<String>> getPartitionNamesByParts(HiveContext context, String databaseName, String tableName, List<String> parts)
+    public Optional<List<String>> getPartitionNamesByParts(HiveIdentity identity, String databaseName, String tableName, List<String> parts)
     {
         return loadValue(
                 partitionNamesByPartsCache,
                 partitionFilter(databaseName, tableName, parts),
-                () -> delegate.getPartitionNamesByParts(context, databaseName, tableName, parts));
+                () -> delegate.getPartitionNamesByParts(identity, databaseName, tableName, parts));
     }
 
     @Override
-    public Map<String, Optional<Partition>> getPartitionsByNames(HiveContext context, String databaseName, String tableName, List<String> partitionNames)
+    public Map<String, Optional<Partition>> getPartitionsByNames(HiveIdentity identity, String databaseName, String tableName, List<String> partitionNames)
     {
         return loadValue(
                 partitionsByNamesCache,
                 getHivePartitionNames(databaseName, tableName, ImmutableSet.copyOf(partitionNames)),
-                () -> delegate.getPartitionsByNames(context, databaseName, tableName, partitionNames));
+                () -> delegate.getPartitionsByNames(identity, databaseName, tableName, partitionNames));
     }
 
     @Override
-    public void addPartitions(HiveContext context, String databaseName, String tableName, List<PartitionWithStatistics> partitions)
+    public void addPartitions(HiveIdentity identity, String databaseName, String tableName, List<PartitionWithStatistics> partitions)
     {
         verifyRecordingMode();
-        delegate.addPartitions(context, databaseName, tableName, partitions);
+        delegate.addPartitions(identity, databaseName, tableName, partitions);
     }
 
     @Override
-    public void dropPartition(HiveContext context, String databaseName, String tableName, List<String> parts, boolean deleteData)
+    public void dropPartition(HiveIdentity identity, String databaseName, String tableName, List<String> parts, boolean deleteData)
     {
         verifyRecordingMode();
-        delegate.dropPartition(context, databaseName, tableName, parts, deleteData);
+        delegate.dropPartition(identity, databaseName, tableName, parts, deleteData);
     }
 
     @Override
-    public void alterPartition(HiveContext context, String databaseName, String tableName, PartitionWithStatistics partition)
+    public void alterPartition(HiveIdentity identity, String databaseName, String tableName, PartitionWithStatistics partition)
     {
         verifyRecordingMode();
-        delegate.alterPartition(context, databaseName, tableName, partition);
+        delegate.alterPartition(identity, databaseName, tableName, partition);
     }
 
     @Override
@@ -415,17 +415,17 @@ public class RecordingHiveMetastore
     }
 
     @Override
-    public void grantTablePrivileges(HiveContext context, String databaseName, String tableName, String tableOwner, HivePrincipal grantee, Set<HivePrivilegeInfo> privileges)
+    public void grantTablePrivileges(String databaseName, String tableName, String tableOwner, HivePrincipal grantee, Set<HivePrivilegeInfo> privileges)
     {
         verifyRecordingMode();
-        delegate.grantTablePrivileges(context, databaseName, tableName, tableOwner, grantee, privileges);
+        delegate.grantTablePrivileges(databaseName, tableName, tableOwner, grantee, privileges);
     }
 
     @Override
-    public void revokeTablePrivileges(HiveContext context, String databaseName, String tableName, String tableOwner, HivePrincipal grantee, Set<HivePrivilegeInfo> privileges)
+    public void revokeTablePrivileges(String databaseName, String tableName, String tableOwner, HivePrincipal grantee, Set<HivePrivilegeInfo> privileges)
     {
         verifyRecordingMode();
-        delegate.revokeTablePrivileges(context, databaseName, tableName, tableOwner, grantee, privileges);
+        delegate.revokeTablePrivileges(databaseName, tableName, tableOwner, grantee, privileges);
     }
 
     private Set<HivePartitionName> getHivePartitionNames(String databaseName, String tableName, Set<String> partitionNames)
@@ -436,17 +436,17 @@ public class RecordingHiveMetastore
     }
 
     @Override
-    public void createRole(HiveContext context, String role, String grantor)
+    public void createRole(String role, String grantor)
     {
         verifyRecordingMode();
-        delegate.createRole(context, role, grantor);
+        delegate.createRole(role, grantor);
     }
 
     @Override
-    public void dropRole(HiveContext context, String role)
+    public void dropRole(String role)
     {
         verifyRecordingMode();
-        delegate.dropRole(context, role);
+        delegate.dropRole(role);
     }
 
     @Override
@@ -462,17 +462,17 @@ public class RecordingHiveMetastore
     }
 
     @Override
-    public void grantRoles(HiveContext context, Set<String> roles, Set<HivePrincipal> grantees, boolean withAdminOption, HivePrincipal grantor)
+    public void grantRoles(Set<String> roles, Set<HivePrincipal> grantees, boolean withAdminOption, HivePrincipal grantor)
     {
         verifyRecordingMode();
-        delegate.grantRoles(context, roles, grantees, withAdminOption, grantor);
+        delegate.grantRoles(roles, grantees, withAdminOption, grantor);
     }
 
     @Override
-    public void revokeRoles(HiveContext context, Set<String> roles, Set<HivePrincipal> grantees, boolean adminOptionFor, HivePrincipal grantor)
+    public void revokeRoles(Set<String> roles, Set<HivePrincipal> grantees, boolean adminOptionFor, HivePrincipal grantor)
     {
         verifyRecordingMode();
-        delegate.revokeRoles(context, roles, grantees, adminOptionFor, grantor);
+        delegate.revokeRoles(roles, grantees, adminOptionFor, grantor);
     }
 
     @Override

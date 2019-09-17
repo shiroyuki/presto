@@ -14,7 +14,7 @@
 package io.prestosql.plugin.hive.metastore.thrift;
 
 import io.prestosql.plugin.hive.PartitionStatistics;
-import io.prestosql.plugin.hive.authentication.HiveContext;
+import io.prestosql.plugin.hive.authentication.HiveIdentity;
 import io.prestosql.plugin.hive.metastore.HivePrincipal;
 import io.prestosql.plugin.hive.metastore.HivePrivilegeInfo;
 import io.prestosql.plugin.hive.metastore.PartitionWithStatistics;
@@ -39,17 +39,17 @@ import static io.prestosql.plugin.hive.HiveErrorCode.HIVE_INVALID_METADATA;
 
 public interface ThriftMetastore
 {
-    void createDatabase(HiveContext context, Database database);
+    void createDatabase(HiveIdentity identity, Database database);
 
-    void dropDatabase(HiveContext context, String databaseName);
+    void dropDatabase(HiveIdentity identity, String databaseName);
 
-    void alterDatabase(HiveContext context, String databaseName, Database database);
+    void alterDatabase(HiveIdentity identity, String databaseName, Database database);
 
-    void createTable(HiveContext context, Table table);
+    void createTable(HiveIdentity identity, Table table);
 
-    void dropTable(HiveContext context, String databaseName, String tableName, boolean deleteData);
+    void dropTable(HiveIdentity identity, String databaseName, String tableName, boolean deleteData);
 
-    void alterTable(HiveContext context, String databaseName, String tableName, Table table);
+    void alterTable(HiveIdentity identity, String databaseName, String tableName, Table table);
 
     List<String> getAllDatabases();
 
@@ -61,53 +61,53 @@ public interface ThriftMetastore
 
     Optional<Database> getDatabase(String databaseName);
 
-    void addPartitions(HiveContext context, String databaseName, String tableName, List<PartitionWithStatistics> partitions);
+    void addPartitions(HiveIdentity identity, String databaseName, String tableName, List<PartitionWithStatistics> partitions);
 
-    void dropPartition(HiveContext context, String databaseName, String tableName, List<String> parts, boolean deleteData);
+    void dropPartition(HiveIdentity identity, String databaseName, String tableName, List<String> parts, boolean deleteData);
 
-    void alterPartition(HiveContext context, String databaseName, String tableName, PartitionWithStatistics partition);
+    void alterPartition(HiveIdentity identity, String databaseName, String tableName, PartitionWithStatistics partition);
 
-    Optional<List<String>> getPartitionNames(HiveContext context, String databaseName, String tableName);
+    Optional<List<String>> getPartitionNames(HiveIdentity identity, String databaseName, String tableName);
 
-    Optional<List<String>> getPartitionNamesByParts(HiveContext context, String databaseName, String tableName, List<String> parts);
+    Optional<List<String>> getPartitionNamesByParts(HiveIdentity identity, String databaseName, String tableName, List<String> parts);
 
-    Optional<Partition> getPartition(HiveContext context, String databaseName, String tableName, List<String> partitionValues);
+    Optional<Partition> getPartition(HiveIdentity identity, String databaseName, String tableName, List<String> partitionValues);
 
-    List<Partition> getPartitionsByNames(String databaseName, String tableName, List<String> partitionNames);
+    List<Partition> getPartitionsByNames(HiveIdentity identity, String databaseName, String tableName, List<String> partitionNames);
 
-    Optional<Table> getTable(HiveContext context, String databaseName, String tableName);
+    Optional<Table> getTable(HiveIdentity identity, String databaseName, String tableName);
 
     Set<ColumnStatisticType> getSupportedColumnStatistics(Type type);
 
-    PartitionStatistics getTableStatistics(HiveContext context, String databaseName, String tableName);
+    PartitionStatistics getTableStatistics(HiveIdentity identity, String databaseName, String tableName);
 
-    Map<String, PartitionStatistics> getPartitionStatistics(HiveContext context, String databaseName, String tableName, Set<String> partitionNames);
+    Map<String, PartitionStatistics> getPartitionStatistics(HiveIdentity identity, String databaseName, String tableName, Set<String> partitionNames);
 
-    void updateTableStatistics(HiveContext context, String databaseName, String tableName, Function<PartitionStatistics, PartitionStatistics> update);
+    void updateTableStatistics(HiveIdentity identity, String databaseName, String tableName, Function<PartitionStatistics, PartitionStatistics> update);
 
-    void updatePartitionStatistics(HiveContext context, String databaseName, String tableName, String partitionName, Function<PartitionStatistics, PartitionStatistics> update);
+    void updatePartitionStatistics(HiveIdentity identity, String databaseName, String tableName, String partitionName, Function<PartitionStatistics, PartitionStatistics> update);
 
-    void createRole(HiveContext context, String role, String grantor);
+    void createRole(String role, String grantor);
 
-    void dropRole(HiveContext context, String role);
+    void dropRole(String role);
 
     Set<String> listRoles();
 
-    void grantRoles(HiveContext context, Set<String> roles, Set<HivePrincipal> grantees, boolean withAdminOption, HivePrincipal grantor);
+    void grantRoles(Set<String> roles, Set<HivePrincipal> grantees, boolean withAdminOption, HivePrincipal grantor);
 
-    void revokeRoles(HiveContext context, Set<String> roles, Set<HivePrincipal> grantees, boolean adminOptionFor, HivePrincipal grantor);
+    void revokeRoles(Set<String> roles, Set<HivePrincipal> grantees, boolean adminOptionFor, HivePrincipal grantor);
 
     Set<RoleGrant> listRoleGrants(HivePrincipal principal);
 
-    void grantTablePrivileges(HiveContext context, String databaseName, String tableName, String tableOwner, HivePrincipal grantee, Set<HivePrivilegeInfo> privileges);
+    void grantTablePrivileges(String databaseName, String tableName, String tableOwner, HivePrincipal grantee, Set<HivePrivilegeInfo> privileges);
 
-    void revokeTablePrivileges(HiveContext context, String databaseName, String tableName, String tableOwner, HivePrincipal grantee, Set<HivePrivilegeInfo> privileges);
+    void revokeTablePrivileges(String databaseName, String tableName, String tableOwner, HivePrincipal grantee, Set<HivePrivilegeInfo> privileges);
 
     Set<HivePrivilegeInfo> listTablePrivileges(String databaseName, String tableName, String tableOwner, HivePrincipal principal);
 
-    default Optional<List<FieldSchema>> getFields(HiveContext context, String databaseName, String tableName)
+    default Optional<List<FieldSchema>> getFields(HiveIdentity identity, String databaseName, String tableName)
     {
-        Optional<Table> table = getTable(context, databaseName, tableName);
+        Optional<Table> table = getTable(identity, databaseName, tableName);
         if (!table.isPresent()) {
             throw new TableNotFoundException(new SchemaTableName(databaseName, tableName));
         }

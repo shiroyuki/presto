@@ -25,9 +25,8 @@ import io.prestosql.GroupByHashPageIndexerFactory;
 import io.prestosql.plugin.hive.AbstractTestHive.HiveTransaction;
 import io.prestosql.plugin.hive.AbstractTestHive.Transaction;
 import io.prestosql.plugin.hive.HdfsEnvironment.HdfsContext;
-import io.prestosql.plugin.hive.authentication.HiveContext;
+import io.prestosql.plugin.hive.authentication.HiveIdentity;
 import io.prestosql.plugin.hive.authentication.NoHdfsAuthentication;
-import io.prestosql.plugin.hive.authentication.NoHiveMetastoreAuthentication;
 import io.prestosql.plugin.hive.metastore.Database;
 import io.prestosql.plugin.hive.metastore.HiveMetastore;
 import io.prestosql.plugin.hive.metastore.PrincipalPrivileges;
@@ -166,7 +165,7 @@ public abstract class AbstractTestHiveFileSystem
 
         hdfsEnvironment = new HdfsEnvironment(hdfsConfiguration, config, new NoHdfsAuthentication());
         metastoreClient = new TestingHiveMetastore(
-                new BridgingHiveMetastore(new ThriftHiveMetastore(metastoreLocator, new ThriftHiveMetastoreConfig(), new HiveConfig(), new NoHiveMetastoreAuthentication())),
+                new BridgingHiveMetastore(new ThriftHiveMetastore(metastoreLocator, new ThriftHiveMetastoreConfig())),
                 executor,
                 getBasePath(),
                 hdfsEnvironment);
@@ -472,32 +471,32 @@ public abstract class AbstractTestHiveFileSystem
         }
 
         @Override
-        public void createTable(HiveContext context, Table table, PrincipalPrivileges privileges)
+        public void createTable(HiveIdentity identity, Table table, PrincipalPrivileges privileges)
         {
             // hack to work around the metastore not being configured for S3 or other FS
             Table.Builder tableBuilder = Table.builder(table);
             tableBuilder.getStorageBuilder().setLocation("/");
-            super.createTable(context, tableBuilder.build(), privileges);
+            super.createTable(identity, tableBuilder.build(), privileges);
         }
 
         @Override
-        public void dropTable(HiveContext context, String databaseName, String tableName, boolean deleteData)
+        public void dropTable(HiveIdentity identity, String databaseName, String tableName, boolean deleteData)
         {
             try {
-                Optional<Table> table = getTable(context, databaseName, tableName);
+                Optional<Table> table = getTable(identity, databaseName, tableName);
                 if (!table.isPresent()) {
                     throw new TableNotFoundException(new SchemaTableName(databaseName, tableName));
                 }
 
                 // hack to work around the metastore not being configured for S3 or other FS
-                List<String> locations = listAllDataPaths(context, databaseName, tableName);
+                List<String> locations = listAllDataPaths(identity, databaseName, tableName);
 
                 Table.Builder tableBuilder = Table.builder(table.get());
                 tableBuilder.getStorageBuilder().setLocation("/");
 
                 // drop table
-                replaceTable(context, databaseName, tableName, tableBuilder.build(), new PrincipalPrivileges(ImmutableMultimap.of(), ImmutableMultimap.of()));
-                delegate.dropTable(context, databaseName, tableName, false);
+                replaceTable(identity, databaseName, tableName, tableBuilder.build(), new PrincipalPrivileges(ImmutableMultimap.of(), ImmutableMultimap.of()));
+                delegate.dropTable(identity, databaseName, tableName, false);
 
                 // drop data
                 if (deleteData) {
@@ -517,8 +516,8 @@ public abstract class AbstractTestHiveFileSystem
 
         public void updateTableLocation(String databaseName, String tableName, String location)
         {
-            HiveContext context = new HiveContext(TESTING_CONTEXT.getIdentity());
-            Optional<Table> table = getTable(context, databaseName, tableName);
+            HiveIdentity identity = new HiveIdentity(TESTING_CONTEXT.getIdentity());
+            Optional<Table> table = getTable(identity, databaseName, tableName);
             if (!table.isPresent()) {
                 throw new TableNotFoundException(new SchemaTableName(databaseName, tableName));
             }
@@ -527,13 +526,13 @@ public abstract class AbstractTestHiveFileSystem
             tableBuilder.getStorageBuilder().setLocation(location);
 
             // NOTE: this clears the permissions
-            replaceTable(context, databaseName, tableName, tableBuilder.build(), new PrincipalPrivileges(ImmutableMultimap.of(), ImmutableMultimap.of()));
+            replaceTable(identity, databaseName, tableName, tableBuilder.build(), new PrincipalPrivileges(ImmutableMultimap.of(), ImmutableMultimap.of()));
         }
 
-        private List<String> listAllDataPaths(HiveContext context, String schemaName, String tableName)
+        private List<String> listAllDataPaths(HiveIdentity identity, String schemaName, String tableName)
         {
             ImmutableList.Builder<String> locations = ImmutableList.builder();
-            Table table = getTable(context, schemaName, tableName).get();
+            Table table = getTable(identity, schemaName, tableName).get();
             if (table.getStorage().getLocation() != null) {
                 // For partitioned table, there should be nothing directly under this directory.
                 // But including this location in the set makes the directory content assert more
@@ -541,9 +540,9 @@ public abstract class AbstractTestHiveFileSystem
                 locations.add(table.getStorage().getLocation());
             }
 
-            Optional<List<String>> partitionNames = getPartitionNames(context, schemaName, tableName);
+            Optional<List<String>> partitionNames = getPartitionNames(identity, schemaName, tableName);
             if (partitionNames.isPresent()) {
-                getPartitionsByNames(context, schemaName, tableName, partitionNames.get()).values().stream()
+                getPartitionsByNames(identity, schemaName, tableName, partitionNames.get()).values().stream()
                         .map(Optional::get)
                         .map(partition -> partition.getStorage().getLocation())
                         .filter(location -> !location.startsWith(table.getStorage().getLocation()))

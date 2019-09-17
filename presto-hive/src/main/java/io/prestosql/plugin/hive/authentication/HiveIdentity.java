@@ -21,20 +21,19 @@ import java.util.Objects;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
-public final class HiveContext
+public final class HiveIdentity
 {
     private final String username;
 
-    public HiveContext(ConnectorIdentity identity)
+    public HiveIdentity(ConnectorSession session)
+    {
+        this(requireNonNull(session, "session is null").getIdentity());
+    }
+
+    public HiveIdentity(ConnectorIdentity identity)
     {
         requireNonNull(identity, "identity is null");
         this.username = requireNonNull(identity.getUser(), "identity.getUser() is null");
-    }
-
-    public HiveContext(ConnectorSession session)
-    {
-        requireNonNull(session, "session is null");
-        this.username = requireNonNull(session.getIdentity().getUser(), "session.getIdentity().getUser() is null");
     }
 
     public String getUsername()
@@ -60,7 +59,7 @@ public final class HiveContext
             return false;
         }
 
-        HiveContext other = (HiveContext) o;
+        HiveIdentity other = (HiveIdentity) o;
         return Objects.equals(username, other.username);
     }
 

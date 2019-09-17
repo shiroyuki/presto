@@ -17,7 +17,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Files;
 import io.prestosql.Session;
 import io.prestosql.benchmark.BenchmarkSuite;
-import io.prestosql.plugin.hive.authentication.HiveContext;
+import io.prestosql.plugin.hive.authentication.HiveIdentity;
 import io.prestosql.plugin.hive.metastore.Database;
 import io.prestosql.plugin.hive.metastore.HiveMetastore;
 import io.prestosql.plugin.tpch.TpchConnectorFactory;
@@ -69,8 +69,8 @@ public final class HiveBenchmarkQueryRunner
         File hiveDir = new File(tempDir, "hive_data");
         HiveMetastore metastore = createTestingFileHiveMetastore(hiveDir);
 
-        HiveContext context = new HiveContext(SESSION);
-        metastore.createDatabase(context,
+        HiveIdentity identity = new HiveIdentity(SESSION);
+        metastore.createDatabase(identity,
                 Database.builder()
                         .setDatabaseName("tpch")
                         .setOwnerName("public")
