@@ -28,6 +28,7 @@ import io.prestosql.GroupByHashPageIndexerFactory;
 import io.prestosql.plugin.hive.authentication.HiveIdentity;
 import io.prestosql.plugin.hive.metastore.HiveMetastore;
 import io.prestosql.plugin.hive.metastore.HivePageSinkMetadata;
+import io.prestosql.plugin.hive.metastore.thrift.ThriftHiveMetastoreConfig;
 import io.prestosql.spi.Page;
 import io.prestosql.spi.PageBuilder;
 import io.prestosql.spi.block.BlockBuilder;
@@ -272,7 +273,8 @@ public class TestHivePageSink
                 new HiveEventClient(),
                 new HiveSessionProperties(config, new OrcFileWriterConfig(), new ParquetFileWriterConfig()),
                 stats,
-                getDefaultOrcFileWriterFactory(config));
+                getDefaultOrcFileWriterFactory(config),
+                new ThriftHiveMetastoreConfig());
         return provider.createPageSink(transaction, getSession(config), handle);
     }
 

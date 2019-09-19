@@ -17,6 +17,7 @@ import io.airlift.json.JsonCodec;
 import io.prestosql.plugin.hive.HdfsEnvironment;
 import io.prestosql.plugin.hive.HiveConfig;
 import io.prestosql.plugin.hive.metastore.HiveMetastore;
+import io.prestosql.plugin.hive.metastore.thrift.ThriftHiveMetastoreConfig;
 import io.prestosql.spi.type.TypeManager;
 
 import javax.inject.Inject;
@@ -31,6 +32,7 @@ public class IcebergMetadataFactory
     private final TypeManager typeManager;
     private final JsonCodec<CommitTaskData> commitTaskCodec;
     private final long perTransactionCacheMaximumSize;
+    private final boolean impersonationEnabled;
 
     @Inject
     public IcebergMetadataFactory(
@@ -38,13 +40,15 @@ public class IcebergMetadataFactory
             HiveMetastore metastore,
             HdfsEnvironment hdfsEnvironment,
             TypeManager typeManager,
-            JsonCodec<CommitTaskData> commitTaskDataJsonCodec)
+            JsonCodec<CommitTaskData> commitTaskDataJsonCodec,
+            ThriftHiveMetastoreConfig thriftConfig)
     {
         this(metastore,
                 hdfsEnvironment,
                 typeManager,
                 commitTaskDataJsonCodec,
-                config.getPerTransactionMetastoreCacheMaximumSize());
+                config.getPerTransactionMetastoreCacheMaximumSize(),
+                thriftConfig.isImpersonationEnabled());
     }
 
     public IcebergMetadataFactory(
@@ -52,19 +56,21 @@ public class IcebergMetadataFactory
             HdfsEnvironment hdfsEnvironment,
             TypeManager typeManager,
             JsonCodec<CommitTaskData> commitTaskCodec,
-            long perTransactionCacheMaximumSize)
+            long perTransactionCacheMaximumSize,
+            boolean impersonationEnabled)
     {
         this.metastore = requireNonNull(metastore, "metastore is null");
         this.hdfsEnvironment = requireNonNull(hdfsEnvironment, "hdfsEnvironment is null");
         this.typeManager = requireNonNull(typeManager, "typeManager is null");
         this.commitTaskCodec = requireNonNull(commitTaskCodec, "commitTaskCodec is null");
         this.perTransactionCacheMaximumSize = perTransactionCacheMaximumSize;
+        this.impersonationEnabled = impersonationEnabled;
     }
 
     public IcebergMetadata create()
     {
         return new IcebergMetadata(
-                memoizeMetastore(metastore, perTransactionCacheMaximumSize),
+                memoizeMetastore(metastore, perTransactionCacheMaximumSize, impersonationEnabled),
                 hdfsEnvironment,
                 typeManager,
                 commitTaskCodec);

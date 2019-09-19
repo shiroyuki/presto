@@ -762,7 +762,7 @@ public class SemiTransactionalHiveMetastore
             if (currentStatistics == null) {
                 throw new PrestoException(HIVE_METASTORE_ERROR, "currentStatistics is null");
             }
-            HdfsContext hdfsContext = new HdfsContext(session, databaseName, tableName);
+            HdfsContext context = new HdfsContext(session, databaseName, tableName);
             partitionActionsOfTable.put(
                     partitionValues,
                     new Action<>(
@@ -774,7 +774,7 @@ public class SemiTransactionalHiveMetastore
                                     Optional.of(fileNames),
                                     merge(currentStatistics, statisticsUpdate),
                                     statisticsUpdate),
-                            hdfsContext,
+                            context,
                             identity));
             return;
         }

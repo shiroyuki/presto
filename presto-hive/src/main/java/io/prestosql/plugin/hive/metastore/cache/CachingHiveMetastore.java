@@ -38,6 +38,7 @@ import io.prestosql.plugin.hive.metastore.PrincipalPrivileges;
 import io.prestosql.plugin.hive.metastore.Table;
 import io.prestosql.plugin.hive.metastore.TablesWithParameterCacheKey;
 import io.prestosql.plugin.hive.metastore.UserTableKey;
+import io.prestosql.plugin.hive.metastore.thrift.ThriftHiveMetastoreConfig;
 import io.prestosql.spi.PrestoException;
 import io.prestosql.spi.security.RoleGrant;
 import io.prestosql.spi.statistics.ColumnStatisticType;
@@ -86,6 +87,7 @@ public class CachingHiveMetastore
         implements HiveMetastore
 {
     protected final HiveMetastore delegate;
+    private final boolean impersonationEnabled;
     private final LoadingCache<String, Optional<Database>> databaseCache;
     private final LoadingCache<String, List<String>> databaseNamesCache;
     private final LoadingCache<WithIdentity<HiveTableName>, Optional<Table>> tableCache;
@@ -102,39 +104,43 @@ public class CachingHiveMetastore
     private final LoadingCache<HivePrincipal, Set<RoleGrant>> roleGrantsCache;
 
     @Inject
-    public CachingHiveMetastore(@ForCachingHiveMetastore HiveMetastore delegate, @ForCachingHiveMetastore Executor executor, CachingHiveMetastoreConfig config)
+    public CachingHiveMetastore(@ForCachingHiveMetastore HiveMetastore delegate, @ForCachingHiveMetastore Executor executor, CachingHiveMetastoreConfig config, ThriftHiveMetastoreConfig thriftConfig)
     {
         this(
                 delegate,
                 executor,
                 config.getMetastoreCacheTtl(),
                 config.getMetastoreRefreshInterval(),
-                config.getMetastoreCacheMaximumSize());
+                config.getMetastoreCacheMaximumSize(),
+                thriftConfig.isImpersonationEnabled());
     }
 
-    public CachingHiveMetastore(HiveMetastore delegate, Executor executor, Duration cacheTtl, Duration refreshInterval, long maximumSize)
+    public CachingHiveMetastore(HiveMetastore delegate, Executor executor, Duration cacheTtl, Duration refreshInterval, long maximumSize, boolean impersonationEnabled)
     {
         this(
                 delegate,
                 executor,
                 OptionalLong.of(cacheTtl.toMillis()),
                 refreshInterval.toMillis() >= cacheTtl.toMillis() ? OptionalLong.empty() : OptionalLong.of(refreshInterval.toMillis()),
-                maximumSize);
+                maximumSize,
+                impersonationEnabled);
     }
 
-    public static CachingHiveMetastore memoizeMetastore(HiveMetastore delegate, long maximumSize)
+    public static CachingHiveMetastore memoizeMetastore(HiveMetastore delegate, long maximumSize, boolean impersonationEnabled)
     {
         return new CachingHiveMetastore(
                 delegate,
                 newDirectExecutorService(),
                 OptionalLong.empty(),
                 OptionalLong.empty(),
-                maximumSize);
+                maximumSize,
+                impersonationEnabled);
     }
 
-    private CachingHiveMetastore(HiveMetastore delegate, Executor executor, OptionalLong expiresAfterWriteMillis, OptionalLong refreshMills, long maximumSize)
+    private CachingHiveMetastore(HiveMetastore delegate, Executor executor, OptionalLong expiresAfterWriteMillis, OptionalLong refreshMills, long maximumSize, boolean impersonationEnabled)
     {
         this.delegate = requireNonNull(delegate, "delegate is null");
+        this.impersonationEnabled = impersonationEnabled;
         requireNonNull(executor, "executor is null");
 
         databaseNamesCache = newCacheBuilder(expiresAfterWriteMillis, refreshMills, maximumSize)
@@ -278,6 +284,7 @@ public class CachingHiveMetastore
     @Override
     public Optional<Table> getTable(HiveIdentity identity, String databaseName, String tableName)
     {
+        identity = updateIdentity(identity);
         return get(tableCache, new WithIdentity<>(identity, hiveTableName(databaseName, tableName)));
     }
 
@@ -295,7 +302,7 @@ public class CachingHiveMetastore
     @Override
     public PartitionStatistics getTableStatistics(HiveIdentity identity, String databaseName, String tableName)
     {
-        return get(tableStatisticsCache, new WithIdentity<>(identity, hiveTableName(databaseName, tableName)));
+        return get(tableStatisticsCache, new WithIdentity<>(updateIdentity(identity), hiveTableName(databaseName, tableName)));
     }
 
     private PartitionStatistics loadTableColumnStatistics(WithIdentity<HiveTableName> hiveTableName)
@@ -307,7 +314,7 @@ public class CachingHiveMetastore
     public Map<String, PartitionStatistics> getPartitionStatistics(HiveIdentity identity, String databaseName, String tableName, Set<String> partitionNames)
     {
         List<WithIdentity<HivePartitionName>> partitions = partitionNames.stream()
-                .map(partitionName -> new WithIdentity<>(identity, hivePartitionName(databaseName, tableName, partitionName)))
+                .map(partitionName -> new WithIdentity<>(updateIdentity(identity), hivePartitionName(databaseName, tableName, partitionName)))
                 .collect(toImmutableList());
         Map<WithIdentity<HivePartitionName>, PartitionStatistics> statistics = getAll(partitionStatisticsCache, partitions);
         return statistics.entrySet()
@@ -352,6 +359,7 @@ public class CachingHiveMetastore
     @Override
     public void updateTableStatistics(HiveIdentity identity, String databaseName, String tableName, Function<PartitionStatistics, PartitionStatistics> update)
     {
+        identity = updateIdentity(identity);
         try {
             delegate.updateTableStatistics(identity, databaseName, tableName, update);
         }
@@ -363,6 +371,7 @@ public class CachingHiveMetastore
     @Override
     public void updatePartitionStatistics(HiveIdentity identity, String databaseName, String tableName, String partitionName, Function<PartitionStatistics, PartitionStatistics> update)
     {
+        identity = updateIdentity(identity);
         try {
             delegate.updatePartitionStatistics(identity, databaseName, tableName, partitionName, update);
         }
@@ -408,6 +417,7 @@ public class CachingHiveMetastore
     @Override
     public void createDatabase(HiveIdentity identity, Database database)
     {
+        identity = updateIdentity(identity);
         try {
             delegate.createDatabase(identity, database);
         }
@@ -419,6 +429,7 @@ public class CachingHiveMetastore
     @Override
     public void dropDatabase(HiveIdentity identity, String databaseName)
     {
+        identity = updateIdentity(identity);
         try {
             delegate.dropDatabase(identity, databaseName);
         }
@@ -430,6 +441,7 @@ public class CachingHiveMetastore
     @Override
     public void renameDatabase(HiveIdentity identity, String databaseName, String newDatabaseName)
     {
+        identity = updateIdentity(identity);
         try {
             delegate.renameDatabase(identity, databaseName, newDatabaseName);
         }
@@ -448,6 +460,7 @@ public class CachingHiveMetastore
     @Override
     public void createTable(HiveIdentity identity, Table table, PrincipalPrivileges principalPrivileges)
     {
+        identity = updateIdentity(identity);
         try {
             delegate.createTable(identity, table, principalPrivileges);
         }
@@ -459,6 +472,7 @@ public class CachingHiveMetastore
     @Override
     public void dropTable(HiveIdentity identity, String databaseName, String tableName, boolean deleteData)
     {
+        identity = updateIdentity(identity);
         try {
             delegate.dropTable(identity, databaseName, tableName, deleteData);
         }
@@ -470,6 +484,7 @@ public class CachingHiveMetastore
     @Override
     public void replaceTable(HiveIdentity identity, String databaseName, String tableName, Table newTable, PrincipalPrivileges principalPrivileges)
     {
+        identity = updateIdentity(identity);
         try {
             delegate.replaceTable(identity, databaseName, tableName, newTable, principalPrivileges);
         }
@@ -482,6 +497,7 @@ public class CachingHiveMetastore
     @Override
     public void renameTable(HiveIdentity identity, String databaseName, String tableName, String newDatabaseName, String newTableName)
     {
+        identity = updateIdentity(identity);
         try {
             delegate.renameTable(identity, databaseName, tableName, newDatabaseName, newTableName);
         }
@@ -494,6 +510,7 @@ public class CachingHiveMetastore
     @Override
     public void commentTable(HiveIdentity identity, String databaseName, String tableName, Optional<String> comment)
     {
+        identity = updateIdentity(identity);
         try {
             delegate.commentTable(identity, databaseName, tableName, comment);
         }
@@ -505,6 +522,7 @@ public class CachingHiveMetastore
     @Override
     public void addColumn(HiveIdentity identity, String databaseName, String tableName, String columnName, HiveType columnType, String columnComment)
     {
+        identity = updateIdentity(identity);
         try {
             delegate.addColumn(identity, databaseName, tableName, columnName, columnType, columnComment);
         }
@@ -516,6 +534,7 @@ public class CachingHiveMetastore
     @Override
     public void renameColumn(HiveIdentity identity, String databaseName, String tableName, String oldColumnName, String newColumnName)
     {
+        identity = updateIdentity(identity);
         try {
             delegate.renameColumn(identity, databaseName, tableName, oldColumnName, newColumnName);
         }
@@ -527,6 +546,7 @@ public class CachingHiveMetastore
     @Override
     public void dropColumn(HiveIdentity identity, String databaseName, String tableName, String columnName)
     {
+        identity = updateIdentity(identity);
         try {
             delegate.dropColumn(identity, databaseName, tableName, columnName);
         }
@@ -564,6 +584,7 @@ public class CachingHiveMetastore
     @Override
     public Optional<Partition> getPartition(HiveIdentity identity, String databaseName, String tableName, List<String> partitionValues)
     {
+        identity = updateIdentity(identity);
         WithIdentity<HivePartitionName> name = new WithIdentity<>(identity, hivePartitionName(databaseName, tableName, partitionValues));
         return get(partitionCache, name);
     }
@@ -571,6 +592,7 @@ public class CachingHiveMetastore
     @Override
     public Optional<List<String>> getPartitionNames(HiveIdentity identity, String databaseName, String tableName)
     {
+        identity = updateIdentity(identity);
         return get(partitionNamesCache, new WithIdentity<>(identity, hiveTableName(databaseName, tableName)));
     }
 
@@ -582,6 +604,7 @@ public class CachingHiveMetastore
     @Override
     public Optional<List<String>> getPartitionNamesByParts(HiveIdentity identity, String databaseName, String tableName, List<String> parts)
     {
+        identity = updateIdentity(identity);
         return get(partitionFilterCache, new WithIdentity<>(identity, partitionFilter(databaseName, tableName, parts)));
     }
 
@@ -597,7 +620,7 @@ public class CachingHiveMetastore
     @Override
     public Map<String, Optional<Partition>> getPartitionsByNames(HiveIdentity identity, String databaseName, String tableName, List<String> partitionNames)
     {
-        Iterable<WithIdentity<HivePartitionName>> names = transform(partitionNames, name -> new WithIdentity<>(identity, hivePartitionName(databaseName, tableName, name)));
+        Iterable<WithIdentity<HivePartitionName>> names = transform(partitionNames, name -> new WithIdentity<>(updateIdentity(identity), hivePartitionName(databaseName, tableName, name)));
 
         Map<WithIdentity<HivePartitionName>, Optional<Partition>> all = getAll(partitionCache, names);
         ImmutableMap.Builder<String, Optional<Partition>> partitionsByName = ImmutableMap.builder();
@@ -624,7 +647,7 @@ public class CachingHiveMetastore
         WithIdentity<HivePartitionName> firstPartition = Iterables.get(partitionNames, 0);
 
         HiveTableName hiveTableName = firstPartition.getKey().getHiveTableName();
-        HiveIdentity identity = firstPartition.getIdentity();
+        HiveIdentity identity = updateIdentity(firstPartition.getIdentity());
         String databaseName = hiveTableName.getDatabaseName();
         String tableName = hiveTableName.getTableName();
 
@@ -645,6 +668,7 @@ public class CachingHiveMetastore
     @Override
     public void addPartitions(HiveIdentity identity, String databaseName, String tableName, List<PartitionWithStatistics> partitions)
     {
+        identity = updateIdentity(identity);
         try {
             delegate.addPartitions(identity, databaseName, tableName, partitions);
         }
@@ -657,6 +681,7 @@ public class CachingHiveMetastore
     @Override
     public void dropPartition(HiveIdentity identity, String databaseName, String tableName, List<String> parts, boolean deleteData)
     {
+        identity = updateIdentity(identity);
         try {
             delegate.dropPartition(identity, databaseName, tableName, parts, deleteData);
         }
@@ -668,6 +693,7 @@ public class CachingHiveMetastore
     @Override
     public void alterPartition(HiveIdentity identity, String databaseName, String tableName, PartitionWithStatistics partition)
     {
+        identity = updateIdentity(identity);
         try {
             delegate.alterPartition(identity, databaseName, tableName, partition);
         }
@@ -855,5 +881,11 @@ public class CachingHiveMetastore
                     .add("key", key)
                     .toString();
         }
+    }
+
+    private HiveIdentity updateIdentity(HiveIdentity identity)
+    {
+         // remove identity if not doing impersonation
+        return impersonationEnabled ? identity : new HiveIdentity();
     }
 }

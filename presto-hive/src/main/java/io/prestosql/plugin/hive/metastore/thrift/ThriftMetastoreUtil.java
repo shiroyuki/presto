@@ -288,7 +288,7 @@ public final class ThriftMetastoreUtil
 
     public static Stream<HivePrivilegeInfo> listEnabledTablePrivileges(SemiTransactionalHiveMetastore metastore, String databaseName, String tableName, ConnectorIdentity identity)
     {
-        return listTablePrivileges(new HiveIdentity(identity), metastore, databaseName, tableName, listEnabledPrincipals(metastore, identity));
+        return listTablePrivileges(metastore, new HiveIdentity(identity), databaseName, tableName, listEnabledPrincipals(metastore, identity));
     }
 
     public static Stream<HivePrivilegeInfo> listApplicableTablePrivileges(SemiTransactionalHiveMetastore metastore, String databaseName, String tableName, ConnectorIdentity identity)
@@ -299,10 +299,10 @@ public final class ThriftMetastoreUtil
                 Stream.of(userPrincipal),
                 listApplicableRoles(metastore, userPrincipal)
                         .map(role -> new HivePrincipal(ROLE, role)));
-        return listTablePrivileges(new HiveIdentity(identity), metastore, databaseName, tableName, principals);
+        return listTablePrivileges(metastore, new HiveIdentity(identity), databaseName, tableName, principals);
     }
 
-    private static Stream<HivePrivilegeInfo> listTablePrivileges(HiveIdentity identity, SemiTransactionalHiveMetastore metastore, String databaseName, String tableName, Stream<HivePrincipal> principals)
+    private static Stream<HivePrivilegeInfo> listTablePrivileges(SemiTransactionalHiveMetastore metastore, HiveIdentity identity, String databaseName, String tableName, Stream<HivePrincipal> principals)
     {
         return principals.flatMap(principal -> metastore.listTablePrivileges(identity, databaseName, tableName, principal).stream());
     }

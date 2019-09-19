@@ -160,7 +160,7 @@ public class HivePartitionManager
                 .collect(toImmutableList());
         }
         else {
-            List<String> partitionNames = getFilteredPartitionNames(identity, metastore, tableName, partitionColumns, effectivePredicate);
+            List<String> partitionNames = getFilteredPartitionNames(metastore, identity, tableName, partitionColumns, effectivePredicate);
             partitionsIterable = () -> partitionNames.stream()
                     // Apply extra filters which could not be done by getFilteredPartitionNames
                     .map(partitionName -> parseValuesAndFilterPartition(tableName, partitionName, partitionColumns, partitionTypes, effectivePredicate, predicate))
@@ -288,7 +288,7 @@ public class HivePartitionManager
         return constraint.test(partition.getKeys());
     }
 
-    private List<String> getFilteredPartitionNames(HiveIdentity identity, SemiTransactionalHiveMetastore metastore, SchemaTableName tableName, List<HiveColumnHandle> partitionKeys, TupleDomain<ColumnHandle> effectivePredicate)
+    private List<String> getFilteredPartitionNames(SemiTransactionalHiveMetastore metastore, HiveIdentity identity, SchemaTableName tableName, List<HiveColumnHandle> partitionKeys, TupleDomain<ColumnHandle> effectivePredicate)
     {
         checkArgument(effectivePredicate.getDomains().isPresent());
 

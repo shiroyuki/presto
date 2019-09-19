@@ -704,7 +704,8 @@ public abstract class AbstractTestHive
                 executor,
                 Duration.valueOf("1m"),
                 Duration.valueOf("15s"),
-                10000);
+                10000,
+                false);
 
         setup(databaseName, hiveConfig, metastore);
     }
@@ -719,6 +720,7 @@ public abstract class AbstractTestHive
         hdfsEnvironment = new HdfsEnvironment(hdfsConfiguration, hiveConfig, new NoHdfsAuthentication());
         locationService = new HiveLocationService(hdfsEnvironment);
         JsonCodec<PartitionUpdate> partitionUpdateCodec = JsonCodec.jsonCodec(PartitionUpdate.class);
+        ThriftHiveMetastoreConfig thriftConfig = new ThriftHiveMetastoreConfig();
         metadataFactory = new HiveMetadataFactory(
                 metastoreClient,
                 hdfsEnvironment,
@@ -737,7 +739,8 @@ public abstract class AbstractTestHive
                 newFixedThreadPool(2),
                 new HiveTypeTranslator(),
                 TEST_SERVER_VERSION,
-                SqlStandardAccessControlMetadata::new);
+                SqlStandardAccessControlMetadata::new,
+                thriftConfig.isImpersonationEnabled());
         transactionManager = new HiveTransactionManager();
         splitManager = new HiveSplitManager(
                 transactionHandle -> ((HiveMetadata) transactionManager.get(transactionHandle)).getMetastore(),
@@ -770,7 +773,8 @@ public abstract class AbstractTestHive
                 new HiveEventClient(),
                 new HiveSessionProperties(hiveConfig, new OrcFileWriterConfig(), new ParquetFileWriterConfig()),
                 new HiveWriterStats(),
-                getDefaultOrcFileWriterFactory(hiveConfig));
+                getDefaultOrcFileWriterFactory(hiveConfig),
+                thriftConfig);
         pageSourceProvider = new HivePageSourceProvider(hiveConfig, hdfsEnvironment, getDefaultHiveRecordCursorProvider(hiveConfig), getDefaultHiveDataStreamFactories(hiveConfig), TYPE_MANAGER);
     }
 

@@ -17,6 +17,7 @@ import io.prestosql.spi.connector.ConnectorSession;
 import io.prestosql.spi.security.ConnectorIdentity;
 
 import java.util.Objects;
+import java.util.Optional;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
@@ -24,6 +25,12 @@ import static java.util.Objects.requireNonNull;
 public final class HiveIdentity
 {
     private final String username;
+
+    // TODO: This should be called only by CachingHiveMetastore
+    public HiveIdentity()
+    {
+        this(new ConnectorIdentity("dummy_identity", Optional.empty(), Optional.empty()));
+    }
 
     public HiveIdentity(ConnectorSession session)
     {

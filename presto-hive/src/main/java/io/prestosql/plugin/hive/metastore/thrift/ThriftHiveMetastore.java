@@ -65,6 +65,8 @@ import org.weakref.jmx.Managed;
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -244,7 +246,8 @@ public class ThriftHiveMetastore
                     .stopOn(NoSuchObjectException.class, HiveViewNotSupportedException.class)
                     .stopOnIllegalExceptions()
                     .run("getTable", stats.getGetTable().wrap(() -> {
-                        Table table = getTableFromMetastore(databaseName, tableName);
+                        ClientSupplier clientSupplier = () -> createMetastoreClient(identity);
+                        Table table = getTableFromMetastore(clientSupplier, databaseName, tableName);
                         if (table.getTableType().equals(TableType.VIRTUAL_VIEW.name()) && !isPrestoView(table)) {
                             throw new HiveViewNotSupportedException(new SchemaTableName(databaseName, tableName));
                         }
@@ -262,10 +265,11 @@ public class ThriftHiveMetastore
         }
     }
 
-    private Table getTableFromMetastore(String databaseName, String tableName)
+    private Table getTableFromMetastore(ClientSupplier supplier, String databaseName, String tableName)
             throws TException
     {
         return alternativeCall(
+                supplier,
                 chosenGetTableAlternative,
                 client -> client.getTable(databaseName, tableName),
                 client -> client.getTableWithCapabilities(databaseName, tableName));
@@ -783,6 +787,7 @@ public class ThriftHiveMetastore
         String filterWithLike = HIVE_FILTER_FIELD_PARAMS + parameterKey + " LIKE \"" + parameterValue + "\"";
 
         return alternativeCall(
+                () -> createMetastoreClient(),
                 chosenTableParamAlternative,
                 client -> client.getTableNamesByFilter(databaseName, filterWithEquals),
                 client -> client.getTableNamesByFilter(databaseName, filterWithLike));
@@ -1300,7 +1305,7 @@ public class ThriftHiveMetastore
             return retry()
                     .stopOnIllegalExceptions()
                     .run("listTablePrivileges", stats.getListTablePrivileges().wrap(() -> {
-                        Table table = getTableFromMetastore(databaseName, tableName);
+                        Table table = getTableFromMetastore(this::createMetastoreClient, databaseName, tableName);
                         try (ThriftMetastoreClient client = createMetastoreClient()) {
                             ImmutableSet.Builder<HivePrivilegeInfo> privileges = ImmutableSet.builder();
                             List<HiveObjectPrivilege> hiveObjectPrivilegeList;
@@ -1362,6 +1367,7 @@ public class ThriftHiveMetastore
 
     @SafeVarargs
     private final <T> T alternativeCall(
+            ClientSupplier clientSupplier,
             AtomicInteger chosenAlternative,
             Call<T>... alternatives)
             throws TException
@@ -1371,7 +1377,7 @@ public class ThriftHiveMetastore
         checkArgument(chosen == Integer.MAX_VALUE || (0 <= chosen && chosen < alternatives.length), "Bad chosen alternative value: %s", chosen);
 
         if (chosen != Integer.MAX_VALUE) {
-            try (ThriftMetastoreClient client = createMetastoreClient()) {
+            try (ThriftMetastoreClient client = clientSupplier.createMetastoreClient()) {
                 return alternatives[chosen].callOn(client);
             }
         }
@@ -1379,7 +1385,7 @@ public class ThriftHiveMetastore
         Exception firstException = null;
         for (int i = 0; i < alternatives.length; i++) {
             int position = i;
-            try (ThriftMetastoreClient client = createMetastoreClient()) {
+            try (ThriftMetastoreClient client = clientSupplier.createMetastoreClient()) {
                 T result = alternatives[i].callOn(client);
                 chosenAlternative.updateAndGet(currentChosen -> Math.min(currentChosen, position));
                 return result;
@@ -1413,8 +1419,25 @@ public class ThriftHiveMetastore
             return client;
         }
 
-        client.setUGI(identity.getUsername());
+        setMetastoreUserOrClose(client, identity.getUsername());
         return client;
+    }
+
+    private static void setMetastoreUserOrClose(ThriftMetastoreClient client, String username)
+            throws TException
+    {
+        try {
+            client.setUGI(username);
+        }
+        catch (Throwable t) {
+            // close client and suppress any error from close
+            try (Closeable ignored = client) {
+                throw t;
+            }
+            catch (IOException e) {
+                // ignored
+            }
+        }
     }
 
     private RetryDriver retry()
@@ -1432,6 +1455,13 @@ public class ThriftHiveMetastore
         }
         throwIfUnchecked(throwable);
         throw new RuntimeException(throwable);
+    }
+
+    @FunctionalInterface
+    private interface ClientSupplier
+    {
+        ThriftMetastoreClient createMetastoreClient()
+                throws TException;
     }
 
     @FunctionalInterface
