@@ -182,8 +182,7 @@ public abstract class AbstractTestHiveFileSystem
                 partitionUpdateCodec,
                 new HiveTypeTranslator(),
                 new NodeVersion("test_version"),
-                SqlStandardAccessControlMetadata::new,
-                new ThriftHiveMetastoreConfig());
+                SqlStandardAccessControlMetadata::new);
         transactionManager = new HiveTransactionManager();
         splitManager = new HiveSplitManager(
                 transactionHandle -> ((HiveMetadata) transactionManager.get(transactionHandle)).getMetastore(),
@@ -202,7 +201,6 @@ public abstract class AbstractTestHiveFileSystem
                 config.getSplitLoaderConcurrency(),
                 config.getMaxSplitsPerSecond(),
                 config.getRecursiveDirWalkerEnabled());
-        ThriftHiveMetastoreConfig thriftConfig = new ThriftHiveMetastoreConfig();
         pageSinkProvider = new HivePageSinkProvider(
                 getDefaultHiveFileWriterFactories(config),
                 hdfsEnvironment,
@@ -217,8 +215,7 @@ public abstract class AbstractTestHiveFileSystem
                 new HiveEventClient(),
                 new HiveSessionProperties(config, new OrcFileWriterConfig(), new ParquetFileWriterConfig()),
                 new HiveWriterStats(),
-                getDefaultOrcFileWriterFactory(config),
-                thriftConfig);
+                getDefaultOrcFileWriterFactory(config));
         pageSourceProvider = new HivePageSourceProvider(config, hdfsEnvironment, getDefaultHiveRecordCursorProvider(config), getDefaultHiveDataStreamFactories(config), TYPE_MANAGER);
     }
 
@@ -459,7 +456,7 @@ public abstract class AbstractTestHiveFileSystem
 
         public TestingHiveMetastore(HiveMetastore delegate, Executor executor, Path basePath, HdfsEnvironment hdfsEnvironment)
         {
-            super(delegate, executor, new CachingHiveMetastoreConfig(), new ThriftHiveMetastoreConfig());
+            super(delegate, executor, new CachingHiveMetastoreConfig());
             this.basePath = basePath;
             this.hdfsEnvironment = hdfsEnvironment;
         }

@@ -518,6 +518,12 @@ public class InMemoryThriftMetastore
         throw new UnsupportedOperationException();
     }
 
+    @Override
+    public boolean isImpersonationEnabled()
+    {
+        return false;
+    }
+
     private static boolean isParentDir(File directory, File baseDirectory)
     {
         for (File parent = directory.getParentFile(); parent != null; parent = parent.getParentFile()) {

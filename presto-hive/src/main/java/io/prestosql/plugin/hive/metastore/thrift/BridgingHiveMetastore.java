@@ -382,4 +382,10 @@ public class BridgingHiveMetastore
     {
         return delegate.listTablePrivileges(databaseName, tableName, tableOwner, principal);
     }
+
+    @Override
+    public boolean isImpersonationEnabled()
+    {
+        return delegate.isImpersonationEnabled();
+    }
 }

@@ -484,6 +484,12 @@ public class RecordingHiveMetastore
                 () -> delegate.listRoleGrants(principal));
     }
 
+    @Override
+    public boolean isImpersonationEnabled()
+    {
+        return delegate.isImpersonationEnabled();
+    }
+
     private <K, V> V loadValue(Cache<K, V> cache, K key, Supplier<V> valueSupplier)
     {
         if (replay) {

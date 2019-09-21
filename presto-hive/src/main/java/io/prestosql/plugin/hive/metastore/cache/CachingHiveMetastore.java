@@ -38,7 +38,6 @@ import io.prestosql.plugin.hive.metastore.PrincipalPrivileges;
 import io.prestosql.plugin.hive.metastore.Table;
 import io.prestosql.plugin.hive.metastore.TablesWithParameterCacheKey;
 import io.prestosql.plugin.hive.metastore.UserTableKey;
-import io.prestosql.plugin.hive.metastore.thrift.ThriftHiveMetastoreConfig;
 import io.prestosql.spi.PrestoException;
 import io.prestosql.spi.security.RoleGrant;
 import io.prestosql.spi.statistics.ColumnStatisticType;
@@ -87,7 +86,6 @@ public class CachingHiveMetastore
         implements HiveMetastore
 {
     protected final HiveMetastore delegate;
-    private final boolean impersonationEnabled;
     private final LoadingCache<String, Optional<Database>> databaseCache;
     private final LoadingCache<String, List<String>> databaseNamesCache;
     private final LoadingCache<WithIdentity<HiveTableName>, Optional<Table>> tableCache;
@@ -104,43 +102,39 @@ public class CachingHiveMetastore
     private final LoadingCache<HivePrincipal, Set<RoleGrant>> roleGrantsCache;
 
     @Inject
-    public CachingHiveMetastore(@ForCachingHiveMetastore HiveMetastore delegate, @ForCachingHiveMetastore Executor executor, CachingHiveMetastoreConfig config, ThriftHiveMetastoreConfig thriftConfig)
+    public CachingHiveMetastore(@ForCachingHiveMetastore HiveMetastore delegate, @ForCachingHiveMetastore Executor executor, CachingHiveMetastoreConfig config)
     {
         this(
                 delegate,
                 executor,
                 config.getMetastoreCacheTtl(),
                 config.getMetastoreRefreshInterval(),
-                config.getMetastoreCacheMaximumSize(),
-                thriftConfig.isImpersonationEnabled());
+                config.getMetastoreCacheMaximumSize());
     }
 
-    public CachingHiveMetastore(HiveMetastore delegate, Executor executor, Duration cacheTtl, Duration refreshInterval, long maximumSize, boolean impersonationEnabled)
+    public CachingHiveMetastore(HiveMetastore delegate, Executor executor, Duration cacheTtl, Duration refreshInterval, long maximumSize)
     {
         this(
                 delegate,
                 executor,
                 OptionalLong.of(cacheTtl.toMillis()),
                 refreshInterval.toMillis() >= cacheTtl.toMillis() ? OptionalLong.empty() : OptionalLong.of(refreshInterval.toMillis()),
-                maximumSize,
-                impersonationEnabled);
+                maximumSize);
     }
 
-    public static CachingHiveMetastore memoizeMetastore(HiveMetastore delegate, long maximumSize, boolean impersonationEnabled)
+    public static CachingHiveMetastore memoizeMetastore(HiveMetastore delegate, long maximumSize)
     {
         return new CachingHiveMetastore(
                 delegate,
                 newDirectExecutorService(),
                 OptionalLong.empty(),
                 OptionalLong.empty(),
-                maximumSize,
-                impersonationEnabled);
+                maximumSize);
     }
 
-    private CachingHiveMetastore(HiveMetastore delegate, Executor executor, OptionalLong expiresAfterWriteMillis, OptionalLong refreshMills, long maximumSize, boolean impersonationEnabled)
+    private CachingHiveMetastore(HiveMetastore delegate, Executor executor, OptionalLong expiresAfterWriteMillis, OptionalLong refreshMills, long maximumSize)
     {
         this.delegate = requireNonNull(delegate, "delegate is null");
-        this.impersonationEnabled = impersonationEnabled;
         requireNonNull(executor, "executor is null");
 
         databaseNamesCache = newCacheBuilder(expiresAfterWriteMillis, refreshMills, maximumSize)
@@ -814,6 +808,12 @@ public class CachingHiveMetastore
         return get(tablePrivilegesCache, new UserTableKey(principal, databaseName, tableName, tableOwner));
     }
 
+    @Override
+    public boolean isImpersonationEnabled()
+    {
+        return delegate.isImpersonationEnabled();
+    }
+
     private Set<HivePrivilegeInfo> loadTablePrivileges(String databaseName, String tableName, String tableOwner, HivePrincipal principal)
     {
         return delegate.listTablePrivileges(databaseName, tableName, tableOwner, principal);
@@ -886,6 +886,6 @@ public class CachingHiveMetastore
     private HiveIdentity updateIdentity(HiveIdentity identity)
     {
          // remove identity if not doing impersonation
-        return impersonationEnabled ? identity : new HiveIdentity();
+        return delegate.isImpersonationEnabled() ? identity : HiveIdentity.none();
     }
 }

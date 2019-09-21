@@ -25,6 +25,7 @@ import io.prestosql.plugin.hive.authentication.HiveIdentity;
 import io.prestosql.plugin.hive.authentication.NoHdfsAuthentication;
 import io.prestosql.plugin.hive.metastore.Database;
 import io.prestosql.plugin.hive.metastore.file.FileHiveMetastore;
+import io.prestosql.plugin.hive.metastore.thrift.ThriftHiveMetastoreConfig;
 import io.prestosql.plugin.tpch.TpchPlugin;
 import io.prestosql.spi.security.Identity;
 import io.prestosql.spi.security.PrincipalType;
@@ -107,8 +108,9 @@ public final class HiveQueryRunner
             HiveConfig hiveConfig = new HiveConfig();
             HdfsConfiguration hdfsConfiguration = new HiveHdfsConfiguration(new HdfsConfigurationInitializer(hiveConfig), ImmutableSet.of());
             HdfsEnvironment hdfsEnvironment = new HdfsEnvironment(hdfsConfiguration, hiveConfig, new NoHdfsAuthentication());
+            ThriftHiveMetastoreConfig thriftConfig = new ThriftHiveMetastoreConfig();
 
-            FileHiveMetastore metastore = new FileHiveMetastore(hdfsEnvironment, baseDir.toURI().toString(), "test");
+            FileHiveMetastore metastore = new FileHiveMetastore(hdfsEnvironment, baseDir.toURI().toString(), "test", thriftConfig.isImpersonationEnabled());
             queryRunner.installPlugin(new HivePlugin(HIVE_CATALOG, Optional.of(metastore)));
 
             Map<String, String> hiveProperties = ImmutableMap.<String, String>builder()

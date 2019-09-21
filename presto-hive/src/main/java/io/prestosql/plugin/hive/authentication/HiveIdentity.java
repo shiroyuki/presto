@@ -26,8 +26,7 @@ public final class HiveIdentity
 {
     private final String username;
 
-    // TODO: This should be called only by CachingHiveMetastore
-    public HiveIdentity()
+    private HiveIdentity()
     {
         this(new ConnectorIdentity("dummy_identity", Optional.empty(), Optional.empty()));
     }
@@ -41,6 +40,12 @@ public final class HiveIdentity
     {
         requireNonNull(identity, "identity is null");
         this.username = requireNonNull(identity.getUser(), "identity.getUser() is null");
+    }
+
+    public static HiveIdentity none()
+    {
+        // this should be called only by CachingHiveMetastore
+        return new HiveIdentity();
     }
 
     public String getUsername()

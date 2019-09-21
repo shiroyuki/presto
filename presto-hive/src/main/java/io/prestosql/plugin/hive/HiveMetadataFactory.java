@@ -19,7 +19,6 @@ import io.airlift.log.Logger;
 import io.prestosql.plugin.hive.metastore.HiveMetastore;
 import io.prestosql.plugin.hive.metastore.SemiTransactionalHiveMetastore;
 import io.prestosql.plugin.hive.metastore.cache.CachingHiveMetastore;
-import io.prestosql.plugin.hive.metastore.thrift.ThriftHiveMetastoreConfig;
 import io.prestosql.plugin.hive.security.AccessControlMetadataFactory;
 import io.prestosql.plugin.hive.statistics.MetastoreHiveStatisticsProvider;
 import io.prestosql.spi.type.TypeManager;
@@ -43,7 +42,6 @@ public class HiveMetadataFactory
     private final boolean writesToNonManagedTablesEnabled;
     private final boolean createsOfNonManagedTablesEnabled;
     private final long perTransactionCacheMaximumSize;
-    private final boolean impersonationEnabled;
     private final HiveMetastore metastore;
     private final HdfsEnvironment hdfsEnvironment;
     private final HivePartitionManager partitionManager;
@@ -69,8 +67,7 @@ public class HiveMetadataFactory
             JsonCodec<PartitionUpdate> partitionUpdateCodec,
             TypeTranslator typeTranslator,
             NodeVersion nodeVersion,
-            AccessControlMetadataFactory accessControlMetadataFactory,
-            ThriftHiveMetastoreConfig thriftConfig)
+            AccessControlMetadataFactory accessControlMetadataFactory)
     {
         this(
                 metastore,
@@ -90,8 +87,7 @@ public class HiveMetadataFactory
                 executorService,
                 typeTranslator,
                 nodeVersion.toString(),
-                accessControlMetadataFactory,
-                thriftConfig.isImpersonationEnabled());
+                accessControlMetadataFactory);
     }
 
     public HiveMetadataFactory(
@@ -112,8 +108,7 @@ public class HiveMetadataFactory
             ExecutorService executorService,
             TypeTranslator typeTranslator,
             String prestoVersion,
-            AccessControlMetadataFactory accessControlMetadataFactory,
-            boolean impersonationEnabled)
+            AccessControlMetadataFactory accessControlMetadataFactory)
     {
         this.allowCorruptWritesForTesting = allowCorruptWritesForTesting;
         this.skipDeletionForAlter = skipDeletionForAlter;
@@ -121,7 +116,6 @@ public class HiveMetadataFactory
         this.writesToNonManagedTablesEnabled = writesToNonManagedTablesEnabled;
         this.createsOfNonManagedTablesEnabled = createsOfNonManagedTablesEnabled;
         this.perTransactionCacheMaximumSize = perTransactionCacheMaximumSize;
-        this.impersonationEnabled = impersonationEnabled;
 
         this.metastore = requireNonNull(metastore, "metastore is null");
         this.hdfsEnvironment = requireNonNull(hdfsEnvironment, "hdfsEnvironment is null");
@@ -149,7 +143,7 @@ public class HiveMetadataFactory
     {
         SemiTransactionalHiveMetastore metastore = new SemiTransactionalHiveMetastore(
                 hdfsEnvironment,
-                CachingHiveMetastore.memoizeMetastore(this.metastore, perTransactionCacheMaximumSize, impersonationEnabled), // per-transaction cache
+                CachingHiveMetastore.memoizeMetastore(this.metastore, perTransactionCacheMaximumSize), // per-transaction cache
                 renameExecution,
                 skipDeletionForAlter,
                 skipTargetCleanupOnRollback);

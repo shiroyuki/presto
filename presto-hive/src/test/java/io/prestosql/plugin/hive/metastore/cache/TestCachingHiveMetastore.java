@@ -70,8 +70,7 @@ public class TestCachingHiveMetastore
                 executor,
                 new Duration(5, TimeUnit.MINUTES),
                 new Duration(1, TimeUnit.MINUTES),
-                1000,
-                false);
+                1000);
         stats = thriftHiveMetastore.getStats();
     }
 
@@ -291,8 +290,7 @@ public class TestCachingHiveMetastore
         return new CachingHiveMetastore(
                 new BridgingHiveMetastore(createThriftHiveMetastore()),
                 directExecutor(),
-                config,
-                new ThriftHiveMetastoreConfig());
+                config);
     }
 
     private static class MockMetastoreLocator

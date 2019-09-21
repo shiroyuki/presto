@@ -105,6 +105,8 @@ public interface ThriftMetastore
 
     Set<HivePrivilegeInfo> listTablePrivileges(String databaseName, String tableName, String tableOwner, HivePrincipal principal);
 
+    boolean isImpersonationEnabled();
+
     default Optional<List<FieldSchema>> getFields(HiveIdentity identity, String databaseName, String tableName)
     {
         Optional<Table> table = getTable(identity, databaseName, tableName);

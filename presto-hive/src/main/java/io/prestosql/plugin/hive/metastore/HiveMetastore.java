@@ -108,4 +108,6 @@ public interface HiveMetastore
     void revokeTablePrivileges(String databaseName, String tableName, String tableOwner, HivePrincipal grantee, Set<HivePrivilegeInfo> privileges);
 
     Set<HivePrivilegeInfo> listTablePrivileges(String databaseName, String tableName, String tableOwner, HivePrincipal principal);
+
+    boolean isImpersonationEnabled();
 }

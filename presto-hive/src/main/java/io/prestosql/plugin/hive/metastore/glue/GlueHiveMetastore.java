@@ -81,6 +81,7 @@ import io.prestosql.plugin.hive.metastore.PrincipalPrivileges;
 import io.prestosql.plugin.hive.metastore.Table;
 import io.prestosql.plugin.hive.metastore.glue.converter.GlueInputConverter;
 import io.prestosql.plugin.hive.metastore.glue.converter.GlueToPrestoConverter;
+import io.prestosql.plugin.hive.metastore.thrift.ThriftHiveMetastoreConfig;
 import io.prestosql.plugin.hive.util.HiveUtil;
 import io.prestosql.plugin.hive.util.HiveWriteUtils;
 import io.prestosql.spi.PrestoException;
@@ -142,15 +143,17 @@ public class GlueHiveMetastore
     private final AWSGlueAsync glueClient;
     private final Optional<String> defaultDir;
     private final String catalogId;
+    private final boolean impersonationEnabled;
 
     @Inject
-    public GlueHiveMetastore(HdfsEnvironment hdfsEnvironment, GlueHiveMetastoreConfig glueConfig)
+    public GlueHiveMetastore(HdfsEnvironment hdfsEnvironment, GlueHiveMetastoreConfig glueConfig, ThriftHiveMetastoreConfig thriftConfig)
     {
         this.hdfsEnvironment = requireNonNull(hdfsEnvironment, "hdfsEnvironment is null");
         this.hdfsContext = new HdfsContext(new ConnectorIdentity(DEFAULT_METASTORE_USER, Optional.empty(), Optional.empty()));
         this.glueClient = requireNonNull(createAsyncGlueClient(glueConfig), "glueClient is null");
         this.defaultDir = glueConfig.getDefaultWarehouseDir();
         this.catalogId = glueConfig.getCatalogId().orElse(null);
+        this.impersonationEnabled = requireNonNull(thriftConfig, "thriftConfig is null").isImpersonationEnabled();
     }
 
     private static AWSGlueAsync createAsyncGlueClient(GlueHiveMetastoreConfig config)
@@ -910,5 +913,11 @@ public class GlueHiveMetastore
     public Set<HivePrivilegeInfo> listTablePrivileges(String databaseName, String tableName, String tableOwner, HivePrincipal principal)
     {
         throw new PrestoException(NOT_SUPPORTED, "listTablePrivileges is not supported by Glue");
+    }
+
+    @Override
+    public boolean isImpersonationEnabled()
+    {
+        return impersonationEnabled;
     }
 }

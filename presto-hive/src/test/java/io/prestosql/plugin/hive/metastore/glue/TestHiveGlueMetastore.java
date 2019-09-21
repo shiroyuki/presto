@@ -22,6 +22,7 @@ import io.prestosql.plugin.hive.HiveConfig;
 import io.prestosql.plugin.hive.HiveHdfsConfiguration;
 import io.prestosql.plugin.hive.authentication.NoHdfsAuthentication;
 import io.prestosql.plugin.hive.metastore.HiveMetastore;
+import io.prestosql.plugin.hive.metastore.thrift.ThriftHiveMetastoreConfig;
 
 import java.io.File;
 
@@ -49,8 +50,9 @@ public class TestHiveGlueMetastore
         HdfsEnvironment hdfsEnvironment = new HdfsEnvironment(hdfsConfiguration, hiveConfig, new NoHdfsAuthentication());
         GlueHiveMetastoreConfig glueConfig = new GlueHiveMetastoreConfig();
         glueConfig.setDefaultWarehouseDir(tempDir.toURI().toString());
+        ThriftHiveMetastoreConfig thriftConfig = new ThriftHiveMetastoreConfig();
 
-        return new GlueHiveMetastore(hdfsEnvironment, glueConfig);
+        return new GlueHiveMetastore(hdfsEnvironment, glueConfig, thriftConfig);
     }
 
     @Override

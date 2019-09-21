@@ -787,7 +787,7 @@ public class ThriftHiveMetastore
         String filterWithLike = HIVE_FILTER_FIELD_PARAMS + parameterKey + " LIKE \"" + parameterValue + "\"";
 
         return alternativeCall(
-                () -> createMetastoreClient(),
+                this::createMetastoreClient,
                 chosenTableParamAlternative,
                 client -> client.getTableNamesByFilter(databaseName, filterWithEquals),
                 client -> client.getTableNamesByFilter(databaseName, filterWithLike));
@@ -1341,6 +1341,12 @@ public class ThriftHiveMetastore
         }
     }
 
+    @Override
+    public boolean isImpersonationEnabled()
+    {
+        return impersonationEnabled;
+    }
+
     private PrivilegeBag buildPrivilegeBag(
             String databaseName,
             String tableName,
@@ -1435,7 +1441,7 @@ public class ThriftHiveMetastore
                 throw t;
             }
             catch (IOException e) {
-                // ignored
+                // impossible; will be suppressed
             }
         }
     }

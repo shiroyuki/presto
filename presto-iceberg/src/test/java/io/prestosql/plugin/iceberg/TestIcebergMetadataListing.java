@@ -67,7 +67,7 @@ public class TestIcebergMetadataListing
         HdfsConfiguration hdfsConfiguration = new HiveHdfsConfiguration(new HdfsConfigurationInitializer(hiveConfig), ImmutableSet.of());
         HdfsEnvironment hdfsEnvironment = new HdfsEnvironment(hdfsConfiguration, hiveConfig, new NoHdfsAuthentication());
 
-        metastore = new FileHiveMetastore(hdfsEnvironment, baseDir.toURI().toString(), "test");
+        metastore = new FileHiveMetastore(hdfsEnvironment, baseDir.toURI().toString(), "test", false);
 
         queryRunner.installPlugin(new IcebergPlugin(Optional.of(metastore)));
         queryRunner.createCatalog("iceberg", "iceberg");

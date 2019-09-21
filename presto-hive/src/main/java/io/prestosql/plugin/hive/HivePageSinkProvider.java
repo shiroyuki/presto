@@ -24,7 +24,6 @@ import io.prestosql.plugin.hive.authentication.HiveIdentity;
 import io.prestosql.plugin.hive.metastore.HiveMetastore;
 import io.prestosql.plugin.hive.metastore.HivePageSinkMetadataProvider;
 import io.prestosql.plugin.hive.metastore.SortingColumn;
-import io.prestosql.plugin.hive.metastore.thrift.ThriftHiveMetastoreConfig;
 import io.prestosql.spi.NodeManager;
 import io.prestosql.spi.PageIndexerFactory;
 import io.prestosql.spi.PageSorter;
@@ -71,7 +70,6 @@ public class HivePageSinkProvider
     private final HiveWriterStats hiveWriterStats;
     private final OrcFileWriterFactory orcFileWriterFactory;
     private final long perTransactionMetastoreCacheMaximumSize;
-    private final boolean impersonationEnabled;
 
     @Inject
     public HivePageSinkProvider(
@@ -88,8 +86,7 @@ public class HivePageSinkProvider
             EventClient eventClient,
             HiveSessionProperties hiveSessionProperties,
             HiveWriterStats hiveWriterStats,
-            OrcFileWriterFactory orcFileWriterFactory,
-            ThriftHiveMetastoreConfig thriftConfig)
+            OrcFileWriterFactory orcFileWriterFactory)
     {
         this.fileWriterFactories = ImmutableSet.copyOf(requireNonNull(fileWriterFactories, "fileWriterFactories is null"));
         this.hdfsEnvironment = requireNonNull(hdfsEnvironment, "hdfsEnvironment is null");
@@ -110,7 +107,6 @@ public class HivePageSinkProvider
         this.hiveWriterStats = requireNonNull(hiveWriterStats, "stats is null");
         this.orcFileWriterFactory = requireNonNull(orcFileWriterFactory, "orcFileWriterFactory is null");
         this.perTransactionMetastoreCacheMaximumSize = config.getPerTransactionMetastoreCacheMaximumSize();
-        this.impersonationEnabled = thriftConfig.isImpersonationEnabled();
     }
 
     @Override
@@ -151,7 +147,7 @@ public class HivePageSinkProvider
                 handle.getLocationHandle(),
                 locationService,
                 session.getQueryId(),
-                new HivePageSinkMetadataProvider(handle.getPageSinkMetadata(), memoizeMetastore(metastore, perTransactionMetastoreCacheMaximumSize, impersonationEnabled), new HiveIdentity(session)),
+                new HivePageSinkMetadataProvider(handle.getPageSinkMetadata(), memoizeMetastore(metastore, perTransactionMetastoreCacheMaximumSize), new HiveIdentity(session)),
                 typeManager,
                 hdfsEnvironment,
                 pageSorter,
