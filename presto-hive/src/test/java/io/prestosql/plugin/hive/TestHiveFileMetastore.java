@@ -17,7 +17,6 @@ import com.google.common.collect.ImmutableSet;
 import io.prestosql.plugin.hive.authentication.NoHdfsAuthentication;
 import io.prestosql.plugin.hive.metastore.HiveMetastore;
 import io.prestosql.plugin.hive.metastore.file.FileHiveMetastore;
-import io.prestosql.plugin.hive.metastore.thrift.ThriftHiveMetastoreConfig;
 import org.testng.SkipException;
 
 import java.io.File;
@@ -33,8 +32,7 @@ public class TestHiveFileMetastore
         HdfsConfigurationInitializer updator = new HdfsConfigurationInitializer(hiveConfig);
         HdfsConfiguration hdfsConfiguration = new HiveHdfsConfiguration(updator, ImmutableSet.of());
         HdfsEnvironment hdfsEnvironment = new HdfsEnvironment(hdfsConfiguration, hiveConfig, new NoHdfsAuthentication());
-        ThriftHiveMetastoreConfig thriftConfig = new ThriftHiveMetastoreConfig();
-        return new FileHiveMetastore(hdfsEnvironment, baseDir.toURI().toString(), "test", thriftConfig.isImpersonationEnabled());
+        return new FileHiveMetastore(hdfsEnvironment, baseDir.toURI().toString(), "test");
     }
 
     @Override

@@ -42,7 +42,6 @@ import io.prestosql.plugin.hive.metastore.Partition;
 import io.prestosql.plugin.hive.metastore.PartitionWithStatistics;
 import io.prestosql.plugin.hive.metastore.PrincipalPrivileges;
 import io.prestosql.plugin.hive.metastore.Table;
-import io.prestosql.plugin.hive.metastore.thrift.ThriftHiveMetastoreConfig;
 import io.prestosql.plugin.hive.metastore.thrift.ThriftMetastoreUtil;
 import io.prestosql.spi.PrestoException;
 import io.prestosql.spi.connector.ColumnNotFoundException;
@@ -128,7 +127,6 @@ public class FileHiveMetastore
     private final Path catalogDirectory;
     private final HdfsContext hdfsContext;
     private final FileSystem metadataFileSystem;
-    private final boolean impersonationEnabled;
 
     private final JsonCodec<DatabaseMetadata> databaseCodec = JsonCodec.jsonCodec(DatabaseMetadata.class);
     private final JsonCodec<TableMetadata> tableCodec = JsonCodec.jsonCodec(TableMetadata.class);
@@ -142,17 +140,16 @@ public class FileHiveMetastore
         HiveConfig hiveConfig = new HiveConfig();
         HdfsConfiguration hdfsConfiguration = new HiveHdfsConfiguration(new HdfsConfigurationInitializer(hiveConfig), ImmutableSet.of());
         HdfsEnvironment hdfsEnvironment = new HdfsEnvironment(hdfsConfiguration, hiveConfig, new NoHdfsAuthentication());
-        ThriftHiveMetastoreConfig thriftConfig = new ThriftHiveMetastoreConfig();
-        return new FileHiveMetastore(hdfsEnvironment, catalogDirectory.toURI().toString(), "test", thriftConfig.isImpersonationEnabled());
+        return new FileHiveMetastore(hdfsEnvironment, catalogDirectory.toURI().toString(), "test");
     }
 
     @Inject
-    public FileHiveMetastore(HdfsEnvironment hdfsEnvironment, FileHiveMetastoreConfig config, ThriftHiveMetastoreConfig thriftConfig)
+    public FileHiveMetastore(HdfsEnvironment hdfsEnvironment, FileHiveMetastoreConfig config)
     {
-        this(hdfsEnvironment, config.getCatalogDirectory(), config.getMetastoreUser(), thriftConfig.isImpersonationEnabled());
+        this(hdfsEnvironment, config.getCatalogDirectory(), config.getMetastoreUser());
     }
 
-    public FileHiveMetastore(HdfsEnvironment hdfsEnvironment, String catalogDirectory, String metastoreUser, boolean impersonationEnabled)
+    public FileHiveMetastore(HdfsEnvironment hdfsEnvironment, String catalogDirectory, String metastoreUser)
     {
         this.hdfsEnvironment = requireNonNull(hdfsEnvironment, "hdfsEnvironment is null");
         this.catalogDirectory = new Path(requireNonNull(catalogDirectory, "baseDirectory is null"));
@@ -163,7 +160,6 @@ public class FileHiveMetastore
         catch (IOException e) {
             throw new PrestoException(HIVE_METASTORE_ERROR, e);
         }
-        this.impersonationEnabled = impersonationEnabled;
     }
 
     @Override
@@ -1014,7 +1010,7 @@ public class FileHiveMetastore
     @Override
     public boolean isImpersonationEnabled()
     {
-        return impersonationEnabled;
+        return false;
     }
 
     private synchronized void setTablePrivileges(
