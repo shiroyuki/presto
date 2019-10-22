@@ -40,6 +40,7 @@ import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.StructField;
 import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.UnionObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.BinaryObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.BooleanObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.ByteObjectInspector;
@@ -96,6 +97,8 @@ public final class SerDeUtils
                 return serializeMap(type, builder, object, (MapObjectInspector) inspector, filterNullMapKeys);
             case STRUCT:
                 return serializeStruct(type, builder, object, (StructObjectInspector) inspector);
+            case UNION:
+                return serializeUnion(type, builder, object, (UnionObjectInspector) inspector);
         }
         throw new RuntimeException("Unknown object inspector category: " + inspector.getCategory());
     }
@@ -261,6 +264,39 @@ public final class SerDeUtils
         for (int i = 0; i < typeParameters.size(); i++) {
             StructField field = allStructFieldRefs.get(i);
             serializeObject(typeParameters.get(i), currentBuilder, inspector.getStructFieldData(object, field), field.getFieldObjectInspector());
+        }
+
+        builder.closeEntry();
+        if (builderSynthesized) {
+            return (Block) type.getObject(builder, 0);
+        }
+        else {
+            return null;
+        }
+    }
+
+    private static Block serializeUnion(Type type, BlockBuilder builder, Object object, UnionObjectInspector inspector)
+    {
+        if (object == null) {
+            requireNonNull(builder, "parent builder is null").appendNull();
+            return null;
+        }
+
+        List<Type> typeParameters = type.getTypeParameters();
+        List<ObjectInspector> allStructFieldRefs = inspector.getObjectInspectors();
+        checkArgument(typeParameters.size() == allStructFieldRefs.size());
+        BlockBuilder currentBuilder;
+
+        boolean builderSynthesized = false;
+        if (builder == null) {
+            builderSynthesized = true;
+            builder = type.createBlockBuilder(null, 1);
+        }
+        currentBuilder = builder.beginBlockEntry();
+
+        for (int i = 0; i < typeParameters.size(); i++) {
+            ObjectInspector field = allStructFieldRefs.get(i);
+            serializeObject(typeParameters.get(i), currentBuilder, inspector.getField(object), field);
         }
 
         builder.closeEntry();

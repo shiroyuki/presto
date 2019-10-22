@@ -45,6 +45,7 @@ import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector.PrimitiveCategory;
 import org.apache.hadoop.hive.serde2.objectinspector.StructField;
 import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
+import org.apache.hadoop.hive.serde2.objectinspector.UnionObjectInspector;
 import org.apache.hadoop.hive.serde2.typeinfo.VarcharTypeInfo;
 import org.apache.hadoop.mapred.FileSplit;
 import org.joda.time.DateTimeZone;
@@ -662,6 +663,14 @@ public class TestHiveFileFormats
         if (objectInspector instanceof StructObjectInspector) {
             for (StructField field : ((StructObjectInspector) objectInspector).getAllStructFieldRefs()) {
                 if (hasType(field.getFieldObjectInspector(), types)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        if (objectInspector instanceof UnionObjectInspector) {
+            for (ObjectInspector field : ((UnionObjectInspector) objectInspector).getObjectInspectors()) {
+                if (hasType(field, types)) {
                     return true;
                 }
             }

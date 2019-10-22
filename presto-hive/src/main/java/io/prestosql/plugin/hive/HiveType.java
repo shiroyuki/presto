@@ -31,6 +31,7 @@ import org.apache.hadoop.hive.serde2.typeinfo.MapTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.PrimitiveTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.StructTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
+import org.apache.hadoop.hive.serde2.typeinfo.UnionTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.VarcharTypeInfo;
 
 import java.util.List;
@@ -167,6 +168,10 @@ public final class HiveType
                 StructTypeInfo structTypeInfo = (StructTypeInfo) typeInfo;
                 return structTypeInfo.getAllStructFieldTypeInfos().stream()
                         .allMatch(HiveType::isSupportedType);
+            case UNION:
+                UnionTypeInfo unionTypeInfo = (UnionTypeInfo) typeInfo;
+                return unionTypeInfo.getAllUnionObjectTypeInfos().stream()
+                        .allMatch(HiveType::isSupportedType);
         }
         return false;
     }
@@ -239,6 +244,15 @@ public final class HiveType
                     typeSignatureBuilder.add(TypeSignatureParameter.namedTypeParameter(new NamedTypeSignature(Optional.of(new RowFieldName(rowFieldName, false)), typeSignature)));
                 }
                 return new TypeSignature(StandardTypes.ROW, typeSignatureBuilder.build());
+            case UNION:
+                UnionTypeInfo unionTypeInfo = (UnionTypeInfo) typeInfo;
+                List<TypeInfo> unionFieldTypeInfos = unionTypeInfo.getAllUnionObjectTypeInfos();
+                ImmutableList.Builder<TypeSignatureParameter> unionTypeSignatureBuilder = ImmutableList.builder();
+                for (TypeInfo unionFieldTypeInfo : unionFieldTypeInfos) {
+                    TypeSignature typeSignature = getTypeSignature(unionFieldTypeInfo);
+                    unionTypeSignatureBuilder.add(TypeSignatureParameter.anonymousField(typeSignature));
+                }
+                return new TypeSignature(StandardTypes.ROW, unionTypeSignatureBuilder.build());
         }
         throw new PrestoException(NOT_SUPPORTED, format("Unsupported Hive type: %s", typeInfo));
     }

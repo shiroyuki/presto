@@ -705,7 +705,7 @@ public final class HiveUtil
 
     public static boolean isStructuralType(HiveType hiveType)
     {
-        return hiveType.getCategory() == Category.LIST || hiveType.getCategory() == Category.MAP || hiveType.getCategory() == Category.STRUCT;
+        return hiveType.getCategory() == Category.LIST || hiveType.getCategory() == Category.MAP || hiveType.getCategory() == Category.STRUCT || hiveType.getCategory() == Category.UNION;
     }
 
     public static boolean booleanPartitionKey(String value, String name)
