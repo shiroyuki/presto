@@ -1,4 +1,4 @@
-# Presto [![Build Status](https://travis-ci.com/prestosql/presto.svg?branch=master)](https://travis-ci.com/prestosql/presto)
+# Presto [![Build Status](https://travis-ci.com/prestosql/presto.svg?branch=master)](https://travis-ci.com/prestosql/presto) [![Join Slack](https://img.shields.io/badge/slack-ask%20for%20help-blue.svg?logo=slack)](https://prestosql.io/slack.html)
 
 Presto is a distributed SQL query engine for big data.
 
