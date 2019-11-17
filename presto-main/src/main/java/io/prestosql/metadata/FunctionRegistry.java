@@ -105,6 +105,7 @@ import io.prestosql.operator.scalar.DataSizeFunctions;
 import io.prestosql.operator.scalar.DateTimeFunctions;
 import io.prestosql.operator.scalar.EmptyMapConstructor;
 import io.prestosql.operator.scalar.FailureFunction;
+import io.prestosql.operator.scalar.FormatNumberFunction;
 import io.prestosql.operator.scalar.HmacFunctions;
 import io.prestosql.operator.scalar.HyperLogLogFunctions;
 import io.prestosql.operator.scalar.JoniRegexpCasts;
@@ -478,6 +479,7 @@ public class FunctionRegistry
                 .scalars(ArrayFunctions.class)
                 .scalars(HmacFunctions.class)
                 .scalars(DataSizeFunctions.class)
+                .scalars(FormatNumberFunction.class)
                 .scalar(ArrayCardinalityFunction.class)
                 .scalar(ArrayContains.class)
                 .scalar(ArrayFilterFunction.class)
