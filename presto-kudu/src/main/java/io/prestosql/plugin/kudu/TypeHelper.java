@@ -35,6 +35,8 @@ import org.apache.kudu.ColumnTypeAttributes;
 import org.apache.kudu.client.RowResult;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.math.MathContext;
 
 import static java.lang.Float.floatToRawIntBits;
 import static java.lang.Float.intBitsToFloat;
@@ -156,7 +158,9 @@ public final class TypeHelper
             return ((Slice) nativeValue).toByteBuffer();
         }
         if (type instanceof DecimalType) {
-            return nativeValue;
+            DecimalType dt = (DecimalType) type;
+            return new BigDecimal(BigInteger.valueOf((Long) nativeValue),
+                    dt.getScale(), new MathContext(dt.getPrecision()));
         }
         throw new IllegalStateException("Back conversion not implemented for " + type);
     }
