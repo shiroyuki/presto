@@ -158,9 +158,8 @@ public final class TypeHelper
             return ((Slice) nativeValue).toByteBuffer();
         }
         if (type instanceof DecimalType) {
-            DecimalType dt = (DecimalType) type;
-            return new BigDecimal(BigInteger.valueOf((Long) nativeValue),
-                    dt.getScale(), new MathContext(dt.getPrecision()));
+            DecimalType decimalType = (DecimalType) type;
+            return new BigDecimal(BigInteger.valueOf((Long) nativeValue), decimalType.getScale(), new MathContext(decimalType.getPrecision()));
         }
         throw new IllegalStateException("Back conversion not implemented for " + type);
     }

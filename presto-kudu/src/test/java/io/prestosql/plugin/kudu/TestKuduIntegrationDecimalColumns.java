@@ -20,6 +20,7 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
+import static java.lang.String.format;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
@@ -73,7 +74,7 @@ public class TestKuduIntegrationDecimalColumns
         String insertValue = fullPrecisionValue.substring(0, valuePrecision + 1);
         queryRunner.execute("INSERT INTO " + tableName + " VALUES(1, DECIMAL '" + insertValue + "')");
 
-        MaterializedResult result = queryRunner.execute("SELECT id, CAST((dec - (DECIMAL '" + insertValue + "')) as DOUBLE) FROM " + tableName);
+        MaterializedResult result = queryRunner.execute(format("SELECT id, CAST((dec - (DECIMAL '%s')) as DOUBLE) FROM %s WHERE dec = DECIMAL '%s' ", insertValue, tableName, insertValue));
         assertEquals(result.getRowCount(), 1);
         Object obj = result.getMaterializedRows().get(0).getField(1);
         assertTrue(obj instanceof Double);
