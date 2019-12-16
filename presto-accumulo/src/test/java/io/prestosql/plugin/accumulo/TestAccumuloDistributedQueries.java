@@ -336,4 +336,11 @@ public class TestAccumuloDistributedQueries
         // Accumulo connector currently does not support comment on table
         assertQueryFails("COMMENT ON TABLE orders IS 'hello'", "This connector does not support setting table comments");
     }
+
+    @Override
+    public void testCommentView()
+    {
+        // Accumulo connector currently does not support comment on view
+        assertQueryFails("COMMENT ON VIEW orders IS 'hello'", "This connector does not support setting view comments");
+    }
 }

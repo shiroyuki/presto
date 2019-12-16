@@ -308,7 +308,7 @@ public class PhoenixMetadata
         JdbcTableHandle handle = (JdbcTableHandle) tableHandle;
         JdbcColumnHandle columnHandle = (JdbcColumnHandle) column;
         phoenixClient.execute(session, format(
-                "ALTER TABLE %s DROP COLUMN %s",
+                "ALTER TABLE %s DROP VIEW %s",
                 getEscapedTableName(Optional.ofNullable(handle.getSchemaName()), handle.getTableName()),
                 columnHandle.getColumnName()));
     }

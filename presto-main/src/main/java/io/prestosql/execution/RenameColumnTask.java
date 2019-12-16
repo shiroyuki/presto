@@ -42,7 +42,7 @@ public class RenameColumnTask
     @Override
     public String getName()
     {
-        return "RENAME COLUMN";
+        return "RENAME VIEW";
     }
 
     @Override

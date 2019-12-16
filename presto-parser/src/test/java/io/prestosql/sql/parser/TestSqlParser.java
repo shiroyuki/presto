@@ -1527,9 +1527,17 @@ public class TestSqlParser
     }
 
     @Test
+    public void testCommentColumn()
+    {
+        assertStatement("COMMENT ON VIEW a IS 'test'", new Comment(Comment.Type.VIEW, QualifiedName.of("a"), Optional.of("test")));
+        assertStatement("COMMENT ON VIEW a IS ''", new Comment(Comment.Type.VIEW, QualifiedName.of("a"), Optional.of("")));
+        assertStatement("COMMENT ON VIEW a IS NULL", new Comment(Comment.Type.VIEW, QualifiedName.of("a"), Optional.empty()));
+    }
+
+    @Test
     public void testRenameColumn()
     {
-        assertStatement("ALTER TABLE foo.t RENAME COLUMN a TO b", new RenameColumn(QualifiedName.of("foo", "t"), identifier("a"), identifier("b")));
+        assertStatement("ALTER TABLE foo.t RENAME VIEW a TO b", new RenameColumn(QualifiedName.of("foo", "t"), identifier("a"), identifier("b")));
     }
 
     @Test
@@ -1560,13 +1568,13 @@ public class TestSqlParser
     @Test
     public void testAddColumn()
     {
-        assertThat(statement("ALTER TABLE foo.t ADD COLUMN c bigint"))
+        assertThat(statement("ALTER TABLE foo.t ADD VIEW c bigint"))
                 .ignoringLocation()
                 .isEqualTo(new AddColumn(
                         QualifiedName.of("foo", "t"),
                         new ColumnDefinition(identifier("c"), simpleType(location(1, 31), "bigint"), true, emptyList(), Optional.empty())));
 
-        assertThat(statement("ALTER TABLE foo.t ADD COLUMN d double NOT NULL"))
+        assertThat(statement("ALTER TABLE foo.t ADD VIEW d double NOT NULL"))
                 .ignoringLocation()
                 .isEqualTo(new AddColumn(
                         QualifiedName.of("foo", "t"),
@@ -1576,8 +1584,8 @@ public class TestSqlParser
     @Test
     public void testDropColumn()
     {
-        assertStatement("ALTER TABLE foo.t DROP COLUMN c", new DropColumn(QualifiedName.of("foo", "t"), identifier("c")));
-        assertStatement("ALTER TABLE \"t x\" DROP COLUMN \"c d\"", new DropColumn(QualifiedName.of("t x"), quotedIdentifier("c d")));
+        assertStatement("ALTER TABLE foo.t DROP VIEW c", new DropColumn(QualifiedName.of("foo", "t"), identifier("c")));
+        assertStatement("ALTER TABLE \"t x\" DROP VIEW \"c d\"", new DropColumn(QualifiedName.of("t x"), quotedIdentifier("c d")));
     }
 
     @Test

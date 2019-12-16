@@ -91,6 +91,7 @@ import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static io.prestosql.plugin.hive.HiveErrorCode.HIVE_METASTORE_ERROR;
 import static io.prestosql.plugin.hive.HiveErrorCode.HIVE_PARTITION_DROPPED_DURING_QUERY;
 import static io.prestosql.plugin.hive.HiveMetadata.TABLE_COMMENT;
+import static io.prestosql.plugin.hive.HiveMetadata.VIEW_COMMENT;
 import static io.prestosql.plugin.hive.HivePartitionManager.extractPartitionValues;
 import static io.prestosql.plugin.hive.metastore.HivePrivilegeInfo.HivePrivilege.OWNERSHIP;
 import static io.prestosql.plugin.hive.metastore.MetastoreUtil.makePartName;
@@ -511,6 +512,21 @@ public class FileHiveMetastore
                     .filter(entry -> !entry.getKey().equals(TABLE_COMMENT))
                     .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
             comment.ifPresent(value -> parameters.put(TABLE_COMMENT, value));
+
+            return oldTable.withParameters(ImmutableMap.<String, String>builder()
+                    .putAll(parameters)
+                    .build());
+        });
+    }
+
+    @Override
+    public synchronized void commentView(HiveIdentity identity, String databaseName, String tableName, Optional<String> comment)
+    {
+        alterTable(databaseName, tableName, oldTable -> {
+            Map<String, String> parameters = oldTable.getParameters().entrySet().stream()
+                    .filter(entry -> !entry.getKey().equals(VIEW_COMMENT))
+                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+            comment.ifPresent(value -> parameters.put(VIEW_COMMENT, value));
 
             return oldTable.withParameters(ImmutableMap.<String, String>builder()
                     .putAll(parameters)

@@ -265,8 +265,8 @@ public class TestHiveCoercion
                         "(-2323, -1.5)",
                 tableName));
 
-        onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN int_to_bigint int_to_bigint bigint", tableName));
-        onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN float_to_double float_to_double double", tableName));
+        onHive().executeQuery(format("ALTER TABLE %s CHANGE VIEW int_to_bigint int_to_bigint bigint", tableName));
+        onHive().executeQuery(format("ALTER TABLE %s CHANGE VIEW float_to_double float_to_double double", tableName));
 
         assertThat(query("SHOW COLUMNS FROM " + tableName).project(1, 2)).containsExactly(
                 row("int_to_bigint", "bigint"),
@@ -551,26 +551,26 @@ public class TestHiveCoercion
     {
         String floatType = tableName.toLowerCase(Locale.ENGLISH).contains("parquet") ? "double" : "float";
 
-        onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN row_to_row row_to_row struct<keep:string, ti2si:smallint, si2int:int, int2bi:bigint, bi2vc:string>", tableName));
-        onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN list_to_list list_to_list array<struct<ti2int:int, si2bi:bigint, bi2vc:string>>", tableName));
-        onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN map_to_map map_to_map map<int,struct<ti2bi:bigint, int2bi:bigint, float2double:double, add:tinyint>>", tableName));
-        onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN tinyint_to_smallint tinyint_to_smallint smallint", tableName));
-        onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN tinyint_to_int tinyint_to_int int", tableName));
-        onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN tinyint_to_bigint tinyint_to_bigint bigint", tableName));
-        onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN smallint_to_int smallint_to_int int", tableName));
-        onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN smallint_to_bigint smallint_to_bigint bigint", tableName));
-        onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN int_to_bigint int_to_bigint bigint", tableName));
-        onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN bigint_to_varchar bigint_to_varchar string", tableName));
-        onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN float_to_double float_to_double double", tableName));
-        //onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN double_to_float double_to_float %s", tableName, floatType));
-        onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN shortdecimal_to_shortdecimal shortdecimal_to_shortdecimal DECIMAL(18,4)", tableName));
-        onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN shortdecimal_to_longdecimal shortdecimal_to_longdecimal DECIMAL(20,4)", tableName));
-        onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN longdecimal_to_shortdecimal longdecimal_to_shortdecimal DECIMAL(12,2)", tableName));
-        onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN longdecimal_to_longdecimal longdecimal_to_longdecimal DECIMAL(38,14)", tableName));
-        //onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN float_to_decimal float_to_decimal DECIMAL(10,5)", tableName));
-        //onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN double_to_decimal double_to_decimal DECIMAL(10,5)", tableName));
-        onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN decimal_to_float decimal_to_float %s", tableName, floatType));
-        onHive().executeQuery(format("ALTER TABLE %s CHANGE COLUMN decimal_to_double decimal_to_double double", tableName));
+        onHive().executeQuery(format("ALTER TABLE %s CHANGE VIEW row_to_row row_to_row struct<keep:string, ti2si:smallint, si2int:int, int2bi:bigint, bi2vc:string>", tableName));
+        onHive().executeQuery(format("ALTER TABLE %s CHANGE VIEW list_to_list list_to_list array<struct<ti2int:int, si2bi:bigint, bi2vc:string>>", tableName));
+        onHive().executeQuery(format("ALTER TABLE %s CHANGE VIEW map_to_map map_to_map map<int,struct<ti2bi:bigint, int2bi:bigint, float2double:double, add:tinyint>>", tableName));
+        onHive().executeQuery(format("ALTER TABLE %s CHANGE VIEW tinyint_to_smallint tinyint_to_smallint smallint", tableName));
+        onHive().executeQuery(format("ALTER TABLE %s CHANGE VIEW tinyint_to_int tinyint_to_int int", tableName));
+        onHive().executeQuery(format("ALTER TABLE %s CHANGE VIEW tinyint_to_bigint tinyint_to_bigint bigint", tableName));
+        onHive().executeQuery(format("ALTER TABLE %s CHANGE VIEW smallint_to_int smallint_to_int int", tableName));
+        onHive().executeQuery(format("ALTER TABLE %s CHANGE VIEW smallint_to_bigint smallint_to_bigint bigint", tableName));
+        onHive().executeQuery(format("ALTER TABLE %s CHANGE VIEW int_to_bigint int_to_bigint bigint", tableName));
+        onHive().executeQuery(format("ALTER TABLE %s CHANGE VIEW bigint_to_varchar bigint_to_varchar string", tableName));
+        onHive().executeQuery(format("ALTER TABLE %s CHANGE VIEW float_to_double float_to_double double", tableName));
+        //onHive().executeQuery(format("ALTER TABLE %s CHANGE VIEW double_to_float double_to_float %s", tableName, floatType));
+        onHive().executeQuery(format("ALTER TABLE %s CHANGE VIEW shortdecimal_to_shortdecimal shortdecimal_to_shortdecimal DECIMAL(18,4)", tableName));
+        onHive().executeQuery(format("ALTER TABLE %s CHANGE VIEW shortdecimal_to_longdecimal shortdecimal_to_longdecimal DECIMAL(20,4)", tableName));
+        onHive().executeQuery(format("ALTER TABLE %s CHANGE VIEW longdecimal_to_shortdecimal longdecimal_to_shortdecimal DECIMAL(12,2)", tableName));
+        onHive().executeQuery(format("ALTER TABLE %s CHANGE VIEW longdecimal_to_longdecimal longdecimal_to_longdecimal DECIMAL(38,14)", tableName));
+        //onHive().executeQuery(format("ALTER TABLE %s CHANGE VIEW float_to_decimal float_to_decimal DECIMAL(10,5)", tableName));
+        //onHive().executeQuery(format("ALTER TABLE %s CHANGE VIEW double_to_decimal double_to_decimal DECIMAL(10,5)", tableName));
+        onHive().executeQuery(format("ALTER TABLE %s CHANGE VIEW decimal_to_float decimal_to_float %s", tableName, floatType));
+        onHive().executeQuery(format("ALTER TABLE %s CHANGE VIEW decimal_to_double decimal_to_double double", tableName));
     }
 
     private static TableInstance<?> mutableTableInstanceOf(TableDefinition tableDefinition)

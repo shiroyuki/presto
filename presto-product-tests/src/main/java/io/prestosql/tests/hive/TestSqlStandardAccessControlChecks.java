@@ -129,10 +129,10 @@ public class TestSqlStandardAccessControlChecks
     public void testAccessControlAlterTable()
     {
         assertThat(aliceExecutor.executeQuery(format("SHOW COLUMNS FROM %s", tableName))).hasRowsCount(2);
-        assertThat(() -> bobExecutor.executeQuery(format("ALTER TABLE %s ADD COLUMN year bigint", tableName)))
+        assertThat(() -> bobExecutor.executeQuery(format("ALTER TABLE %s ADD VIEW year bigint", tableName)))
                 .failsWithMessage(format("Access Denied: Cannot add a column to table default.%s", tableName));
 
-        aliceExecutor.executeQuery(format("ALTER TABLE %s ADD COLUMN year bigint", tableName));
+        aliceExecutor.executeQuery(format("ALTER TABLE %s ADD VIEW year bigint", tableName));
         assertThat(aliceExecutor.executeQuery(format("SHOW COLUMNS FROM %s", tableName))).hasRowsCount(3);
     }
 

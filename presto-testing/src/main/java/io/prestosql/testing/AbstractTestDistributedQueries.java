@@ -380,6 +380,28 @@ public abstract class AbstractTestDistributedQueries
     }
 
     @Test
+    public void testCommentView()
+    {
+        assertUpdate("CREATE TABLE test_comment_base(id integer)");
+        assertUpdate("CREATE VIEW test_comment AS SELECT * FROM test_comment_base");
+
+        assertUpdate("COMMENT ON VIEW test_comment IS 'new comment'");
+        MaterializedResult materializedRows = computeActual("SHOW CREATE VIEW test_comment");
+        assertTrue(materializedRows.getMaterializedRows().get(0).getField(0).toString().contains("COMMENT 'new comment'"));
+
+        assertUpdate("COMMENT ON VIEW test_comment IS ''");
+        materializedRows = computeActual("SHOW CREATE VIEW test_comment");
+        assertTrue(materializedRows.getMaterializedRows().get(0).getField(0).toString().contains("COMMENT ''"));
+
+        assertUpdate("COMMENT ON VIEW test_comment IS NULL");
+        materializedRows = computeActual("SHOW CREATE VIEW test_comment");
+        assertFalse(materializedRows.getMaterializedRows().get(0).getField(0).toString().contains("COMMENT"));
+
+        assertUpdate("DROP VIEW test_comment");
+        assertUpdate("DROP TABLE test_comment_base");
+    }
+
+    @Test
     public void testRenameColumn()
     {
         assertUpdate("CREATE TABLE test_rename_column AS SELECT 123 x", 1);
@@ -984,7 +1006,7 @@ public abstract class AbstractTestDistributedQueries
                 .setSchema(getSession().getSchema().get())
                 .build();
 
-        // TEST COLUMN-LEVEL PRIVILEGES
+        // TEST VIEW-LEVEL PRIVILEGES
         // view creation permissions are only checked at query time, not at creation
         assertAccessAllowed(
                 viewOwnerSession,

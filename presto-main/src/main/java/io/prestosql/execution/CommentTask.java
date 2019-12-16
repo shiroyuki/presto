@@ -32,6 +32,8 @@ import static io.prestosql.metadata.MetadataUtil.createQualifiedObjectName;
 import static io.prestosql.spi.StandardErrorCode.NOT_SUPPORTED;
 import static io.prestosql.spi.StandardErrorCode.TABLE_NOT_FOUND;
 import static io.prestosql.sql.analyzer.SemanticExceptions.semanticException;
+import static io.prestosql.sql.tree.Comment.Type.TABLE;
+import static io.prestosql.sql.tree.Comment.Type.VIEW;
 
 public class CommentTask
         implements DataDefinitionTask<Comment>
@@ -47,7 +49,7 @@ public class CommentTask
     {
         Session session = stateMachine.getSession();
 
-        if (statement.getType() == Comment.Type.TABLE) {
+        if (statement.getType() == TABLE) {
             QualifiedObjectName tableName = createQualifiedObjectName(session, statement, statement.getName());
             Optional<TableHandle> tableHandle = metadata.getTableHandle(session, tableName);
             if (!tableHandle.isPresent()) {
@@ -57,6 +59,17 @@ public class CommentTask
             accessControl.checkCanSetTableComment(session.toSecurityContext(), tableName);
 
             metadata.setTableComment(session, tableHandle.get(), statement.getComment());
+        }
+        else if (statement.getType() == VIEW) {
+            QualifiedObjectName viewName = createQualifiedObjectName(session, statement, statement.getName());
+            Optional<TableHandle> tableHandle = metadata.getTableHandle(session, viewName);
+            if (!tableHandle.isPresent()) {
+                throw semanticException(TABLE_NOT_FOUND, statement, "View does not exist: " + viewName);
+            }
+
+            accessControl.checkCanSetViewComment(session.toSecurityContext(), viewName);
+
+            metadata.setViewComment(session, tableHandle.get(), statement.getComment());
         }
         else {
             throw new PrestoException(NOT_SUPPORTED, "Unsupported comment type: " + statement.getType());

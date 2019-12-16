@@ -100,6 +100,12 @@ public abstract class ForwardingConnectorAccessControl
     }
 
     @Override
+    public void checkCanSetViewComment(ConnectorSecurityContext context, SchemaTableName viewName)
+    {
+        delegate().checkCanSetViewComment(context, viewName);
+    }
+
+    @Override
     public void checkCanShowTablesMetadata(ConnectorSecurityContext context, String schemaName)
     {
         delegate().checkCanShowTablesMetadata(context, schemaName);

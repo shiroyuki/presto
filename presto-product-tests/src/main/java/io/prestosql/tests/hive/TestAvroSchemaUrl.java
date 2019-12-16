@@ -122,7 +122,7 @@ public class TestAvroSchemaUrl
                         row("string_col", "varchar", "", ""),
                         row("int_col", "integer", "", ""));
 
-        assertThat(() -> onPresto().executeQuery("ALTER TABLE test_avro_schema_url_in_serde_properties ADD COLUMN new_dummy_col varchar"))
+        assertThat(() -> onPresto().executeQuery("ALTER TABLE test_avro_schema_url_in_serde_properties ADD VIEW new_dummy_col varchar"))
                 .failsWithMessage("ALTER TABLE not supported when Avro schema url is set");
 
         onHive().executeQuery("INSERT INTO test_avro_schema_url_in_serde_properties VALUES ('some text', 2147483635)");

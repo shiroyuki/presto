@@ -47,6 +47,7 @@ import java.util.stream.Collectors;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static io.prestosql.plugin.hive.HiveMetadata.TABLE_COMMENT;
+import static io.prestosql.plugin.hive.HiveMetadata.VIEW_COMMENT;
 import static io.prestosql.plugin.hive.metastore.MetastoreUtil.isAvroTableWithSchemaSet;
 import static io.prestosql.plugin.hive.metastore.MetastoreUtil.verifyCanDropColumn;
 import static io.prestosql.plugin.hive.metastore.thrift.ThriftMetastoreUtil.fromMetastoreApiTable;
@@ -211,6 +212,24 @@ public class BridgingHiveMetastore
                 .filter(entry -> !entry.getKey().equals(TABLE_COMMENT))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
         comment.ifPresent(value -> parameters.put(TABLE_COMMENT, comment.get()));
+
+        table.setParameters(parameters);
+        alterTable(identity, databaseName, tableName, table);
+    }
+
+    @Override
+    public void commentView(HiveIdentity identity, String databaseName, String tableName, Optional<String> comment)
+    {
+        Optional<org.apache.hadoop.hive.metastore.api.Table> source = delegate.getTable(identity, databaseName, tableName);
+        if (!source.isPresent()) {
+            throw new TableNotFoundException(new SchemaTableName(databaseName, tableName));
+        }
+        org.apache.hadoop.hive.metastore.api.Table table = source.get();
+
+        Map<String, String> parameters = table.getParameters().entrySet().stream()
+                .filter(entry -> !entry.getKey().equals(VIEW_COMMENT))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        comment.ifPresent(value -> parameters.put(VIEW_COMMENT, comment.get()));
 
         table.setParameters(parameters);
         alterTable(identity, databaseName, tableName, table);

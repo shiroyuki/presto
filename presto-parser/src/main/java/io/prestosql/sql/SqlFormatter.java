@@ -1012,11 +1012,19 @@ public final class SqlFormatter
         {
             String comment = node.getComment().isPresent() ? formatStringLiteral(node.getComment().get()) : "NULL";
 
-            if (node.getType() == Comment.Type.TABLE) {
-                builder.append("COMMENT ON TABLE ")
-                        .append(node.getName())
-                        .append(" IS ")
-                        .append(comment);
+            switch (node.getType()) {
+                case TABLE:
+                    builder.append("COMMENT ON TABLE ")
+                            .append(node.getName())
+                            .append(" IS ")
+                            .append(comment);
+                    break;
+                case VIEW:
+                    builder.append("COMMENT ON VIEW ")
+                            .append(node.getName())
+                            .append(" IS ")
+                            .append(comment);
+                    break;
             }
 
             return null;
@@ -1027,7 +1035,7 @@ public final class SqlFormatter
         {
             builder.append("ALTER TABLE ")
                     .append(node.getTable())
-                    .append(" RENAME COLUMN ")
+                    .append(" RENAME VIEW ")
                     .append(node.getSource())
                     .append(" TO ")
                     .append(node.getTarget());
@@ -1040,7 +1048,7 @@ public final class SqlFormatter
         {
             builder.append("ALTER TABLE ")
                     .append(formatName(node.getTable()))
-                    .append(" DROP COLUMN ")
+                    .append(" DROP VIEW ")
                     .append(formatExpression(node.getColumn()));
 
             return null;
@@ -1060,7 +1068,7 @@ public final class SqlFormatter
         {
             builder.append("ALTER TABLE ")
                     .append(node.getName())
-                    .append(" ADD COLUMN ")
+                    .append(" ADD VIEW ")
                     .append(formatColumnDefinition(node.getColumn()));
 
             return null;

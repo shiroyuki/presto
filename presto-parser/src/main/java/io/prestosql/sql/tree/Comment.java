@@ -27,7 +27,7 @@ public final class Comment
 {
     public enum Type
     {
-        TABLE
+        TABLE, VIEW
     }
 
     private final Type type;

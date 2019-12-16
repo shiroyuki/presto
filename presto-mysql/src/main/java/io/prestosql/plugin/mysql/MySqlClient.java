@@ -235,14 +235,14 @@ public class MySqlClient
                 newColumnName = newColumnName.toUpperCase(ENGLISH);
             }
             String sql = format(
-                    "ALTER TABLE %s RENAME COLUMN %s TO %s",
+                    "ALTER TABLE %s RENAME VIEW %s TO %s",
                     quoted(handle.getCatalogName(), handle.getSchemaName(), handle.getTableName()),
                     quoted(jdbcColumn.getColumnName()),
                     quoted(newColumnName));
             execute(connection, sql);
         }
         catch (SQLException e) {
-            // MySQL versions earlier than 8 do not support the above RENAME COLUMN syntax
+            // MySQL versions earlier than 8 do not support the above RENAME VIEW syntax
             if (SQL_STATE_SYNTAX_ERROR.equals(e.getSQLState())) {
                 throw new PrestoException(NOT_SUPPORTED, format("Rename column not supported in catalog: '%s'", handle.getCatalogName()), e);
             }

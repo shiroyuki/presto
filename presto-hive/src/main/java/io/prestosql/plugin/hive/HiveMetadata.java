@@ -241,6 +241,7 @@ public class HiveMetadata
     public static final String PRESTO_QUERY_ID_NAME = "presto_query_id";
     public static final String BUCKETING_VERSION = "bucketing_version";
     public static final String TABLE_COMMENT = "comment";
+    public static final String VIEW_COMMENT = "comment";
     private static final String TRANSACTIONAL = "transactional";
 
     private static final String ORC_BLOOM_FILTER_COLUMNS_KEY = "orc.bloom.filter.columns";
@@ -1086,6 +1087,13 @@ public class HiveMetadata
     {
         HiveTableHandle handle = (HiveTableHandle) tableHandle;
         metastore.commentTable(new HiveIdentity(session), handle.getSchemaName(), handle.getTableName(), comment);
+    }
+
+    @Override
+    public void setViewComment(ConnectorSession session, ConnectorTableHandle viewHandle, Optional<String> comment)
+    {
+        HiveTableHandle handle = (HiveTableHandle) viewHandle;
+        metastore.commentView(new HiveIdentity(session), handle.getSchemaName(), handle.getTableName(), comment);
     }
 
     @Override

@@ -4149,7 +4149,7 @@ public abstract class AbstractTestHive
                     }
                 }
 
-                // NEW COLUMN
+                // NEW VIEW
                 assertNull(row.getField(columnIndex.get("new_column")));
 
                 long newCompletedBytes = pageSource.getCompletedBytes();

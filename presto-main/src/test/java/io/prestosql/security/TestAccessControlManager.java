@@ -348,6 +348,12 @@ public class TestAccessControlManager
         }
 
         @Override
+        public void checkCanSetViewComment(ConnectorSecurityContext transactionHandle, SchemaTableName viewName)
+        {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
         public void checkCanAddColumn(ConnectorSecurityContext context, SchemaTableName tableName)
         {
             throw new UnsupportedOperationException();

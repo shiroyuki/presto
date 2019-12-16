@@ -4662,13 +4662,13 @@ public class TestHiveIntegrationSmokeTest
 
         try {
             if (renameColumn) {
-                assertQueryFails(format("ALTER TABLE %s RENAME COLUMN dummy_col TO new_dummy_col", tableName), "ALTER TABLE not supported when Avro schema url is set");
+                assertQueryFails(format("ALTER TABLE %s RENAME VIEW dummy_col TO new_dummy_col", tableName), "ALTER TABLE not supported when Avro schema url is set");
             }
             if (addColumn) {
-                assertQueryFails(format("ALTER TABLE %s ADD COLUMN new_dummy_col VARCHAR", tableName), "ALTER TABLE not supported when Avro schema url is set");
+                assertQueryFails(format("ALTER TABLE %s ADD VIEW new_dummy_col VARCHAR", tableName), "ALTER TABLE not supported when Avro schema url is set");
             }
             if (dropColumn) {
-                assertQueryFails(format("ALTER TABLE %s DROP COLUMN dummy_col", tableName), "ALTER TABLE not supported when Avro schema url is set");
+                assertQueryFails(format("ALTER TABLE %s DROP VIEW dummy_col", tableName), "ALTER TABLE not supported when Avro schema url is set");
             }
         }
         finally {

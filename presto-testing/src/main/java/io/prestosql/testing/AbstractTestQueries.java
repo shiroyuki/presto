@@ -2413,7 +2413,7 @@ public abstract class AbstractTestQueries
         assertExplainDdl("DROP TABLE orders");
         assertExplainDdl("DROP VIEW view");
         assertExplainDdl("ALTER TABLE orders RENAME TO new_name");
-        assertExplainDdl("ALTER TABLE orders RENAME COLUMN orderkey TO new_column_name");
+        assertExplainDdl("ALTER TABLE orders RENAME VIEW orderkey TO new_column_name");
         assertExplainDdl("SET SESSION foo = 'bar'");
         assertExplainDdl("PREPARE my_query FROM SELECT * FROM orders", "PREPARE my_query");
         assertExplainDdl("DEALLOCATE PREPARE my_query");

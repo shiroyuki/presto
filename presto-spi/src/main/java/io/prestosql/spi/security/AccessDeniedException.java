@@ -131,6 +131,16 @@ public class AccessDeniedException
         throw new AccessDeniedException(format("Cannot comment table to %s%s", tableName, formatExtraInfo(extraInfo)));
     }
 
+    public static void denyCommentView(String tableName)
+    {
+        denyCommentView(tableName, null);
+    }
+
+    public static void denyCommentView(String viewName, String extraInfo)
+    {
+        throw new AccessDeniedException(format("Cannot comment view to %s%s", viewName, formatExtraInfo(extraInfo)));
+    }
+
     public static void denyShowTablesMetadata(String schemaName)
     {
         denyShowTablesMetadata(schemaName, null);

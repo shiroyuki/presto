@@ -643,7 +643,7 @@ public class TestRoles
     public void testAdminCanAddColumnToAnyTable()
     {
         onPrestoAlice().executeQuery("CREATE TABLE hive.default.test_table (foo BIGINT)");
-        assertAdminExecute("ALTER TABLE hive.default.test_table ADD COLUMN bar DATE");
+        assertAdminExecute("ALTER TABLE hive.default.test_table ADD VIEW bar DATE");
         onPrestoAlice().executeQuery("DROP TABLE hive.default.test_table");
     }
 
@@ -651,7 +651,7 @@ public class TestRoles
     public void testAdminCanRenameColumnInAnyTable()
     {
         onPrestoAlice().executeQuery("CREATE TABLE hive.default.test_table (foo BIGINT)");
-        assertAdminExecute("ALTER TABLE hive.default.test_table RENAME COLUMN foo TO bar");
+        assertAdminExecute("ALTER TABLE hive.default.test_table RENAME VIEW foo TO bar");
         onPrestoAlice().executeQuery("DROP TABLE hive.default.test_table");
     }
 

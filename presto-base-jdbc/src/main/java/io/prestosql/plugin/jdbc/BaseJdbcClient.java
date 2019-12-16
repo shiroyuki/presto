@@ -605,7 +605,7 @@ public class BaseJdbcClient
                 newColumnName = newColumnName.toUpperCase(ENGLISH);
             }
             String sql = format(
-                    "ALTER TABLE %s RENAME COLUMN %s TO %s",
+                    "ALTER TABLE %s RENAME VIEW %s TO %s",
                     quoted(handle.getCatalogName(), handle.getSchemaName(), handle.getTableName()),
                     jdbcColumn.getColumnName(),
                     newColumnName);
@@ -621,7 +621,7 @@ public class BaseJdbcClient
     {
         try (Connection connection = connectionFactory.openConnection(identity)) {
             String sql = format(
-                    "ALTER TABLE %s DROP COLUMN %s",
+                    "ALTER TABLE %s DROP VIEW %s",
                     quoted(handle.getCatalogName(), handle.getSchemaName(), handle.getTableName()),
                     column.getColumnName());
             execute(connection, sql);

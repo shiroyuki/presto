@@ -55,6 +55,7 @@ statement
     | DELETE FROM qualifiedName (WHERE booleanExpression)?             #delete
     | ALTER TABLE from=qualifiedName RENAME TO to=qualifiedName        #renameTable
     | COMMENT ON TABLE qualifiedName IS (string | NULL)                #commentTable
+    | COMMENT ON VIEW qualifiedName IS (string | NULL)                 #commentView
     | ALTER TABLE tableName=qualifiedName
         RENAME COLUMN from=identifier TO to=identifier                 #renameColumn
     | ALTER TABLE tableName=qualifiedName

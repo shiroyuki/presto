@@ -92,7 +92,7 @@ public class SqlServerClient
     {
         try (Connection connection = connectionFactory.openConnection(identity)) {
             String sql = format(
-                    "sp_rename %s, %s, 'COLUMN'",
+                    "sp_rename %s, %s, 'VIEW'",
                     singleQuote(handle.getCatalogName(), handle.getSchemaName(), handle.getTableName(), jdbcColumn.getColumnName()),
                     singleQuote(newColumnName));
             execute(connection, sql);

@@ -74,6 +74,11 @@ public class AllowAllAccessControl
     }
 
     @Override
+    public void checkCanSetViewComment(ConnectorSecurityContext context, SchemaTableName viewName)
+    {
+    }
+
+    @Override
     public void checkCanShowTablesMetadata(ConnectorSecurityContext context, String schemaName)
     {
     }

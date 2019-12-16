@@ -115,6 +115,12 @@ public abstract class ForwardingAccessControl
     }
 
     @Override
+    public void checkCanSetViewComment(SecurityContext context, QualifiedObjectName viewName)
+    {
+        getDelegate().checkCanSetViewComment(context, viewName);
+    }
+
+    @Override
     public void checkCanShowTablesMetadata(SecurityContext context, CatalogSchemaName schema)
     {
         getDelegate().checkCanShowTablesMetadata(context, schema);

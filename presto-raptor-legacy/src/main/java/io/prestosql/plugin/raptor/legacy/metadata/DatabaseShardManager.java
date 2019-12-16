@@ -252,7 +252,7 @@ public class DatabaseShardManager
             return;
         }
 
-        String sql = format("ALTER TABLE %s ADD COLUMN (%s %s, %s %s)",
+        String sql = format("ALTER TABLE %s ADD VIEW (%s %s, %s %s)",
                 shardIndexTable(tableId),
                 minColumn(column.getColumnId()), columnType,
                 maxColumn(column.getColumnId()), columnType);

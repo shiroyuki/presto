@@ -33,6 +33,7 @@ import java.util.function.Function;
 
 import static io.prestosql.spi.security.AccessDeniedException.denyAddColumn;
 import static io.prestosql.spi.security.AccessDeniedException.denyCommentTable;
+import static io.prestosql.spi.security.AccessDeniedException.denyCommentView;
 import static io.prestosql.spi.security.AccessDeniedException.denyDropColumn;
 import static io.prestosql.spi.security.AccessDeniedException.denyDropTable;
 import static io.prestosql.spi.security.AccessDeniedException.denyRenameColumn;
@@ -47,6 +48,7 @@ public class LegacyAccessControl
     private final boolean allowDropTable;
     private final boolean allowRenameTable;
     private final boolean allowCommentTable;
+    private final boolean allowCommentView;
     private final boolean allowAddColumn;
     private final boolean allowDropColumn;
     private final boolean allowRenameColumn;
@@ -62,6 +64,7 @@ public class LegacyAccessControl
         allowDropTable = securityConfig.getAllowDropTable();
         allowRenameTable = securityConfig.getAllowRenameTable();
         allowCommentTable = securityConfig.getAllowCommentTable();
+        allowCommentView = securityConfig.getAllowCommentView();
         allowAddColumn = securityConfig.getAllowAddColumn();
         allowDropColumn = securityConfig.getAllowDropColumn();
         allowRenameColumn = securityConfig.getAllowRenameColumn();
@@ -129,6 +132,14 @@ public class LegacyAccessControl
     {
         if (!allowCommentTable) {
             denyCommentTable(tableName.toString());
+        }
+    }
+
+    @Override
+    public void checkCanSetViewComment(ConnectorSecurityContext context, SchemaTableName viewName)
+    {
+        if (!allowCommentView) {
+            denyCommentView(viewName.toString());
         }
     }
 

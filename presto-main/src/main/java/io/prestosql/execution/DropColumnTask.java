@@ -40,7 +40,7 @@ public class DropColumnTask
     @Override
     public String getName()
     {
-        return "DROP COLUMN";
+        return "DROP VIEW";
     }
 
     @Override

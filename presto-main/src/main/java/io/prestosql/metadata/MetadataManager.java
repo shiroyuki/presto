@@ -648,6 +648,14 @@ public final class MetadataManager
     }
 
     @Override
+    public void setViewComment(Session session, TableHandle tableHandle, Optional<String> comment)
+    {
+        CatalogName catalogName = tableHandle.getCatalogName();
+        ConnectorMetadata metadata = getMetadataForWrite(session, catalogName);
+        metadata.setViewComment(session.toConnectorSession(catalogName), tableHandle.getConnectorHandle(), comment);
+    }
+
+    @Override
     public void renameColumn(Session session, TableHandle tableHandle, ColumnHandle source, String target)
     {
         CatalogName catalogName = tableHandle.getCatalogName();

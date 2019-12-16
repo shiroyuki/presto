@@ -104,7 +104,7 @@ public class TestComments
     }
 
     @Test(groups = COMMENT)
-    public void testCommentColumn()
+    public void testCommentView()
     {
         String createTableSql = format("" +
                         "CREATE TABLE hive.default.%s (\n" +
@@ -120,5 +120,44 @@ public class TestComments
         query(createTableSql);
         QueryResult actualResult = query("SHOW CREATE TABLE " + COMMENT_COLUMN_NAME);
         assertEquals(actualResult.row(0).get(0), createTableSql);
+
+        String commentedCreateTableSql = format("" +
+                        "CREATE TABLE hive.default.%s (\n" +
+                        "   c1 bigint COMMENT 'new comment'\n" +
+                        ")\n" +
+                        "WITH (\n" +
+                        "   format = 'RCBINARY'\n" +
+                        ")",
+                        COMMENT_COLUMN_NAME);
+
+        query(format("COMMENT ON VIEW %s.c1 IS 'new comment'", COMMENT_COLUMN_NAME));
+        actualResult = query("SHOW CREATE TABLE " + COMMENT_COLUMN_NAME);
+        assertEquals(actualResult.row(0).get(0), commentedCreateTableSql);
+
+        commentedCreateTableSql = format("" +
+                         "CREATE TABLE hive.default.%s (\n" +
+                         "   c1 bigint COMMENT ''\n" +
+                         ")\n" +
+                         "WITH (\n" +
+                         "   format = 'RCBINARY'\n" +
+                         ")",
+                         COMMENT_COLUMN_NAME);
+
+        query(format("COMMENT ON VIEW %s.c1 IS ''", COMMENT_COLUMN_NAME));
+        actualResult = query("SHOW CREATE TABLE " + COMMENT_COLUMN_NAME);
+        assertEquals(actualResult.row(0).get(0), commentedCreateTableSql);
+
+        commentedCreateTableSql = format("" +
+                         "CREATE TABLE hive.default.%s (\n" +
+                         "   c1 bigint\n" +
+                         ")\n" +
+                         "WITH (\n" +
+                         "   format = 'RCBINARY'\n" +
+                         ")",
+                         COMMENT_COLUMN_NAME);
+
+        query(format("COMMENT ON VIEW %s.c1 IS NULL", COMMENT_COLUMN_NAME));
+        actualResult = query("SHOW CREATE TABLE " + COMMENT_COLUMN_NAME);
+        assertEquals(actualResult.row(0).get(0), commentedCreateTableSql);
     }
 }

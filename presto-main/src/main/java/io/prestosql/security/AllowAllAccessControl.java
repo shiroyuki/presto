@@ -88,6 +88,11 @@ public class AllowAllAccessControl
     }
 
     @Override
+    public void checkCanSetViewComment(SecurityContext context, QualifiedObjectName viewName)
+    {
+    }
+
+    @Override
     public void checkCanShowTablesMetadata(SecurityContext context, CatalogSchemaName schema)
     {
     }

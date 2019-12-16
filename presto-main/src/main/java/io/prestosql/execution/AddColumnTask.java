@@ -56,7 +56,7 @@ public class AddColumnTask
     @Override
     public String getName()
     {
-        return "ADD COLUMN";
+        return "ADD VIEW";
     }
 
     @Override
