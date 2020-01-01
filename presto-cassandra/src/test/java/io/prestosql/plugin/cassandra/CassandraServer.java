@@ -62,7 +62,8 @@ public class CassandraServer
 
         this.dockerContainer = new GenericContainer<>("cassandra:2.1.16")
                 .withExposedPorts(PORT)
-                .withCopyFileToContainer(forHostPath(prepareCassandraYaml()), "/etc/cassandra/cassandra.yaml");
+                .withCopyFileToContainer(forHostPath(prepareCassandraYaml()), "/etc/cassandra/cassandra.yaml")
+                .withReuse(true);
         this.dockerContainer.start();
 
         Cluster.Builder clusterBuilder = Cluster.builder()
