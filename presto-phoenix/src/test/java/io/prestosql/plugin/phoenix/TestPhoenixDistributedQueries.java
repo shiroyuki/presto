@@ -118,7 +118,7 @@ public class TestPhoenixDistributedQueries
     @Override
     public void testCommentTable()
     {
-        // Phoenix connector currently does not support comment on table
+        // Phoenix connector currently does not support comment on table3
         assertQueryFails("COMMENT ON TABLE orders IS 'hello'", "This connector does not support setting table comments");
     }
 }
