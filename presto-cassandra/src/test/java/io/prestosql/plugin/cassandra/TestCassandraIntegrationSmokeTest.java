@@ -69,17 +69,24 @@ public class TestCassandraIntegrationSmokeTest
     // TODO should match DATE_TIME_LOCAL after https://github.com/prestosql/presto/issues/37
     private static final LocalDateTime TIMESTAMP_LOCAL = LocalDateTime.of(1969, 12, 31, 23, 4, 5);
 
-    private CassandraSession session;
+    private final CassandraSession session;
 
     public TestCassandraIntegrationSmokeTest()
+            throws Exception
     {
-        super(CassandraQueryRunner::createCassandraQueryRunner);
+        this(new CassandraQueryRunner());
+    }
+
+    public TestCassandraIntegrationSmokeTest(CassandraQueryRunner queryRunner)
+            throws Exception
+    {
+        super(queryRunner::createCassandraQueryRunner);
+        this.session = queryRunner.getSession();
     }
 
     @BeforeClass
     public void setUp()
     {
-        session = CassandraServer.getSession();
         createTestTables(session, KEYSPACE, DATE_TIME_LOCAL);
     }
 

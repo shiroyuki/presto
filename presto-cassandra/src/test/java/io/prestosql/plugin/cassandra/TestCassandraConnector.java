@@ -92,16 +92,16 @@ public class TestCassandraConnector
     public void setup()
             throws Exception
     {
-        CassandraServer.start();
+        CassandraServer cassandraServer = new CassandraServer();
 
         String keyspace = "test_connector";
-        createTestTables(CassandraServer.getSession(), keyspace, DATE);
+        createTestTables(cassandraServer.getSession(), keyspace, DATE);
 
         CassandraConnectorFactory connectorFactory = new CassandraConnectorFactory();
 
         Connector connector = connectorFactory.create("test", ImmutableMap.of(
-                "cassandra.contact-points", CassandraServer.getHost(),
-                "cassandra.native-protocol-port", Integer.toString(CassandraServer.getPort())),
+                "cassandra.contact-points", cassandraServer.getHost(),
+                "cassandra.native-protocol-port", Integer.toString(cassandraServer.getPort())),
                 new TestingConnectorContext());
 
         metadata = connector.getMetadata(CassandraTransactionHandle.INSTANCE);

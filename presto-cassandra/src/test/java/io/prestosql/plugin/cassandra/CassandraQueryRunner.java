@@ -28,15 +28,19 @@ import static io.prestosql.testing.TestingSession.testSessionBuilder;
 
 public final class CassandraQueryRunner
 {
-    private CassandraQueryRunner() {}
+    private final CassandraServer cassandraServer;
 
-    private static boolean tpchLoaded;
+    private boolean tpchLoaded;
 
-    public static synchronized DistributedQueryRunner createCassandraQueryRunner()
+    public CassandraQueryRunner()
             throws Exception
     {
-        CassandraServer.start();
+        this.cassandraServer = new CassandraServer();
+    }
 
+    public synchronized DistributedQueryRunner createCassandraQueryRunner()
+            throws Exception
+    {
         DistributedQueryRunner queryRunner = new DistributedQueryRunner(createCassandraSession("tpch"), 4);
 
         queryRunner.installPlugin(new TpchPlugin());
@@ -44,21 +48,26 @@ public final class CassandraQueryRunner
 
         queryRunner.installPlugin(new CassandraPlugin());
         queryRunner.createCatalog("cassandra", "cassandra", ImmutableMap.of(
-                "cassandra.contact-points", CassandraServer.getHost(),
-                "cassandra.native-protocol-port", Integer.toString(CassandraServer.getPort()),
+                "cassandra.contact-points", cassandraServer.getHost(),
+                "cassandra.native-protocol-port", Integer.toString(cassandraServer.getPort()),
                 "cassandra.allow-drop-table", "true"));
 
         if (!tpchLoaded) {
-            createKeyspace(CassandraServer.getSession(), "tpch");
+            createKeyspace(cassandraServer.getSession(), "tpch");
             List<TpchTable<?>> tables = TpchTable.getTables();
             copyTpchTables(queryRunner, "tpch", TINY_SCHEMA_NAME, createCassandraSession("tpch"), tables);
             for (TpchTable<?> table : tables) {
-                CassandraServer.refreshSizeEstimates("tpch", table.getTableName());
+                cassandraServer.refreshSizeEstimates("tpch", table.getTableName());
             }
             tpchLoaded = true;
         }
 
         return queryRunner;
+    }
+
+    public CassandraSession getSession()
+    {
+        return cassandraServer.getSession();
     }
 
     public static Session createCassandraSession(String schema)

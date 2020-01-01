@@ -32,7 +32,7 @@ public class TestCassandraDistributedQueries
     protected QueryRunner createQueryRunner()
             throws Exception
     {
-        return CassandraQueryRunner.createCassandraQueryRunner();
+        return new CassandraQueryRunner().createCassandraQueryRunner();
     }
 
     @Override

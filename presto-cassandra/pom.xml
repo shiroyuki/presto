@@ -14,7 +14,7 @@
     <properties>
         <air.main.basedir>${project.parent.basedir}</air.main.basedir>
 
-        <air.test.thread-count>1</air.test.thread-count>
+        <air.test.thread-count>2</air.test.thread-count>
     </properties>
 
     <dependencies>
