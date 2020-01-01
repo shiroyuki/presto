@@ -15,6 +15,7 @@ package io.prestosql.plugin.kudu;
 
 import io.prestosql.testing.AbstractTestQueryFramework;
 import io.prestosql.testing.QueryRunner;
+import org.testng.annotations.AfterClass;
 import org.testng.annotations.Test;
 
 import static org.testng.Assert.assertEquals;
@@ -23,19 +24,29 @@ import static org.testng.Assert.fail;
 public class TestKuduIntegrationSchemaNotExisting
         extends AbstractTestQueryFramework
 {
+    private KuduServer server;
+
     @Override
     protected QueryRunner createQueryRunner()
             throws Exception
     {
+        this.server = new KuduServer();
+
         String oldPrefix = System.getProperty("kudu.schema-emulation.prefix");
         System.setProperty("kudu.schema-emulation.prefix", "");
         try {
-            return KuduQueryRunnerFactory.createKuduQueryRunner("test_dummy");
+            return KuduQueryRunnerFactory.createKuduQueryRunner(server, "test_dummy");
         }
         catch (Throwable t) {
             System.setProperty("kudu.schema-emulation.prefix", oldPrefix);
             throw t;
         }
+    }
+
+    @AfterClass(alwaysRun = true)
+    public void tearDown()
+    {
+        server.close();
     }
 
     @Test

@@ -34,11 +34,14 @@ import static org.testng.Assert.assertTrue;
 public class TestKuduIntegrationSmoke
         extends AbstractTestIntegrationSmokeTest
 {
+    private KuduServer server;
+
     @Override
     protected QueryRunner createQueryRunner()
             throws Exception
     {
-        return createKuduQueryRunnerTpch(ORDERS);
+        server = new KuduServer();
+        return createKuduQueryRunnerTpch(server, ORDERS);
     }
 
     @Override
@@ -164,5 +167,6 @@ public class TestKuduIntegrationSmoke
     {
         assertUpdate("DROP TABLE " + ORDERS.getTableName());
         getQueryRunner().close();
+        server.close();
     }
 }
