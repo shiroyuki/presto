@@ -20,7 +20,6 @@ import io.prestosql.spi.type.Type;
 import io.prestosql.testing.AbstractTestIntegrationSmokeTest;
 import io.prestosql.testing.MaterializedResult;
 import io.prestosql.testing.MaterializedRow;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import java.math.BigInteger;
@@ -69,17 +68,19 @@ public class TestCassandraIntegrationSmokeTest
     // TODO should match DATE_TIME_LOCAL after https://github.com/prestosql/presto/issues/37
     private static final LocalDateTime TIMESTAMP_LOCAL = LocalDateTime.of(1969, 12, 31, 23, 4, 5);
 
-    private CassandraSession session;
+    private final CassandraSession session;
 
     public TestCassandraIntegrationSmokeTest()
+            throws Exception
     {
-        super(CassandraQueryRunner::createCassandraQueryRunner);
+        this(new CassandraQueryRunner());
     }
 
-    @BeforeClass
-    public void setUp()
+    public TestCassandraIntegrationSmokeTest(CassandraQueryRunner queryRunner)
+            throws Exception
     {
-        session = CassandraServer.getSession();
+        super(queryRunner::createCassandraQueryRunner);
+        this.session = queryRunner.getCassandraSession();
         createTestTables(session, KEYSPACE, DATE_TIME_LOCAL);
     }
 
