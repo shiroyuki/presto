@@ -500,16 +500,7 @@ public class TestElasticsearchIntegrationSmokeTest
                 .indices()
                 .aliases(indexAliasesRequest()
                         .addAliasAction(IndicesAliasesRequest.AliasActions.add()
-                                .index("nation")
-                                .alias("multi_alias")))
-                .actionGet();
-
-        embeddedElasticsearchNode.getClient()
-                .admin()
-                .indices()
-                .aliases(indexAliasesRequest()
-                        .addAliasAction(IndicesAliasesRequest.AliasActions.add()
-                                .index("region")
+                                .indices("region", "nation")
                                 .alias("multi_alias")))
                 .actionGet();
 
