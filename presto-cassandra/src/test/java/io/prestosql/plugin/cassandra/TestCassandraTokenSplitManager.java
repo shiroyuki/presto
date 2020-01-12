@@ -27,9 +27,9 @@ import static org.testng.Assert.assertEquals;
 
 public class TestCassandraTokenSplitManager
 {
-    private static final int SPLIT_SIZE = 100;
+    private static final int SPLIT_SIZE = 16;
     private static final String KEYSPACE = "test_cassandra_token_split_manager_keyspace";
-    private static final int PARTITION_COUNT = 1000;
+    private static final int PARTITION_COUNT = 128;
 
     private CassandraServer server;
     private CassandraSession session;
