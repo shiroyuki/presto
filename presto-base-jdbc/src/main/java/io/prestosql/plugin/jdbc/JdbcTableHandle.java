@@ -24,6 +24,7 @@ import io.prestosql.spi.predicate.TupleDomain;
 import javax.annotation.Nullable;
 
 import java.util.Objects;
+import java.util.Optional;
 import java.util.OptionalLong;
 
 import static java.util.Objects.requireNonNull;
@@ -39,10 +40,11 @@ public final class JdbcTableHandle
     private final String tableName;
     private final TupleDomain<ColumnHandle> constraint;
     private final OptionalLong limit;
+    private final Optional<String> comment;
 
     public JdbcTableHandle(SchemaTableName schemaTableName, @Nullable String catalogName, @Nullable String schemaName, String tableName)
     {
-        this(schemaTableName, catalogName, schemaName, tableName, TupleDomain.all(), OptionalLong.empty());
+        this(schemaTableName, catalogName, schemaName, tableName, TupleDomain.all(), OptionalLong.empty(), Optional.empty());
     }
 
     @JsonCreator
@@ -52,7 +54,8 @@ public final class JdbcTableHandle
             @JsonProperty("schemaName") @Nullable String schemaName,
             @JsonProperty("tableName") String tableName,
             @JsonProperty("constraint") TupleDomain<ColumnHandle> constraint,
-            @JsonProperty("limit") OptionalLong limit)
+            @JsonProperty("limit") OptionalLong limit,
+            @JsonProperty("comment") Optional<String> comment)
     {
         this.schemaTableName = requireNonNull(schemaTableName, "schemaTableName is null");
         this.catalogName = catalogName;
@@ -60,6 +63,7 @@ public final class JdbcTableHandle
         this.tableName = requireNonNull(tableName, "tableName is null");
         this.constraint = requireNonNull(constraint, "constraint is null");
         this.limit = requireNonNull(limit, "limit is null");
+        this.comment = requireNonNull(comment, "comment is null");
     }
 
     @JsonProperty
@@ -100,6 +104,12 @@ public final class JdbcTableHandle
         return limit;
     }
 
+    @JsonProperty
+    public Optional<String> getComment()
+    {
+        return comment;
+    }
+
     @Override
     public boolean equals(Object obj)
     {
@@ -126,6 +136,7 @@ public final class JdbcTableHandle
         builder.append(schemaTableName).append(" ");
         Joiner.on(".").skipNulls().appendTo(builder, catalogName, schemaName, tableName);
         limit.ifPresent(value -> builder.append(" limit=").append(value));
+        comment.ifPresent(value -> builder.append(" comment=").append(value));
         return builder.toString();
     }
 
@@ -145,8 +156,9 @@ public final class JdbcTableHandle
         private String catalogName;
         private String schemaName;
         private String tableName;
-        private TupleDomain<ColumnHandle> constraint;
-        private OptionalLong limit;
+        private TupleDomain<ColumnHandle> constraint = TupleDomain.all();
+        private OptionalLong limit = OptionalLong.empty();
+        private Optional<String> comment = Optional.empty();
 
         public Builder() {}
 
@@ -158,6 +170,7 @@ public final class JdbcTableHandle
             this.tableName = handle.getTableName();
             this.constraint = handle.getConstraint();
             this.limit = handle.limit;
+            this.comment = handle.getComment();
         }
 
         public Builder setSchemaTableName(SchemaTableName schemaTableName)
@@ -196,6 +209,12 @@ public final class JdbcTableHandle
             return this;
         }
 
+        public Builder setComment(Optional<String> comment)
+        {
+            this.comment = comment;
+            return this;
+        }
+
         public JdbcTableHandle build()
         {
             return new JdbcTableHandle(
@@ -204,7 +223,8 @@ public final class JdbcTableHandle
                     schemaName,
                     tableName,
                     constraint,
-                    limit);
+                    limit,
+                    comment);
         }
     }
 }

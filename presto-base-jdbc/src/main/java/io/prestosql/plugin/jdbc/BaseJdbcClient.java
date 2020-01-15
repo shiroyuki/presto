@@ -221,11 +221,13 @@ public class BaseJdbcClient
             try (ResultSet resultSet = getTables(connection, Optional.of(remoteSchema), Optional.of(remoteTable))) {
                 List<JdbcTableHandle> tableHandles = new ArrayList<>();
                 while (resultSet.next()) {
-                    tableHandles.add(new JdbcTableHandle(
-                            schemaTableName,
-                            resultSet.getString("TABLE_CAT"),
-                            resultSet.getString("TABLE_SCHEM"),
-                            resultSet.getString("TABLE_NAME")));
+                    tableHandles.add(JdbcTableHandle.builder()
+                            .setSchemaTableName(schemaTableName)
+                            .setCatalogName(resultSet.getString("TABLE_CAT"))
+                            .setSchemaName(resultSet.getString("TABLE_SCHEM"))
+                            .setTableName(resultSet.getString("TABLE_NAME"))
+                            .setComment(Optional.ofNullable(resultSet.getString("REMARKS")))
+                            .build());
                 }
                 if (tableHandles.isEmpty()) {
                     return Optional.empty();

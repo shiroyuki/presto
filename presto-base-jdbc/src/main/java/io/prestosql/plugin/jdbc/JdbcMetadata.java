@@ -47,6 +47,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static com.google.common.base.Preconditions.checkState;
 import static io.prestosql.spi.StandardErrorCode.PERMISSION_DENIED;
+import static java.util.Collections.emptyMap;
 import static java.util.Objects.requireNonNull;
 
 public class JdbcMetadata
@@ -99,7 +100,8 @@ public class JdbcMetadata
                 handle.getSchemaName(),
                 handle.getTableName(),
                 newDomain,
-                handle.getLimit());
+                handle.getLimit(),
+                handle.getComment());
 
         return Optional.of(new ConstraintApplicationResult<>(handle, constraint.getSummary()));
     }
@@ -123,7 +125,8 @@ public class JdbcMetadata
                 handle.getSchemaName(),
                 handle.getTableName(),
                 handle.getConstraint(),
-                OptionalLong.of(limit));
+                OptionalLong.of(limit),
+                handle.getComment());
 
         return Optional.of(new LimitApplicationResult<>(handle, jdbcClient.isLimitGuaranteed()));
     }
@@ -149,7 +152,7 @@ public class JdbcMetadata
         for (JdbcColumnHandle column : jdbcClient.getColumns(session, handle)) {
             columnMetadata.add(column.getColumnMetadata());
         }
-        return new ConnectorTableMetadata(handle.getSchemaTableName(), columnMetadata.build());
+        return new ConnectorTableMetadata(handle.getSchemaTableName(), columnMetadata.build(), emptyMap(), ((JdbcTableHandle) table).getComment());
     }
 
     @Override
