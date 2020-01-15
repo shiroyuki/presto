@@ -128,4 +128,83 @@ public final class JdbcTableHandle
         limit.ifPresent(value -> builder.append(" limit=").append(value));
         return builder.toString();
     }
+
+    public static Builder builder()
+    {
+        return new Builder();
+    }
+
+    public static Builder builderFrom(JdbcTableHandle handle)
+    {
+        return new Builder(handle);
+    }
+
+    public static final class Builder
+    {
+        private SchemaTableName schemaTableName;
+        private String catalogName;
+        private String schemaName;
+        private String tableName;
+        private TupleDomain<ColumnHandle> constraint;
+        private OptionalLong limit;
+
+        public Builder() {}
+
+        private Builder(JdbcTableHandle handle)
+        {
+            this.schemaTableName = handle.getSchemaTableName();
+            this.catalogName = handle.getCatalogName();
+            this.schemaName = handle.getSchemaName();
+            this.tableName = handle.getTableName();
+            this.constraint = handle.getConstraint();
+            this.limit = handle.limit;
+        }
+
+        public Builder setSchemaTableName(SchemaTableName schemaTableName)
+        {
+            this.schemaTableName = schemaTableName;
+            return this;
+        }
+
+        public Builder setCatalogName(String catalogName)
+        {
+            this.catalogName = catalogName;
+            return this;
+        }
+
+        public Builder setSchemaName(String schemaName)
+        {
+            this.schemaName = schemaName;
+            return this;
+        }
+
+        public Builder setTableName(String tableName)
+        {
+            this.tableName = tableName;
+            return this;
+        }
+
+        public Builder setConstraint(TupleDomain<ColumnHandle> constraint)
+        {
+            this.constraint = constraint;
+            return this;
+        }
+
+        public Builder setLimit(OptionalLong limit)
+        {
+            this.limit = limit;
+            return this;
+        }
+
+        public JdbcTableHandle build()
+        {
+            return new JdbcTableHandle(
+                    schemaTableName,
+                    catalogName,
+                    schemaName,
+                    tableName,
+                    constraint,
+                    limit);
+        }
+    }
 }
