@@ -1,127 +1,62 @@
 version: "3"
 services:
   kudu-master-1:
-    image: apache/kudu:1.10.0
+    image: apache/kudu:latest
     ports:
-      - "7051:7051"
-      - "8051:8051"
+      - "7051"
+      - "8051"
     command: ["master"]
-    networks:
-      - default
     environment:
-      - KUDU_MASTERS=kudu-master-1:7051,kudu-master-2:7151,kudu-master-3:7251
-      - >
-        MASTER_ARGS=--fs_wal_dir=/var/lib/kudu/master
-        --webserver_doc_root=/opt/kudu/www
-        --logtostderr
-        --rpc_bind_addresses=0.0.0.0:7051
-        --rpc_advertised_addresses=0.0.0.0:7051
-        --webserver_port=8051
-        --use_hybrid_clock=false
+      - KUDU_MASTERS=kudu-master-1,kudu-master-2,kudu-master-3
   kudu-master-2:
-    image: apache/kudu:1.10.0
+    image: apache/kudu:latest
     ports:
-      - "7151:7151"
-      - "8151:8151"
+      - "7051"
+      - "8051"
     command: ["master"]
-    networks:
-      - default
     environment:
-      - KUDU_MASTERS=kudu-master-1:7051,kudu-master-2:7151,kudu-master-3:7251
-      - >
-        MASTER_ARGS=--fs_wal_dir=/var/lib/kudu/master
-        --webserver_doc_root=/opt/kudu/www
-        --logtostderr
-        --rpc_bind_addresses=0.0.0.0:7151
-        --rpc_advertised_addresses=0.0.0.0:7151
-        --webserver_port=8151
-        --use_hybrid_clock=false
+      - KUDU_MASTERS=kudu-master-1,kudu-master-2,kudu-master-3
   kudu-master-3:
-    image: apache/kudu:1.10.0
+    image: apache/kudu:latest
     ports:
-      - "7251:7251"
-      - "8251:8251"
+      - "7051"
+      - "8051"
     command: ["master"]
-    networks:
-      - default
     environment:
-      - KUDU_MASTERS=kudu-master-1:7051,kudu-master-2:7151,kudu-master-3:7251
-      - >
-        MASTER_ARGS=--fs_wal_dir=/var/lib/kudu/master
-        --webserver_doc_root=/opt/kudu/www
-        --logtostderr
-        --rpc_bind_addresses=0.0.0.0:7251
-        --rpc_advertised_addresses=0.0.0.0:7251
-        --webserver_port=8251
-        --use_hybrid_clock=false
+      - KUDU_MASTERS=kudu-master-1,kudu-master-2,kudu-master-3
   kudu-tserver-1:
-    image: apache/kudu:1.10.0
+    image: apache/kudu:latest
     depends_on:
       - kudu-master-1
       - kudu-master-2
       - kudu-master-3
     ports:
-      - "7050:7050"
-      - "8050:8050"
+      - "7050"
+      - "8050"
     command: ["tserver"]
-    networks:
-      - default
     environment:
-      - KUDU_MASTERS=kudu-master-1:7051,kudu-master-2:7151,kudu-master-3:7251
-      - >
-        TSERVER_ARGS=--fs_wal_dir=/var/lib/kudu/tserver
-        --webserver_doc_root=/opt/kudu/www
-        --logtostderr
-        --rpc_bind_addresses=0.0.0.0:7050
-        --rpc_advertised_addresses=0.0.0.0:7050
-        --webserver_port=8050
-        --use_hybrid_clock=false
+      - KUDU_MASTERS=kudu-master-1,kudu-master-2,kudu-master-3
   kudu-tserver-2:
-    image: apache/kudu:1.10.0
+    image: apache/kudu:latest
     depends_on:
       - kudu-master-1
       - kudu-master-2
       - kudu-master-3
     ports:
-      - "7150:7150"
-      - "8150:8150"
+      - "7050"
+      - "8050"
     command: ["tserver"]
-    networks:
-      - default
     environment:
-      - KUDU_MASTERS=kudu-master-1:7051,kudu-master-2:7151,kudu-master-3:7251
-      - >
-        TSERVER_ARGS=--fs_wal_dir=/var/lib/kudu/tserver
-        --webserver_doc_root=/opt/kudu/www
-        --logtostderr
-        --rpc_bind_addresses=0.0.0.0:7150
-        --rpc_advertised_addresses=0.0.0.0:7150
-        --webserver_port=8150
-        --use_hybrid_clock=false
+      - KUDU_MASTERS=kudu-master-1,kudu-master-2,kudu-master-3
   kudu-tserver-3:
-    image: apache/kudu:1.10.0
+    image: apache/kudu:latest
     depends_on:
       - kudu-master-1
       - kudu-master-2
       - kudu-master-3
     ports:
-      - "7250:7250"
-      - "8250:8250"
+      - "7050"
+      - "8050"
     command: ["tserver"]
-    networks:
-      - default
     environment:
-      - KUDU_MASTERS=kudu-master-1:7051,kudu-master-2:7151,kudu-master-3:7251
-      - >
-        TSERVER_ARGS=--fs_wal_dir=/var/lib/kudu/tserver
-        --webserver_doc_root=/opt/kudu/www
-        --logtostderr
-        --rpc_bind_addresses=0.0.0.0:7250
-        --rpc_advertised_addresses=0.0.0.0:7250
-        --webserver_port=8250
-        --use_hybrid_clock=false
-
-networks:
-  default:
-    driver: bridge
-    external: false
+      - KUDU_MASTERS=kudu-master-1,kudu-master-2,kudu-master-3
