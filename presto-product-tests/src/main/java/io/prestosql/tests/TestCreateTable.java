@@ -13,26 +13,33 @@
  */
 package io.prestosql.tests;
 
+import com.google.inject.Inject;
 import io.prestosql.tempto.ProductTest;
 import io.prestosql.tempto.Requires;
 import io.prestosql.tempto.fulfillment.table.hive.tpch.ImmutableTpchTablesRequirements.ImmutableNationTable;
+import io.prestosql.tempto.hadoop.hdfs.HdfsClient;
 import org.testng.annotations.Test;
 
 import static io.prestosql.tempto.assertions.QueryAssert.assertThat;
 import static io.prestosql.tempto.query.QueryExecutor.query;
 import static io.prestosql.tests.TestGroups.CREATE_TABLE;
 import static java.lang.String.format;
+import static org.testng.Assert.assertEquals;
 
 @Requires(ImmutableNationTable.class)
 public class TestCreateTable
         extends ProductTest
 {
+    @Inject
+    private HdfsClient hdfsClient;
+
     @Test(groups = CREATE_TABLE)
     public void shouldCreateTableAsSelect()
     {
         String tableName = "create_table_as_select";
         query(format("DROP TABLE IF EXISTS %s", tableName));
         query(format("CREATE TABLE %s(nationkey, name) AS SELECT n_nationkey, n_name FROM nation", tableName));
+        assertEquals(hdfsClient.getPermission("/user/hive/warehouse/" + tableName), "1755");
         assertThat(query(format("SELECT * FROM %s", tableName))).hasRowsCount(25);
     }
 
@@ -42,6 +49,7 @@ public class TestCreateTable
         String tableName = "create_table_as_empty_select";
         query(format("DROP TABLE IF EXISTS %s", tableName));
         query(format("CREATE TABLE %s(nationkey, name) AS SELECT n_nationkey, n_name FROM nation WHERE 0 is NULL", tableName));
+        assertEquals(hdfsClient.getPermission("/user/hive/warehouse/" + tableName), "1755");
         assertThat(query(format("SELECT nationkey, name FROM %s", tableName))).hasRowsCount(0);
     }
 }

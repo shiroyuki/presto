@@ -167,7 +167,7 @@ import static org.joda.time.DateTimeZone.UTC;
 public final class HiveWriteUtils
 {
     @SuppressWarnings("OctalInteger")
-    private static final FsPermission ALL_PERMISSIONS = new FsPermission((short) 0777);
+    private static final FsPermission DEFAULT_PERMISSION = new FsPermission((short) 0755);
 
     private HiveWriteUtils()
     {
@@ -552,7 +552,7 @@ public final class HiveWriteUtils
     public static void createDirectory(HdfsContext context, HdfsEnvironment hdfsEnvironment, Path path)
     {
         try {
-            if (!hdfsEnvironment.getFileSystem(context, path).mkdirs(path, ALL_PERMISSIONS)) {
+            if (!hdfsEnvironment.getFileSystem(context, path).mkdirs(path, DEFAULT_PERMISSION)) {
                 throw new IOException("mkdirs returned false");
             }
         }
@@ -562,7 +562,7 @@ public final class HiveWriteUtils
 
         // explicitly set permission since the default umask overrides it on creation
         try {
-            hdfsEnvironment.getFileSystem(context, path).setPermission(path, ALL_PERMISSIONS);
+            hdfsEnvironment.getFileSystem(context, path).setPermission(path, DEFAULT_PERMISSION);
         }
         catch (IOException e) {
             throw new PrestoException(HIVE_FILESYSTEM_ERROR, "Failed to set permission on directory: " + path, e);
