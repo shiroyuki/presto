@@ -235,6 +235,7 @@ public class TableWriterOperator
         timer.end(statisticsTiming);
 
         ListenableFuture<?> blockedOnAggregation = statisticAggregationOperator.isBlocked();
+        System.out.println("blocks: " + blocks);
         CompletableFuture<?> future = pageSink.appendPage(new Page(blocks));
         updateMemoryUsage();
         ListenableFuture<?> blockedOnWrite = toListenableFuture(future);

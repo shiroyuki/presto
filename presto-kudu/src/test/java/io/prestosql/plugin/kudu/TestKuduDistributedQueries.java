@@ -13,23 +13,29 @@
  */
 package io.prestosql.plugin.kudu;
 
-import io.prestosql.testing.AbstractTestDistributedQueries;
-import io.prestosql.testing.MaterializedResult;
+import com.google.common.base.Throwables;
+import com.google.common.collect.ImmutableList;
+import io.prestosql.spi.PrestoException;
+import io.prestosql.sql.parser.ParsingException;
+import io.prestosql.testing.AbstractTestQueryFramework;
 import io.prestosql.testing.QueryRunner;
-import io.prestosql.testing.sql.TestTable;
-import io.prestosql.tpch.TpchTable;
-import org.testng.SkipException;
 import org.testng.annotations.AfterClass;
+import org.testng.annotations.DataProvider;
+import org.testng.annotations.Test;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 import static io.prestosql.plugin.kudu.KuduQueryRunnerFactory.createKuduQueryRunnerTpch;
-import static io.prestosql.spi.type.VarcharType.VARCHAR;
-import static io.prestosql.testing.MaterializedResult.resultBuilder;
-import static io.prestosql.testing.assertions.Assert.assertEquals;
+import static io.prestosql.testing.sql.TestTable.randomTableSuffix;
+import static java.lang.String.format;
+import static java.util.Objects.requireNonNull;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class TestKuduDistributedQueries
-        extends AbstractTestDistributedQueries
+        extends AbstractTestQueryFramework
 {
     private TestingKuduServer kuduServer;
 
@@ -38,7 +44,7 @@ public class TestKuduDistributedQueries
             throws Exception
     {
         kuduServer = new TestingKuduServer();
-        return createKuduQueryRunnerTpch(kuduServer, Optional.of(""), TpchTable.getTables());
+        return createKuduQueryRunnerTpch(kuduServer, Optional.of(""), ImmutableList.of());
     }
 
     @AfterClass(alwaysRun = true)
@@ -47,100 +53,80 @@ public class TestKuduDistributedQueries
         kuduServer.close();
     }
 
-    @Override
-    protected boolean supportsViews()
+    @Test(dataProvider = "testDataMappingSmokeTestDataProvider")
+    public void testDataMappingSmokeTest(DataMappingTestSetup dataMappingTestSetup)
     {
-        return false;
+        String prestoTypeName = dataMappingTestSetup.getPrestoTypeName();
+        String sampleValueLiteral = dataMappingTestSetup.getSampleValueLiteral();
+        String highValueLiteral = dataMappingTestSetup.getHighValueLiteral();
+
+        String tableName = "test_data_mapping_smoke_" + prestoTypeName.replaceAll("[^a-zA-Z0-9]", "_") + "_" + randomTableSuffix();
+
+        Runnable setup = () -> {
+            // TODO test with both CTAS *and* CREATE TABLE + INSERT, since they use different connector API methods.
+            String createTable = "" +
+                    "CREATE TABLE " + tableName + " AS " +
+                    "SELECT CAST(id AS varchar) id, CAST(value AS " + prestoTypeName + ") value " +
+                    "FROM (VALUES " +
+                    "  ('null value', NULL), " +
+                    "  ('sample value', " + sampleValueLiteral + "), " +
+                    "  ('high value', " + highValueLiteral + ")) " +
+                    " t(id, value)";
+            assertUpdate(createTable, 3);
+        };
+        if (dataMappingTestSetup.isUnsupportedType()) {
+            String typeNameBase = prestoTypeName.replaceFirst("\\(.*", "");
+            String expectedMessagePart = format("(%1$s.*not (yet )?supported)|((?i)unsupported.*%1$s)|((?i)not supported.*%1$s)", Pattern.quote(typeNameBase));
+            assertThatThrownBy(setup::run)
+                    .hasMessageFindingMatch(expectedMessagePart)
+                    .satisfies(e -> assertThat(getPrestoExceptionCause(e)).hasMessageFindingMatch(expectedMessagePart));
+            return;
+        }
+        setup.run();
+
+        // without pushdown, i.e. test read data mapping
+        System.out.println(computeActual("SELECT * FROM " + tableName));
+        assertQuery("SELECT id FROM " + tableName + " WHERE rand() = 42 OR value IS NULL", "VALUES 'null value'");
+        assertQuery("SELECT id FROM " + tableName + " WHERE rand() = 42 OR value IS NOT NULL", "VALUES ('sample value'), ('high value')");
+        assertQuery("SELECT id FROM " + tableName + " WHERE rand() = 42 OR value = " + sampleValueLiteral, "VALUES 'sample value'");
+        assertQuery("SELECT id FROM " + tableName + " WHERE rand() = 42 OR value = " + highValueLiteral, "VALUES 'high value'");
+
+        assertQuery("SELECT id FROM " + tableName + " WHERE value IS NULL", "VALUES 'null value'");
+        assertQuery("SELECT id FROM " + tableName + " WHERE value IS NOT NULL", "VALUES ('sample value'), ('high value')");
+        assertQuery("SELECT id FROM " + tableName + " WHERE value = " + sampleValueLiteral, "VALUES 'sample value'");
+        assertQuery("SELECT id FROM " + tableName + " WHERE value != " + sampleValueLiteral, "VALUES 'high value'");
+        assertQuery("SELECT id FROM " + tableName + " WHERE value <= " + sampleValueLiteral, "VALUES 'sample value'");
+        assertQuery("SELECT id FROM " + tableName + " WHERE value > " + sampleValueLiteral, "VALUES 'high value'");
+        assertQuery("SELECT id FROM " + tableName + " WHERE value <= " + highValueLiteral, "VALUES ('sample value'), ('high value')");
+
+        assertQuery("SELECT id FROM " + tableName + " WHERE value IS NULL OR value = " + sampleValueLiteral, "VALUES ('null value'), ('sample value')");
+        assertQuery("SELECT id FROM " + tableName + " WHERE value IS NULL OR value != " + sampleValueLiteral, "VALUES ('null value'), ('high value')");
+        assertQuery("SELECT id FROM " + tableName + " WHERE value IS NULL OR value <= " + sampleValueLiteral, "VALUES ('null value'), ('sample value')");
+        assertQuery("SELECT id FROM " + tableName + " WHERE value IS NULL OR value > " + sampleValueLiteral, "VALUES ('null value'), ('high value')");
+        assertQuery("SELECT id FROM " + tableName + " WHERE value IS NULL OR value <= " + highValueLiteral, "VALUES ('null value'), ('sample value'), ('high value')");
+
+        assertUpdate("DROP TABLE " + tableName);
     }
 
-    @Override
-    protected boolean supportsArrays()
+    @DataProvider
+    public final Object[][] testDataMappingSmokeTestDataProvider()
     {
-        return false;
+        return testDataMappingSmokeTestData().stream()
+                .map(this::filterDataMappingSmokeTestData)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .map(dataMappingTestSetup -> new Object[] {dataMappingTestSetup})
+                .toArray(Object[][]::new);
     }
 
-    @Override
-    protected TestTable createTableWithDefaultColumns()
+    private List<DataMappingTestSetup> testDataMappingSmokeTestData()
     {
-        throw new SkipException("Kudu connector does not support column default values");
-    }
-
-    @Override
-    public void testInsert()
-    {
-        // TODO Support these test once kudu connector can create tables with default partitions
-    }
-
-    @Override
-    public void testAddColumn()
-    {
-        // TODO Support these test once kudu connector can create tables with default partitions
-    }
-
-    @Override
-    public void testCreateTable()
-    {
-        // TODO Support these test once kudu connector can create tables with default partitions
-    }
-
-    @Override
-    public void testInsertUnicode()
-    {
-        // TODO Support these test once kudu connector can create tables with default partitions
-    }
-
-    @Override
-    public void testInsertWithCoercion()
-    {
-        // Override because of non-canonical varchar mapping
-    }
-
-    @Override
-    public void testDelete()
-    {
-        // TODO Support these test once kudu connector can create tables with default partitions
-    }
-
-    @Override
-    public void testShowColumns()
-    {
-        MaterializedResult actual = computeActual("SHOW COLUMNS FROM orders");
-
-        MaterializedResult expectedParametrizedVarchar = resultBuilder(getSession(), VARCHAR, VARCHAR, VARCHAR, VARCHAR)
-                .row("orderkey", "bigint", "nullable, encoding=auto, compression=default", "")
-                .row("custkey", "bigint", "nullable, encoding=auto, compression=default", "")
-                .row("orderstatus", "varchar", "nullable, encoding=auto, compression=default", "")
-                .row("totalprice", "double", "nullable, encoding=auto, compression=default", "")
-                .row("orderdate", "varchar", "nullable, encoding=auto, compression=default", "")
-                .row("orderpriority", "varchar", "nullable, encoding=auto, compression=default", "")
-                .row("clerk", "varchar", "nullable, encoding=auto, compression=default", "")
-                .row("shippriority", "integer", "nullable, encoding=auto, compression=default", "")
-                .row("comment", "varchar", "nullable, encoding=auto, compression=default", "")
+        return ImmutableList.<DataMappingTestSetup>builder()
+//                .add(new DataMappingTestSetup("char(3)", "'ab '", "'zzz'"))
+                .add(new DataMappingTestSetup("varchar(3)", "'de '", "'zzz'"))
                 .build();
-
-        assertEquals(actual, expectedParametrizedVarchar);
     }
 
-    @Override
-    public void testCommentTable()
-    {
-        assertQueryFails("COMMENT ON TABLE orders IS 'hello'", "This connector does not support setting table comments");
-    }
-
-    @Override
-    public void testWrittenStats()
-    {
-        // TODO Kudu connector supports CTAS and inserts, but the test would fail
-    }
-
-    @Override
-    public void testColumnName(String columnName)
-    {
-        // TODO (https://github.com/prestosql/presto/issues/3477) enable the test
-        throw new SkipException("TODO");
-    }
-
-    @Override
     protected Optional<DataMappingTestSetup> filterDataMappingSmokeTestData(DataMappingTestSetup dataMappingTestSetup)
     {
         String typeName = dataMappingTestSetup.getPrestoTypeName();
@@ -150,11 +136,101 @@ public class TestKuduDistributedQueries
         }
 
         if (typeName.equals("date") // date gets stored as varchar
-                || typeName.equals("varbinary")) { // TODO (https://github.com/prestosql/presto/issues/3416)
+                || typeName.equals("varbinary")) { // TODO: https://github.com/prestosql/presto/issues/3597
             // TODO this should either work or fail cleanly
             return Optional.empty();
         }
 
         return Optional.of(dataMappingTestSetup);
+    }
+
+    protected static final class DataMappingTestSetup
+    {
+        private final String prestoTypeName;
+        private final String sampleValueLiteral;
+        private final String highValueLiteral;
+
+        private final boolean unsupportedType;
+
+        public DataMappingTestSetup(String prestoTypeName, String sampleValueLiteral, String highValueLiteral)
+        {
+            this(prestoTypeName, sampleValueLiteral, highValueLiteral, false);
+        }
+
+        private DataMappingTestSetup(String prestoTypeName, String sampleValueLiteral, String highValueLiteral, boolean unsupportedType)
+        {
+            this.prestoTypeName = requireNonNull(prestoTypeName, "prestoTypeName is null");
+            this.sampleValueLiteral = requireNonNull(sampleValueLiteral, "sampleValueLiteral is null");
+            this.highValueLiteral = requireNonNull(highValueLiteral, "highValueLiteral is null");
+            this.unsupportedType = unsupportedType;
+        }
+
+        public String getPrestoTypeName()
+        {
+            return prestoTypeName;
+        }
+
+        public String getSampleValueLiteral()
+        {
+            return sampleValueLiteral;
+        }
+
+        public String getHighValueLiteral()
+        {
+            return highValueLiteral;
+        }
+
+        public boolean isUnsupportedType()
+        {
+            return unsupportedType;
+        }
+
+        public DataMappingTestSetup asUnsupported()
+        {
+            return new DataMappingTestSetup(
+                    prestoTypeName,
+                    sampleValueLiteral,
+                    highValueLiteral,
+                    true);
+        }
+
+        @Override
+        public String toString()
+        {
+            // toString is brief because it's used for test case labels in IDE
+            return prestoTypeName + (unsupportedType ? "!" : "");
+        }
+    }
+
+    static RuntimeException getPrestoExceptionCause(Throwable e)
+    {
+        return Throwables.getCausalChain(e).stream()
+                .filter(TestKuduDistributedQueries::isPrestoException)
+                .findFirst() // TODO .collect(toOptional()) -- should be exactly one in the causal chain
+                .map(RuntimeException.class::cast)
+                .orElseThrow(() -> new IllegalArgumentException("Exception does not have PrestoException cause", e));
+    }
+
+    private static boolean isPrestoException(Throwable exception)
+    {
+        requireNonNull(exception, "exception is null");
+
+        if (exception instanceof PrestoException || exception instanceof ParsingException) {
+            return true;
+        }
+
+        if (exception.getClass().getName().equals("io.prestosql.client.FailureInfo$FailureException")) {
+            try {
+                String originalClassName = exception.toString().split(":", 2)[0];
+                Class<? extends Throwable> originalClass = Class.forName(originalClassName).asSubclass(Throwable.class);
+                return PrestoException.class.isAssignableFrom(originalClass) ||
+                        ParsingException.class.isAssignableFrom(originalClass);
+            }
+            catch (ClassNotFoundException e) {
+                return false;
+            }
+        }
+
+        return false;
     }
 }

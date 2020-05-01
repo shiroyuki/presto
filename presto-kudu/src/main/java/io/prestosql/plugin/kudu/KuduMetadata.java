@@ -151,6 +151,7 @@ public class KuduMetadata
                 .filter(column -> !column.isKey() || !column.getName().equals(KuduColumnHandle.ROW_ID))
                 .map(this::getColumnMetadata)
                 .collect(toImmutableList());
+        System.out.println("columnsMetaList: " + columnsMetaList);
 
         Map<String, Object> properties = clientSession.getTableProperties(tableHandle);
         return new ConnectorTableMetadata(tableHandle.getSchemaTableName(), columnsMetaList, properties);

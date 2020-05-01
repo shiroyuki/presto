@@ -259,6 +259,7 @@ public final class TypeHelper
     public static Slice getSlice(Type type, RowResult row, int field)
     {
         if (type instanceof VarcharType) {
+            System.out.println("getSlice: " + row.getString(field) + "!");
             return Slices.utf8Slice(row.getString(field));
         }
         if (type instanceof VarbinaryType) {

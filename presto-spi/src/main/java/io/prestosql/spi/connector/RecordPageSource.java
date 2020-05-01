@@ -112,6 +112,7 @@ public class RecordPageSource
                         }
                         else if (javaType == Slice.class) {
                             Slice slice = cursor.getSlice(column);
+                            System.out.println("getNextPage: " + slice.toStringUtf8() + "!");
                             type.writeSlice(output, slice, 0, slice.length());
                         }
                         else {

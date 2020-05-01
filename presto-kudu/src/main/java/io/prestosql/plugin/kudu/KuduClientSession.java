@@ -292,6 +292,8 @@ public class KuduClientSession
 
             Schema schema = buildSchema(columns, properties);
             CreateTableOptions options = buildCreateTableOptions(schema, properties);
+            System.out.println("schema: " + schema);
+            System.out.println("columns: " + columns);
             return client.createTable(rawName, schema, options);
         }
         catch (KuduException e) {
@@ -392,6 +394,7 @@ public class KuduClientSession
         String name = columnMetadata.getName();
         ColumnDesign design = KuduTableProperties.getColumnDesign(columnMetadata.getProperties());
         Type ktype = TypeHelper.toKuduClientType(columnMetadata.getType());
+        System.out.println("ktype: " + ktype);
         ColumnSchema.ColumnSchemaBuilder builder = new ColumnSchema.ColumnSchemaBuilder(name, ktype);
         builder.key(design.isPrimaryKey()).nullable(design.isNullable());
         setEncoding(name, builder, design);

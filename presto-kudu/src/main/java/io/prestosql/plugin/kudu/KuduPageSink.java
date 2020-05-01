@@ -97,6 +97,7 @@ public class KuduPageSink
         requireNonNull(clientSession, "clientSession is null");
         this.connectorSession = connectorSession;
         this.columnTypes = mapping.getColumnTypes();
+        System.out.println("KuduPageSink: " + columnTypes);
         this.originalColumnTypes = mapping.getOriginalColumnTypes();
         this.generateUUID = mapping.isGenerateUUID();
 
@@ -124,6 +125,7 @@ public class KuduPageSink
             }
 
             try {
+                System.out.println("upsert: " + upsert);
                 session.apply(upsert);
             }
             catch (KuduException e) {
@@ -137,6 +139,7 @@ public class KuduPageSink
     {
         Block block = page.getBlock(channel);
         Type type = columnTypes.get(destChannel);
+        System.out.println("type: " + type);
         if (block.isNull(position)) {
             row.setNull(destChannel);
         }
@@ -173,6 +176,7 @@ public class KuduPageSink
                 row.addStringUtf8(destChannel, bytes);
             }
             else {
+                System.out.println("appendColumn: " + type.getSlice(block, position).toStringUtf8() + "!");
                 row.addString(destChannel, type.getSlice(block, position).toStringUtf8());
             }
         }

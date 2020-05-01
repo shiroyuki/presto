@@ -1369,6 +1369,7 @@ public abstract class AbstractTestDistributedQueries
         setup.run();
 
         // without pushdown, i.e. test read data mapping
+        System.out.println(computeActual("SELECT * FROM " + tableName));
         assertQuery("SELECT id FROM " + tableName + " WHERE rand() = 42 OR value IS NULL", "VALUES 'null value'");
         assertQuery("SELECT id FROM " + tableName + " WHERE rand() = 42 OR value IS NOT NULL", "VALUES ('sample value'), ('high value')");
         assertQuery("SELECT id FROM " + tableName + " WHERE rand() = 42 OR value = " + sampleValueLiteral, "VALUES 'sample value'");
