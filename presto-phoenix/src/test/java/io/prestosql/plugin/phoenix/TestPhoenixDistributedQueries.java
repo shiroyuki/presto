@@ -134,10 +134,9 @@ public class TestPhoenixDistributedQueries
     }
 
     @Override
-    public void testColumnName(String columnName)
+    protected boolean isColumnNameRejected(Exception exception, String columnName, boolean delimited)
     {
-        // TODO (https://github.com/prestosql/presto/issues/3466) Phoenix generally lacks quoting in underlying queries
-        throw new SkipException("TODO");
+        return columnName.equals("a\"quote");
     }
 
     @Override

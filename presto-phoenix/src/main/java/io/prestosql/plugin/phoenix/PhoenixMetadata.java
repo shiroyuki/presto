@@ -351,7 +351,7 @@ public class PhoenixMetadata
                     typeStatement += " not null";
                     pkNames.add(columnName);
                 }
-                columnList.add(format("%s %s", columnName, typeStatement));
+                columnList.add(format("%s %s", getEscapedArgument(columnName), typeStatement));
             }
 
             ImmutableList.Builder<String> tableOptions = ImmutableList.builder();
