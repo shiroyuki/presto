@@ -153,7 +153,7 @@ public class Console
                         clientOptions.progress);
             }
 
-            runConsole(queryRunner, exiting);
+            runConsole(queryRunner, exiting, clientOptions.editingMode);
             return true;
         }
         finally {
@@ -191,10 +191,10 @@ public class Console
         }
     }
 
-    private static void runConsole(QueryRunner queryRunner, AtomicBoolean exiting)
+    private static void runConsole(QueryRunner queryRunner, AtomicBoolean exiting, ClientOptions.EditingMode editingMode)
     {
         try (TableNameCompleter tableNameCompleter = new TableNameCompleter(queryRunner);
-                InputReader reader = new InputReader(getHistoryFile(), commandCompleter(), tableNameCompleter)) {
+                InputReader reader = new InputReader(editingMode, getHistoryFile(), commandCompleter(), tableNameCompleter)) {
             tableNameCompleter.populateCache();
             String remaining = "";
             while (!exiting.get()) {

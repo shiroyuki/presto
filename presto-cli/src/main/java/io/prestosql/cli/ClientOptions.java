@@ -22,6 +22,7 @@ import com.google.common.net.HostAndPort;
 import io.airlift.airline.Option;
 import io.airlift.units.Duration;
 import io.prestosql.client.ClientSession;
+import org.jline.reader.LineReader;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -155,6 +156,9 @@ public class ClientOptions
     @Option(name = "--timezone", title = "timezone", description = "Session time zone (default: system time zone)")
     public String timeZone = ZoneId.systemDefault().getId();
 
+    @Option(name = "--editing-mode", title = "editing-mode", description = "Editing mode [EMACS, VI] (default: EMACS)")
+    public EditingMode editingMode = EditingMode.EMACS;
+
     public enum OutputFormat
     {
         ALIGNED,
@@ -167,6 +171,24 @@ public class ClientOptions
         CSV_HEADER_UNQUOTED,
         JSON,
         NULL
+    }
+
+    public enum EditingMode
+    {
+        EMACS(LineReader.EMACS),
+        VI(LineReader.VIINS);
+
+        private final String keyMap;
+
+        EditingMode(String keyMap)
+        {
+            this.keyMap = keyMap;
+        }
+
+        public String getKeyMap()
+        {
+            return keyMap;
+        }
     }
 
     public ClientSession toClientSession()
