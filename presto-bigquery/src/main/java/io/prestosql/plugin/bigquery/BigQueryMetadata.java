@@ -16,6 +16,7 @@ package io.prestosql.plugin.bigquery;
 import com.google.cloud.bigquery.DatasetId;
 import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.Schema;
+import com.google.cloud.bigquery.StandardTableDefinition;
 import com.google.cloud.bigquery.Table;
 import com.google.cloud.bigquery.TableDefinition;
 import com.google.cloud.bigquery.TableId;
@@ -43,6 +44,7 @@ import io.prestosql.spi.connector.SchemaTablePrefix;
 import io.prestosql.spi.connector.TableNotFoundException;
 import io.prestosql.spi.expression.ConnectorExpression;
 import io.prestosql.spi.predicate.TupleDomain;
+import io.prestosql.spi.type.Type;
 
 import javax.inject.Inject;
 
@@ -54,6 +56,7 @@ import java.util.Set;
 import static com.google.cloud.bigquery.TableDefinition.Type.TABLE;
 import static com.google.cloud.bigquery.TableDefinition.Type.VIEW;
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static io.prestosql.plugin.bigquery.BigQueryType.toField;
 import static java.util.Objects.requireNonNull;
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toMap;
@@ -239,6 +242,20 @@ public class BigQueryMetadata
     }
 
     @Override
+    public void createTable(ConnectorSession session, ConnectorTableMetadata tableMetadata, boolean ignoreExisting)
+    {
+        createTable(tableMetadata);
+    }
+
+    @Override
+    public void dropTable(ConnectorSession session, ConnectorTableHandle tableHandle)
+    {
+        BigQueryTableHandle bigqueryTable = (BigQueryTableHandle) tableHandle;
+        TableId tableId = TableId.of(projectId, bigqueryTable.getSchemaName(), bigqueryTable.getTableName());
+        bigQueryClient.dropTable(tableId);
+    }
+
+    @Override
     public Optional<LimitApplicationResult<ConnectorTableHandle>> applyLimit(
             ConnectorSession session,
             ConnectorTableHandle handle,
@@ -302,5 +319,33 @@ public class BigQueryMetadata
         BigQueryTableHandle updatedHandle = bigQueryTableHandle.withConstraint(newDomain);
 
         return Optional.of(new ConstraintApplicationResult<>(updatedHandle, constraint.getSummary()));
+    }
+
+    private BigQueryOutputTableHandle createTable(ConnectorTableMetadata tableMetadata)
+    {
+        ImmutableList.Builder<String> columnNames = ImmutableList.builder();
+        ImmutableList.Builder<Type> columnTypes = ImmutableList.builder();
+        ImmutableList.Builder<Field> fields = ImmutableList.builder();
+        for (ColumnMetadata column : tableMetadata.getColumns()) {
+            columnNames.add(column.getName());
+            columnTypes.add(column.getType());
+            fields.add(toField(column.getName(), column.getType()));
+        }
+
+        SchemaTableName schemaTableName = tableMetadata.getTable();
+        String schemaName = schemaTableName.getSchemaName();
+        String tableName = schemaTableName.getTableName();
+
+        TableId tableId = TableId.of(schemaName, tableName);
+        TableDefinition tableDefinition = StandardTableDefinition.of(Schema.of(fields.build()));
+        TableInfo tableInfo = TableInfo.newBuilder(tableId, tableDefinition).build();
+
+        bigQueryClient.createTable(tableInfo);
+
+        return new BigQueryOutputTableHandle(
+                schemaName,
+                tableName,
+                columnNames.build(),
+                columnTypes.build());
     }
 }

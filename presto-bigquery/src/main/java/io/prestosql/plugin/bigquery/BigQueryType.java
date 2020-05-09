@@ -14,19 +14,26 @@
 package io.prestosql.plugin.bigquery;
 
 import com.google.cloud.bigquery.Field;
+import com.google.cloud.bigquery.FieldList;
+import com.google.cloud.bigquery.LegacySQLTypeName;
+import com.google.cloud.bigquery.StandardSQLTypeName;
 import io.airlift.slice.Slice;
 import io.prestosql.spi.type.ArrayType;
 import io.prestosql.spi.type.BigintType;
 import io.prestosql.spi.type.BooleanType;
+import io.prestosql.spi.type.CharType;
 import io.prestosql.spi.type.DateTimeEncoding;
 import io.prestosql.spi.type.DateType;
 import io.prestosql.spi.type.DecimalType;
 import io.prestosql.spi.type.Decimals;
 import io.prestosql.spi.type.DoubleType;
+import io.prestosql.spi.type.IntegerType;
 import io.prestosql.spi.type.RowType;
+import io.prestosql.spi.type.SmallintType;
 import io.prestosql.spi.type.TimeWithTimeZoneType;
 import io.prestosql.spi.type.TimestampType;
 import io.prestosql.spi.type.TimestampWithTimeZoneType;
+import io.prestosql.spi.type.TinyintType;
 import io.prestosql.spi.type.Type;
 import io.prestosql.spi.type.VarbinaryType;
 import io.prestosql.spi.type.VarcharType;
@@ -41,7 +48,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
+import static com.google.cloud.bigquery.LegacySQLTypeName.legacySQLTypeName;
 import static com.google.common.base.Preconditions.checkArgument;
 import static io.prestosql.plugin.bigquery.BigQueryMetadata.NUMERIC_DATA_TYPE_PRECISION;
 import static io.prestosql.plugin.bigquery.BigQueryMetadata.NUMERIC_DATA_TYPE_SCALE;
@@ -178,6 +187,55 @@ public enum BigQueryType
     {
         Slice slice = (Slice) value;
         return format("FROM_BASE64('%s')", Base64.getEncoder().encodeToString(slice.getBytes()));
+    }
+
+    public static Field toField(String name, Type type)
+    {
+        if (type instanceof ArrayType) {
+            Type elementType = ((ArrayType) type).getElementType();
+            LegacySQLTypeName legacySqlTypeName = legacySQLTypeName(toStandardSqlTypeName(elementType));
+            return Field.newBuilder(name, legacySqlTypeName).setMode(Field.Mode.REPEATED).build();
+        }
+        if (type instanceof RowType) {
+            RowType rowType = (RowType) type;
+            List<Field> subFields = rowType.getFields().stream()
+                    .map(field -> Field.of(field.getName().orElse("field" + rowType.getFields().indexOf(field)), toStandardSqlTypeName(field.getType())))
+                    .collect(Collectors.toUnmodifiableList());
+            return Field.of(name, StandardSQLTypeName.STRUCT, FieldList.of(subFields));
+        }
+        return Field.of(name, toStandardSqlTypeName(type));
+    }
+
+    private static StandardSQLTypeName toStandardSqlTypeName(Type type)
+    {
+        if (type == BooleanType.BOOLEAN) {
+            return StandardSQLTypeName.BOOL;
+        }
+        if (type == TinyintType.TINYINT || type == SmallintType.SMALLINT || type == IntegerType.INTEGER || type == BigintType.BIGINT) {
+            return StandardSQLTypeName.INT64;
+        }
+        if (type == DoubleType.DOUBLE) {
+            return StandardSQLTypeName.FLOAT64;
+        }
+        if (type instanceof DecimalType) {
+            return StandardSQLTypeName.NUMERIC;
+        }
+        if (type == DateType.DATE) {
+            return StandardSQLTypeName.DATE;
+        }
+        if (type == TimestampType.TIMESTAMP) {
+            return StandardSQLTypeName.DATETIME;
+        }
+        if (type == TimeWithTimeZoneType.TIME_WITH_TIME_ZONE) {
+            return StandardSQLTypeName.TIME;
+        }
+        if (type == TimestampWithTimeZoneType.TIMESTAMP_WITH_TIME_ZONE) {
+            return StandardSQLTypeName.TIMESTAMP;
+        }
+        if (type instanceof VarcharType || type instanceof CharType) {
+            return StandardSQLTypeName.STRING;
+        }
+        throw new IllegalArgumentException("Unsupported column type: " + type);
     }
 
     private static String quote(String value)
