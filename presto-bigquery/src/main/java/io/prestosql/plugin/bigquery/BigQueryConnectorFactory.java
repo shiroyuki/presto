@@ -16,6 +16,7 @@ package io.prestosql.plugin.bigquery;
 import com.google.inject.Injector;
 import io.airlift.bootstrap.Bootstrap;
 import io.airlift.json.JsonModule;
+import io.prestosql.plugin.base.CatalogName;
 import io.prestosql.spi.NodeManager;
 import io.prestosql.spi.connector.Connector;
 import io.prestosql.spi.connector.ConnectorContext;
@@ -54,6 +55,7 @@ public class BigQueryConnectorFactory
                 binder -> {
                     binder.bind(TypeManager.class).toInstance(context.getTypeManager());
                     binder.bind(NodeManager.class).toInstance(context.getNodeManager());
+                    binder.bind(CatalogName.class).toInstance(new CatalogName(catalogName));
                 });
 
         Injector injector = app.strictConfig()

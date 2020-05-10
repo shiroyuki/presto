@@ -20,11 +20,13 @@ import com.google.cloud.bigquery.Table;
 import com.google.cloud.bigquery.TableDefinition;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableInfo;
+import com.google.cloud.bigquery.ViewDefinition;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Streams;
 import io.airlift.log.Logger;
+import io.prestosql.plugin.base.CatalogName;
 import io.prestosql.spi.connector.ColumnHandle;
 import io.prestosql.spi.connector.ColumnMetadata;
 import io.prestosql.spi.connector.ConnectorMetadata;
@@ -32,6 +34,7 @@ import io.prestosql.spi.connector.ConnectorSession;
 import io.prestosql.spi.connector.ConnectorTableHandle;
 import io.prestosql.spi.connector.ConnectorTableMetadata;
 import io.prestosql.spi.connector.ConnectorTableProperties;
+import io.prestosql.spi.connector.ConnectorViewDefinition;
 import io.prestosql.spi.connector.Constraint;
 import io.prestosql.spi.connector.ConstraintApplicationResult;
 import io.prestosql.spi.connector.LimitApplicationResult;
@@ -69,12 +72,14 @@ public class BigQueryMetadata
 
     private final BigQueryClient bigQueryClient;
     private final String projectId;
+    private final CatalogName catalogName;
 
     @Inject
-    public BigQueryMetadata(BigQueryClient bigQueryClient, BigQueryConfig config)
+    public BigQueryMetadata(BigQueryClient bigQueryClient, BigQueryConfig config, CatalogName catalogName)
     {
         this.bigQueryClient = requireNonNull(bigQueryClient, "bigQueryClient is null");
         this.projectId = requireNonNull(config, "config is null").getProjectId().orElse(bigQueryClient.getProjectId());
+        this.catalogName = requireNonNull(catalogName, "catalogName is null");
     }
 
     @Override
@@ -116,6 +121,30 @@ public class BigQueryMetadata
             }
         }
         return tableNames.build();
+    }
+
+    @Override
+    public Optional<ConnectorViewDefinition> getView(ConnectorSession session, SchemaTableName viewName)
+    {
+        TableInfo tableInfo = getBigQueryTable(viewName);
+
+        if (tableInfo.getDefinition() instanceof ViewDefinition) {
+            List<BigQueryColumnHandle> columns = getTableColumns(tableInfo);
+            ViewDefinition viewDefinition = tableInfo.getDefinition();
+            ConnectorViewDefinition definition = new ConnectorViewDefinition(
+                    viewDefinition.getQuery(),
+                    Optional.of(catalogName.toString()),
+                    Optional.of(viewName.getSchemaName()),
+                    columns.stream()
+                            .map(column -> new ConnectorViewDefinition.ViewColumn(column.getName(), column.getPrestoType().getTypeId()))
+                            .collect(toImmutableList()),
+                    Optional.ofNullable(tableInfo.getDescription()),
+                    Optional.empty(),
+                    false);
+            viewDefinition.getQuery();
+            return Optional.of(definition);
+        }
+        return Optional.empty();
     }
 
     @Override
