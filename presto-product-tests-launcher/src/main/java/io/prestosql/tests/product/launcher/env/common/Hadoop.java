@@ -61,6 +61,7 @@ public final class Hadoop
 
         builder.configureContainer("presto-master", container -> {
             container
+                    .withCopyFileToContainer(forHostPath(dockerFiles.getDockerFilesHostPath("conf/presto/etc/hive-default-fs-site.xml")), "/etc/hive/conf/hive-site.xml")
                     .withCopyFileToContainer(forHostPath(dockerFiles.getDockerFilesHostPath("common/hadoop/hive.properties")), CONTAINER_PRESTO_HIVE_PROPERTIES)
                     .withCopyFileToContainer(forHostPath(dockerFiles.getDockerFilesHostPath("common/hadoop/iceberg.properties")), CONTAINER_PRESTO_ICEBERG_PROPERTIES);
 
