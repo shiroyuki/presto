@@ -90,6 +90,7 @@ public class FeaturesConfig
     private DataIntegrityVerification exchangeDataIntegrityVerification = DataIntegrityVerification.ABORT;
     private boolean exchangeCompressionEnabled;
     private boolean legacyTimestamp = true;
+    private boolean legacyRowToJsonCast = true;
     private boolean optimizeMixedDistinctAggregations;
     private boolean unwrapCasts = true;
     private boolean forceSingleNodeOutput = true;
@@ -243,6 +244,18 @@ public class FeaturesConfig
     public boolean isLegacyTimestamp()
     {
         return legacyTimestamp;
+    }
+
+    public boolean isLegacyRowToJsonCast()
+    {
+        return legacyRowToJsonCast;
+    }
+
+    @Config("deprecated.legacy-row-to-json-cast")
+    public FeaturesConfig setLegacyRowToJsonCast(boolean legacyRowToJsonCast)
+    {
+        this.legacyRowToJsonCast = legacyRowToJsonCast;
+        return this;
     }
 
     public JoinDistributionType getJoinDistributionType()

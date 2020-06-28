@@ -47,10 +47,14 @@ import static io.prestosql.util.Reflection.methodHandle;
 public class ArrayToJsonCast
         extends SqlOperator
 {
-    public static final ArrayToJsonCast ARRAY_TO_JSON = new ArrayToJsonCast();
+    public static final ArrayToJsonCast ARRAY_TO_JSON = new ArrayToJsonCast(false);
+    public static final ArrayToJsonCast LEGACY_ARRAY_TO_JSON = new ArrayToJsonCast(true);
+
     private static final MethodHandle METHOD_HANDLE = methodHandle(ArrayToJsonCast.class, "toJson", JsonGeneratorWriter.class, ConnectorSession.class, Block.class);
 
-    private ArrayToJsonCast()
+    private final boolean legacyRowToJson;
+
+    private ArrayToJsonCast(boolean legacyRowToJson)
     {
         super(OperatorType.CAST,
                 ImmutableList.of(castableToTypeParameter("T", JSON.getTypeSignature())),
@@ -58,6 +62,7 @@ public class ArrayToJsonCast
                 JSON.getTypeSignature(),
                 ImmutableList.of(arrayType(new TypeSignature("T"))),
                 false);
+        this.legacyRowToJson = legacyRowToJson;
     }
 
     @Override
@@ -68,7 +73,7 @@ public class ArrayToJsonCast
         Type arrayType = functionBinding.getBoundSignature().getArgumentTypes().get(0);
         checkCondition(canCastToJson(arrayType), INVALID_CAST_ARGUMENT, "Cannot cast %s to JSON", arrayType);
 
-        JsonGeneratorWriter writer = JsonGeneratorWriter.createJsonGeneratorWriter(type);
+        JsonGeneratorWriter writer = JsonGeneratorWriter.createJsonGeneratorWriter(type, legacyRowToJson);
         MethodHandle methodHandle = METHOD_HANDLE.bindTo(writer);
         return new ScalarFunctionImplementation(
                 FAIL_ON_NULL,

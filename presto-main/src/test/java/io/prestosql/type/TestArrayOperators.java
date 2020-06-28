@@ -32,6 +32,7 @@ import io.prestosql.spi.type.RowType;
 import io.prestosql.spi.type.SqlDate;
 import io.prestosql.spi.type.StandardTypes;
 import io.prestosql.spi.type.Type;
+import io.prestosql.sql.analyzer.FeaturesConfig;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
@@ -89,7 +90,10 @@ import static org.testng.Assert.fail;
 public class TestArrayOperators
         extends AbstractTestFunctions
 {
-    public TestArrayOperators() {}
+    public TestArrayOperators()
+    {
+        super(new FeaturesConfig().setLegacyRowToJsonCast(false));
+    }
 
     @BeforeClass
     public void setUp()
@@ -223,7 +227,7 @@ public class TestArrayOperators
         assertFunction(
                 "cast(ARRAY[ROW(1, 2), ROW(3, CAST(null as INTEGER)), CAST(ROW(null, null) AS ROW(INTEGER, INTEGER)), null] AS JSON)",
                 JSON,
-                "[[1,2],[3,null],[null,null],null]");
+                "[{\"field0\":1,\"field1\":2},{\"field0\":3,\"field1\":null},{\"field0\":null,\"field1\":null},null]");
         assertFunction("CAST(ARRAY [12345.12345, 12345.12345, 3.0] AS JSON)", JSON, "[12345.12345,12345.12345,3.00000]");
         assertFunction(
                 "CAST(ARRAY [123456789012345678901234567890.87654321, 123456789012345678901234567890.12345678] AS JSON)",

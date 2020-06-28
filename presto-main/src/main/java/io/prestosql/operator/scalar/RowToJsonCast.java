@@ -28,6 +28,7 @@ import io.prestosql.spi.connector.ConnectorSession;
 import io.prestosql.spi.function.OperatorType;
 import io.prestosql.spi.type.Type;
 import io.prestosql.spi.type.TypeSignature;
+import io.prestosql.spi.type.TypeSignatureParameter;
 import io.prestosql.util.JsonUtil.JsonGeneratorWriter;
 
 import java.io.IOException;
@@ -51,10 +52,15 @@ import static io.prestosql.util.Reflection.methodHandle;
 public class RowToJsonCast
         extends SqlOperator
 {
-    public static final RowToJsonCast ROW_TO_JSON = new RowToJsonCast();
-    private static final MethodHandle METHOD_HANDLE = methodHandle(RowToJsonCast.class, "toJson", List.class, ConnectorSession.class, Block.class);
+    public static final RowToJsonCast ROW_TO_JSON = new RowToJsonCast(false);
+    public static final RowToJsonCast LEGACY_ROW_TO_JSON = new RowToJsonCast(true);
 
-    private RowToJsonCast()
+    private static final MethodHandle METHOD_HANDLE = methodHandle(RowToJsonCast.class, "toJsonObject", List.class, List.class, ConnectorSession.class, Block.class);
+    private static final MethodHandle LEGACY_METHOD_HANDLE = methodHandle(RowToJsonCast.class, "toJsonArray", List.class, ConnectorSession.class, Block.class);
+
+    private final boolean legacyRowToJson;
+
+    private RowToJsonCast(boolean legacyRowToJson)
     {
         super(OperatorType.CAST,
                 ImmutableList.of(
@@ -64,6 +70,7 @@ public class RowToJsonCast
                 JSON.getTypeSignature(),
                 ImmutableList.of(new TypeSignature("T")),
                 false);
+        this.legacyRowToJson = legacyRowToJson;
     }
 
     @Override
@@ -74,11 +81,21 @@ public class RowToJsonCast
         checkCondition(canCastToJson(type), INVALID_CAST_ARGUMENT, "Cannot cast %s to JSON", type);
 
         List<Type> fieldTypes = type.getTypeParameters();
+        List<TypeSignatureParameter> typeSignatureParameters = type.getTypeSignature().getParameters();
+
+        List<String> fieldNames = new ArrayList<>(fieldTypes.size());
         List<JsonGeneratorWriter> fieldWriters = new ArrayList<>(fieldTypes.size());
         for (int i = 0; i < fieldTypes.size(); i++) {
-            fieldWriters.add(createJsonGeneratorWriter(fieldTypes.get(i)));
+            fieldNames.add(typeSignatureParameters.get(i).getNamedTypeSignature().getName().orElse("field" + i));
+            fieldWriters.add(createJsonGeneratorWriter(fieldTypes.get(i), legacyRowToJson));
         }
-        MethodHandle methodHandle = METHOD_HANDLE.bindTo(fieldWriters);
+        MethodHandle methodHandle;
+        if (legacyRowToJson) {
+            methodHandle = LEGACY_METHOD_HANDLE.bindTo(fieldWriters);
+        }
+        else {
+            methodHandle = METHOD_HANDLE.bindTo(fieldNames).bindTo(fieldWriters);
+        }
 
         return new ScalarFunctionImplementation(
                 FAIL_ON_NULL,
@@ -87,7 +104,28 @@ public class RowToJsonCast
     }
 
     @UsedByGeneratedCode
-    public static Slice toJson(List<JsonGeneratorWriter> fieldWriters, ConnectorSession session, Block block)
+    public static Slice toJsonObject(List<String> fieldNames, List<JsonGeneratorWriter> fieldWriters, ConnectorSession session, Block block)
+    {
+        try {
+            SliceOutput output = new DynamicSliceOutput(40);
+            try (JsonGenerator jsonGenerator = createJsonGenerator(JSON_FACTORY, output)) {
+                jsonGenerator.writeStartObject();
+                for (int i = 0; i < block.getPositionCount(); i++) {
+                    jsonGenerator.writeFieldName(fieldNames.get(i));
+                    fieldWriters.get(i).writeJsonValue(jsonGenerator, block, i, session);
+                }
+                jsonGenerator.writeEndObject();
+            }
+            return output.slice();
+        }
+        catch (IOException e) {
+            throwIfUnchecked(e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    @UsedByGeneratedCode
+    public static Slice toJsonArray(List<JsonGeneratorWriter> fieldWriters, ConnectorSession session, Block block)
     {
         try {
             SliceOutput output = new DynamicSliceOutput(40);

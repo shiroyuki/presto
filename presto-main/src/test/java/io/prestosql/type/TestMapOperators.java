@@ -28,6 +28,7 @@ import io.prestosql.spi.type.RowType;
 import io.prestosql.spi.type.SqlDecimal;
 import io.prestosql.spi.type.StandardTypes;
 import io.prestosql.spi.type.Type;
+import io.prestosql.sql.analyzer.FeaturesConfig;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
@@ -67,6 +68,11 @@ import static java.util.Collections.singletonList;
 public class TestMapOperators
         extends AbstractTestFunctions
 {
+    public TestMapOperators()
+    {
+        super(new FeaturesConfig().setLegacyRowToJsonCast(false));
+    }
+
     @BeforeClass
     public void setUp()
     {
@@ -263,7 +269,7 @@ public class TestMapOperators
         assertFunction(
                 "cast(MAP(ARRAY[1, 2, 3, 5], ARRAY[ROW(1, 2), ROW(3, CAST(null as INTEGER)), CAST(ROW(null, null) AS ROW(INTEGER, INTEGER)), null]) AS JSON)",
                 JSON,
-                "{\"1\":[1,2],\"2\":[3,null],\"3\":[null,null],\"5\":null}");
+                "{\"1\":{\"field0\":1,\"field1\":2},\"2\":{\"field0\":3,\"field1\":null},\"3\":{\"field0\":null,\"field1\":null},\"5\":null}");
         assertFunction("CAST(MAP(ARRAY [1.0, 383838383838383.12324234234234], ARRAY [2.2, 3.3]) AS JSON)", JSON, "{\"1.00000000000000\":2.2,\"383838383838383.12324234234234\":3.3}");
         assertFunction("CAST(MAP(ARRAY [1.0], ARRAY [2.2]) AS JSON)", JSON, "{\"1.0\":2.2}");
     }

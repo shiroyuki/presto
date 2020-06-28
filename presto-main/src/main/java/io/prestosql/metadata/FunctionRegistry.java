@@ -285,6 +285,7 @@ import static io.prestosql.operator.scalar.ArraySubscriptOperator.ARRAY_SUBSCRIP
 import static io.prestosql.operator.scalar.ArrayToArrayCast.ARRAY_TO_ARRAY_CAST;
 import static io.prestosql.operator.scalar.ArrayToElementConcatFunction.ARRAY_TO_ELEMENT_CONCAT_FUNCTION;
 import static io.prestosql.operator.scalar.ArrayToJsonCast.ARRAY_TO_JSON;
+import static io.prestosql.operator.scalar.ArrayToJsonCast.LEGACY_ARRAY_TO_JSON;
 import static io.prestosql.operator.scalar.ArrayTransformFunction.ARRAY_TRANSFORM_FUNCTION;
 import static io.prestosql.operator.scalar.CastFromUnknownOperator.CAST_FROM_UNKNOWN;
 import static io.prestosql.operator.scalar.ConcatFunction.VARBINARY_CONCAT;
@@ -305,6 +306,7 @@ import static io.prestosql.operator.scalar.MapConstructor.MAP_CONSTRUCTOR;
 import static io.prestosql.operator.scalar.MapElementAtFunction.MAP_ELEMENT_AT;
 import static io.prestosql.operator.scalar.MapFilterFunction.MAP_FILTER_FUNCTION;
 import static io.prestosql.operator.scalar.MapHashCodeOperator.MAP_HASH_CODE;
+import static io.prestosql.operator.scalar.MapToJsonCast.LEGACY_MAP_TO_JSON;
 import static io.prestosql.operator.scalar.MapToJsonCast.MAP_TO_JSON;
 import static io.prestosql.operator.scalar.MapToMapCast.MAP_TO_MAP_CAST;
 import static io.prestosql.operator.scalar.MapTransformKeysFunction.MAP_TRANSFORM_KEYS_FUNCTION;
@@ -322,6 +324,7 @@ import static io.prestosql.operator.scalar.RowIndeterminateOperator.ROW_INDETERM
 import static io.prestosql.operator.scalar.RowLessThanOperator.ROW_LESS_THAN;
 import static io.prestosql.operator.scalar.RowLessThanOrEqualOperator.ROW_LESS_THAN_OR_EQUAL;
 import static io.prestosql.operator.scalar.RowNotEqualOperator.ROW_NOT_EQUAL;
+import static io.prestosql.operator.scalar.RowToJsonCast.LEGACY_ROW_TO_JSON;
 import static io.prestosql.operator.scalar.RowToJsonCast.ROW_TO_JSON;
 import static io.prestosql.operator.scalar.RowToRowCast.ROW_TO_ROW_CAST;
 import static io.prestosql.operator.scalar.TryCastFunction.TRY_CAST;
@@ -592,10 +595,10 @@ public class FunctionRegistry
                 .function(MAP_TO_MAP_CAST)
                 .function(ARRAY_FLATTEN_FUNCTION)
                 .function(ARRAY_CONCAT_FUNCTION)
-                .functions(ARRAY_CONSTRUCTOR, ARRAY_SUBSCRIPT, ARRAY_TO_JSON, JSON_TO_ARRAY, JSON_STRING_TO_ARRAY)
+                .functions(ARRAY_CONSTRUCTOR, ARRAY_SUBSCRIPT, JSON_TO_ARRAY, JSON_STRING_TO_ARRAY)
                 .function(new ArrayAggregationFunction(featuresConfig.getArrayAggGroupImplementation()))
                 .functions(new MapSubscriptOperator())
-                .functions(MAP_CONSTRUCTOR, MAP_TO_JSON, JSON_TO_MAP, JSON_STRING_TO_MAP)
+                .functions(MAP_CONSTRUCTOR, JSON_TO_MAP, JSON_STRING_TO_MAP)
                 .functions(MAP_AGG, MAP_UNION)
                 .function(REDUCE_AGG)
                 .function(new MultimapAggregationFunction(featuresConfig.getMultimapAggGroupImplementation()))
@@ -619,7 +622,7 @@ public class FunctionRegistry
                 .functions(MAX_BY, MIN_BY, MAX_BY_N_AGGREGATION, MIN_BY_N_AGGREGATION)
                 .functions(MAX_AGGREGATION, MIN_AGGREGATION, MAX_N_AGGREGATION, MIN_N_AGGREGATION)
                 .function(COUNT_COLUMN)
-                .functions(ROW_HASH_CODE, ROW_TO_JSON, JSON_TO_ROW, JSON_STRING_TO_ROW, ROW_DISTINCT_FROM, ROW_EQUAL, ROW_GREATER_THAN, ROW_GREATER_THAN_OR_EQUAL, ROW_LESS_THAN, ROW_LESS_THAN_OR_EQUAL, ROW_NOT_EQUAL, ROW_TO_ROW_CAST, ROW_INDETERMINATE)
+                .functions(ROW_HASH_CODE, JSON_TO_ROW, JSON_STRING_TO_ROW, ROW_DISTINCT_FROM, ROW_EQUAL, ROW_GREATER_THAN, ROW_GREATER_THAN_OR_EQUAL, ROW_LESS_THAN, ROW_LESS_THAN_OR_EQUAL, ROW_NOT_EQUAL, ROW_TO_ROW_CAST, ROW_INDETERMINATE)
                 .functions(VARCHAR_CONCAT, VARBINARY_CONCAT)
                 .function(DECIMAL_TO_DECIMAL_CAST)
                 .function(castVarcharToRe2JRegexp(featuresConfig.getRe2JDfaStatesLimit(), featuresConfig.getRe2JDfaRetries()))
@@ -759,6 +762,13 @@ public class FunctionRegistry
                 builder.scalars(Re2JRegexpFunctions.class);
                 builder.scalar(Re2JRegexpReplaceLambdaFunction.class);
                 break;
+        }
+
+        if (featuresConfig.isLegacyRowToJsonCast()) {
+            builder.functions(LEGACY_ROW_TO_JSON, LEGACY_ARRAY_TO_JSON, LEGACY_MAP_TO_JSON);
+        }
+        else {
+            builder.functions(ROW_TO_JSON, ARRAY_TO_JSON, MAP_TO_JSON);
         }
 
         addFunctions(builder.getFunctions());
