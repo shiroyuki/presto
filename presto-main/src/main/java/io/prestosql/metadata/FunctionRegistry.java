@@ -141,6 +141,7 @@ import io.prestosql.operator.scalar.TryFunction;
 import io.prestosql.operator.scalar.TypeOfFunction;
 import io.prestosql.operator.scalar.UrlFunctions;
 import io.prestosql.operator.scalar.VarbinaryFunctions;
+import io.prestosql.operator.scalar.VersionFunction;
 import io.prestosql.operator.scalar.WilsonInterval;
 import io.prestosql.operator.scalar.WordStemFunction;
 import io.prestosql.operator.scalar.timestamp.DateAdd;
@@ -378,7 +379,7 @@ public class FunctionRegistry
     private final Cache<FunctionBinding, WindowFunctionSupplier> specializedWindowCache;
     private volatile FunctionMap functions = new FunctionMap();
 
-    public FunctionRegistry(Supplier<BlockEncodingSerde> blockEncodingSerdeSupplier, FeaturesConfig featuresConfig)
+    public FunctionRegistry(Supplier<BlockEncodingSerde> blockEncodingSerdeSupplier, String nodeVersion, FeaturesConfig featuresConfig)
     {
         // We have observed repeated compilation of MethodHandle that leads to full GCs.
         // We notice that flushing the following caches mitigate the problem.
@@ -632,6 +633,7 @@ public class FunctionRegistry
                 .function(FORMAT_FUNCTION)
                 .function(TRY_CAST)
                 .function(new LiteralFunction(blockEncodingSerdeSupplier))
+                .function(new VersionFunction(nodeVersion))
                 .aggregate(MergeSetDigestAggregation.class)
                 .aggregate(BuildSetDigestAggregation.class)
                 .scalars(SetDigestFunctions.class)

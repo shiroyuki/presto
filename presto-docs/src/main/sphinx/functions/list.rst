@@ -484,6 +484,7 @@ V
 - :func:`var_pop`
 - :func:`var_samp`
 - :func:`variance`
+- :func:`version`
 
 W
 -
