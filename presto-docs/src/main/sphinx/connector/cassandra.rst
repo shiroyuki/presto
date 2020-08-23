@@ -243,6 +243,22 @@ Partition keys can only be of the following types:
 | UUID
 | TIMEUUID
 
+
+Functions
+---------
+
+.. function:: min_timeuuid(timestamp(3) with time zone) -> varchar
+
+    Returns fake time-based UUID corresponding to the smallest possible value for the timestamp.
+
+.. function:: max_timeuuid(timestamp(3) with time zone) -> varchar
+
+    Returns fake time-based UUID corresponding to the biggest possible value for the timestamp.
+
+.. function:: timeuuid_to_timestamp(varchar) -> timestamp(3) with time zone
+
+    Returns timestamp from the time-based UUID.
+
 Limitations
 -----------
 
