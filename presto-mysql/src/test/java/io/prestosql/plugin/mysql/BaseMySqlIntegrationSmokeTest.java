@@ -38,7 +38,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
 
-public class TestMySqlIntegrationSmokeTest
+public class BaseMySqlIntegrationSmokeTest
         extends AbstractTestIntegrationSmokeTest
 {
     protected TestingMySqlServer mysqlServer;
